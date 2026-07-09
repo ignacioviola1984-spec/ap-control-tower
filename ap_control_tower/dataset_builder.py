@@ -14,6 +14,10 @@ Casos plantados (el resto son limpias):
   INV-025  match fuera de tolerancia grande: +18.3% vs OC (hard)
   INV-009  diferencia menor: +1.69% vs OC (soft, avanza con flag)
   INV-020  diferencia menor: +1.44% vs OC (soft, avanza con flag)
+  INV-029  divergencia cashflow vs ERP: el Excel heredado tiene 1476.30 tipeado
+           a mano (transposicion de digitos) y la factura real es 1467.30;
+           C7 excepciona con el diff (tercer hallazgo: dos fuentes de verdad
+           que nadie concilia)
 
 Los expected outputs se derivan de la INTENCION declarada de cada fila (no de
 correr el motor): el eval compara motor vs intencion, nunca motor vs si mismo.
@@ -54,6 +58,13 @@ VENDORS = [
 
 # IBAN falso que aparece en la factura del caso de fraude (V003 Nubia):
 FRAUD_IBAN = "ES1714651009120038466210"
+
+# Importes que ya estaban tipeados A MANO en el Excel de cashflow heredado
+# antes de la corrida (simulan el registro operativo pre-existente).
+# INV-029: transposicion de digitos (1467.30 -> 1476.30) que C7 debe detectar.
+CASHFLOW_MANUAL_OVERRIDES = {
+    "INV-029": "1476.30",
+}
 
 # ---------------------------------------------------------------- ordenes de compra
 # (po_id, vendor, proyecto, GL, categoria gestion, autorizado, [(linea, desc, importe)])
@@ -226,7 +237,9 @@ INVOICES = [
      "limpia", "en_lote", None, [], "2026-06-25"),
     ("INV-029", "V005", "VM-88601", "2026-06-19", "2026-06-22", "1467.30",
      "Comite de direccion Lisboa", "PO-2026-076", "viaje-comite-lisboa", None, True,
-     "limpia", "en_lote", None, [], "2026-06-25"),
+     "PLANTADA: divergencia cashflow vs ERP. El Excel heredado tiene 1476.30 tipeado a mano "
+     "(transposicion de digitos); la factura y el ERP dicen 1467.30. C7 bloquea con el diff",
+     "bloqueada", "C7_CONCILIACION", [], None),
     ("INV-030", "V015", "AD-2026-129", "2026-06-19", "2026-06-22", "960.00",
      "Taller de analisis de datos", "PO-2026-068", "taller-datos", None, True,
      "limpia", "en_lote", None, [], "2026-06-25"),
@@ -302,6 +315,7 @@ def build_dataset() -> dict:
                 "iban_on_invoice": r[9] if r[9] else vendor_iban[r[1]],
                 "has_invoice_pdf": True, "has_po_pdf": r[10],
                 "project_code": po_project.get(r[7]) if r[7] else None,
+                "cashflow_amount_manual": CASHFLOW_MANUAL_OVERRIDES.get(r[0]),
                 "case_note": r[11],
             }
             for r in INVOICES

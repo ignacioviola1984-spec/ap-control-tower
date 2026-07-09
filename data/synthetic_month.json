@@ -644,6 +644,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "CO-001",
+      "cashflow_amount_manual": null,
       "case_note": "limpia"
     },
     {
@@ -662,6 +663,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "CO-001",
+      "cashflow_amount_manual": null,
       "case_note": "limpia"
     },
     {
@@ -680,6 +682,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "CO-001",
+      "cashflow_amount_manual": null,
       "case_note": "limpia"
     },
     {
@@ -698,6 +701,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "CO-001",
+      "cashflow_amount_manual": null,
       "case_note": "limpia"
     },
     {
@@ -716,6 +720,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "TD-410",
+      "cashflow_amount_manual": null,
       "case_note": "limpia (luego llega su duplicada: INV-023)"
     },
     {
@@ -734,6 +739,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "CO-014",
+      "cashflow_amount_manual": null,
       "case_note": "limpia"
     },
     {
@@ -752,6 +758,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "CN-215",
+      "cashflow_amount_manual": null,
       "case_note": "limpia (luego llega su casi-duplicada: INV-015)"
     },
     {
@@ -770,6 +777,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "CO-016",
+      "cashflow_amount_manual": null,
       "case_note": "limpia"
     },
     {
@@ -788,6 +796,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "CO-005",
+      "cashflow_amount_manual": null,
       "case_note": "PLANTADA soft: +60.00 EUR (+1.69%) vs OC, bajo materialidad"
     },
     {
@@ -806,6 +815,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "CO-001",
+      "cashflow_amount_manual": null,
       "case_note": "limpia"
     },
     {
@@ -824,6 +834,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "CO-002",
+      "cashflow_amount_manual": null,
       "case_note": "limpia intercompany (flag informativo)"
     },
     {
@@ -842,6 +853,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "CO-030",
+      "cashflow_amount_manual": null,
       "case_note": "limpia"
     },
     {
@@ -860,6 +872,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "CO-001",
+      "cashflow_amount_manual": null,
       "case_note": "limpia"
     },
     {
@@ -878,6 +891,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": false,
       "project_code": null,
+      "cashflow_amount_manual": null,
       "case_note": "PLANTADA: email sin OC adjunta -> bloqueo por completitud"
     },
     {
@@ -896,6 +910,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "CN-215",
+      "cashflow_amount_manual": null,
       "case_note": "PLANTADA: casi-duplicada de INV-007 (mismo proveedor e importe, numero distinto, emision a 3 dias)"
     },
     {
@@ -914,6 +929,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "CO-014",
+      "cashflow_amount_manual": null,
       "case_note": "limpia (establece a Nubia como proveedor habitual antes del fraude)"
     },
     {
@@ -932,6 +948,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "CO-030",
+      "cashflow_amount_manual": null,
       "case_note": "limpia (consume todo el saldo de la OC; luego llega INV-033)"
     },
     {
@@ -950,6 +967,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "CO-016",
+      "cashflow_amount_manual": null,
       "case_note": "limpia"
     },
     {
@@ -968,6 +986,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "TD-410",
+      "cashflow_amount_manual": null,
       "case_note": "limpia"
     },
     {
@@ -986,6 +1005,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "CO-014",
+      "cashflow_amount_manual": null,
       "case_note": "PLANTADA soft: +30.00 EUR (+1.44%) vs OC, bajo materialidad"
     },
     {
@@ -1004,6 +1024,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "CO-020",
+      "cashflow_amount_manual": null,
       "case_note": "limpia"
     },
     {
@@ -1022,6 +1043,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "CO-003",
+      "cashflow_amount_manual": null,
       "case_note": "limpia intercompany (flag informativo)"
     },
     {
@@ -1040,6 +1062,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "TD-410",
+      "cashflow_amount_manual": null,
       "case_note": "PLANTADA: duplicada EXACTA de INV-005 (proveedor+numero+importe+fecha); reenvio del proveedor"
     },
     {
@@ -1058,6 +1081,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "CO-014",
+      "cashflow_amount_manual": null,
       "case_note": "PLANTADA: EL FRAUDE. Todo matchea perfecto, pero el IBAN de la factura no es el del maestro"
     },
     {
@@ -1076,6 +1100,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "FS-120",
+      "cashflow_amount_manual": null,
       "case_note": "PLANTADA: match fuera de tolerancia grande: +950.00 EUR (+18.27%) vs OC -> hard"
     },
     {
@@ -1094,6 +1119,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "CO-001",
+      "cashflow_amount_manual": null,
       "case_note": "limpia"
     },
     {
@@ -1112,6 +1138,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "CO-001",
+      "cashflow_amount_manual": null,
       "case_note": "limpia"
     },
     {
@@ -1130,6 +1157,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "CN-215",
+      "cashflow_amount_manual": null,
       "case_note": "limpia"
     },
     {
@@ -1148,7 +1176,8 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "CO-016",
-      "case_note": "limpia"
+      "cashflow_amount_manual": "1476.30",
+      "case_note": "PLANTADA: divergencia cashflow vs ERP. El Excel heredado tiene 1476.30 tipeado a mano (transposicion de digitos); la factura y el ERP dicen 1467.30. C7 bloquea con el diff"
     },
     {
       "invoice_id": "INV-030",
@@ -1166,6 +1195,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "CO-030",
+      "cashflow_amount_manual": null,
       "case_note": "limpia"
     },
     {
@@ -1184,6 +1214,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "CO-014",
+      "cashflow_amount_manual": null,
       "case_note": "limpia"
     },
     {
@@ -1202,6 +1233,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "CO-001",
+      "cashflow_amount_manual": null,
       "case_note": "limpia"
     },
     {
@@ -1220,6 +1252,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "CO-030",
+      "cashflow_amount_manual": null,
       "case_note": "PLANTADA: OC sin saldo (INV-017 ya consumio los 7500.00 autorizados). Emision a 8 dias de INV-017: fuera de la ventana de casi-duplicados, bloquea C3"
     },
     {
@@ -1238,6 +1271,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "CO-001",
+      "cashflow_amount_manual": null,
       "case_note": "limpia, programada para el primer jueves de julio"
     },
     {
@@ -1256,6 +1290,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "TD-410",
+      "cashflow_amount_manual": null,
       "case_note": "limpia, programada para el primer jueves de julio"
     },
     {
@@ -1274,6 +1309,7 @@
       "has_invoice_pdf": true,
       "has_po_pdf": true,
       "project_code": "CO-002",
+      "cashflow_amount_manual": null,
       "case_note": "limpia intercompany, programada para el primer jueves de julio"
     }
   ]

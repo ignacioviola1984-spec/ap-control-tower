@@ -9,16 +9,19 @@ Cada etapa tiene un agente *maker* que produce y un agente *checker* independien
 
 Repositorio **privado**. El material de referencia del proceso real vive en `docs/` (gitignoreado, confidencial, nunca se commitea).
 
-## Estado (Dia 1 de 4)
+## Estado (Dia 2 de 4)
 
 | Entregable | Estado |
 |---|---|
 | Repo privado + docs/ blindado | Listo |
 | Data model (proveedor, OC con lineas, factura, resultados, lotes) | Listo |
-| Dataset sintetico completo (junio 2026, 36 facturas, 9 casos plantados) | Listo, pendiente de auditoria humana |
+| Dataset sintetico completo (junio 2026, 36 facturas, 10 casos plantados) | Auditado y aprobado (Dia 1) |
 | Expected outputs (derivados de la intencion, no del motor) | Listo |
-| Motor de controles C1-C7 + audit trail hash-chained | Listo (basico; makers/checkers completos y lote con doble sign-off: Dia 2) |
-| Evals con contrato de exit code | Verdes (exit 0) |
+| Motor de controles C1-C7 + audit trail hash-chained | Listo |
+| Lote de pago: doble sign-off agentico (checker A + checker B) | Listo |
+| Gate humano: maquina de estados con aprobacion nominada | Listo |
+| Cierre: conciliacion automatica pago vs pasivo | Listo |
+| Evals con contrato de exit code (12 grupos, incl. gate e invariantes) | Verdes (exit 0) |
 | Facturas renderizadas como documento (6) | Listo (`data/doc_previews/`) |
 | UI Streamlit (6 vistas) + theming | Dia 3 |
 
@@ -56,10 +59,32 @@ Casos plantados:
 | INV-033 | OC sin saldo (ya consumido por INV-017) | C3 autorizacion | Bloqueada |
 | INV-024 | **Fraude: IBAN distinto del maestro** (caso estrella) | C6 datos bancarios | Bloqueada + alerta |
 | INV-025 | Match +18.27% vs OC (supera materialidad) | C5 match | Bloqueada |
+| INV-029 | Divergencia cashflow vs ERP: Excel heredado con 1.476,30 tipeado a mano, la factura real dice 1.467,30 | C7 conciliacion | Bloqueada |
 | INV-009 | Match +1.69% vs OC (bajo materialidad) | C5 match | Avanza con flag |
 | INV-020 | Match +1.44% vs OC (bajo materialidad) | C5 match | Avanza con flag |
 
-Resultado de la corrida: 27 facturas pagables en 4 lotes (EUR 95.746,65), 6 bloqueadas (EUR 45.440,00 retenidos), 3 programadas para el proximo ciclo, 5 con flag soft (2 match menor + 3 intercompany).
+Resultado de la corrida: 26 facturas pagables en 4 lotes (EUR 94.279,35), 7 bloqueadas (EUR 46.907,30 retenidos), 3 programadas para el proximo ciclo, 5 con flag soft (2 match menor + 3 intercompany). Lotes: 04-jun 21.785,90 / 11-jun 36.005,90 / 18-jun 27.643,35 / 25-jun 8.844,20.
+
+## El lote de pago y EL gate humano
+
+Cada jueves, el lote propuesto atraviesa una maquina de estados que no admite atajos (`ap_control_tower/engine/batch.py`):
+
+```
+propuesto -> [checker A: revalida cada factura contra los 7 controles,
+              con el estado del mundo AL jueves del lote]
+          -> [checker B: valida el agregado: totales, limite por proveedor,
+              duplicados cruzados dentro del lote y contra otros lotes, moneda]
+          -> pendiente_aprobacion_humana
+          -> approve(nombre) -> aprobado -> liberado_al_banco
+          -> reject(nombre, motivo) -> rechazado (facturas a lote_devuelto)
+```
+
+Cualquier transicion invalida (liberar sin aprobar, aprobar sin los dos
+sign-offs, aprobar sin nombre, cerrar sin liberar) levanta `GateViolation`.
+La aprobacion registra nombre, decision y timestamp en el audit trail.
+Tras la liberacion, el cierre (`engine/closing.py`) concilia automaticamente
+cada pago contra su pasivo, lo cancela y reporta excepciones: el humano revisa
+excepciones, no el 100%.
 
 ## Controles del pipeline
 
@@ -78,7 +103,7 @@ Tolerancias y reglas viven en `ap_control_tower/config.py`, explicitas y configu
 ## Invariantes (los evals los hacen contrato)
 
 1. La factura con fraude bancario **nunca** aparece en un lote de pago.
-2. El estado "liberada al banco" es **inalcanzable** sin aprobacion humana registrada.
+2. El estado "liberada al banco" es **inalcanzable** sin aprobacion humana registrada. Los evals lo prueban por la via dura: intentan saltarse el gate (liberar sin aprobar, aprobar sin sign-offs, aprobar sin nombre, liberar un lote rechazado) y exigen `GateViolation` en cada intento. Tambien prueban tampering (un pasivo adulterado detiene el lote via checker A) y limites del agregado (checker B).
 
 ## Estructura
 
@@ -90,10 +115,12 @@ ap_control_tower/
   audit.py             # audit trail hash-chained (run_id + commit)
   dataset_builder.py   # el mes sintetico + expected outputs
   render_invoices.py   # facturas HTML para la vista documento->datos
-  run_month.py         # CLI de corrida
+  run_month.py         # CLI de corrida (llega hasta el gate, jamas lo cruza)
   engine/
     controls.py        # C1-C7 (makers y checkers)
     pipeline.py        # orquestacion cronologica del mes
+    batch.py           # doble sign-off agentico + maquina de estados del gate
+    closing.py         # cierre: conciliacion pago vs pasivo
 data/                  # dataset + expected + doc_previews (committeados)
 evals/run_evals.py     # exit 0/1 como contrato
 runs/                  # audit trails por corrida (gitignoreado)

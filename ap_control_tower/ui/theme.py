@@ -144,7 +144,8 @@ def sidebar_footer(run_id: str | None, commit: str | None) -> None:
     st.sidebar.markdown(
         f"<div style='padding:0 4px;'>{meta}"
         "<div class='apct-motto' style='margin-top:8px;'>"
-        "“El sistema bloquea solo.<br>Liberar dinero siempre es humano.”</div>"
+        "“El sistema se auto-bloquea ante alertas.<br>La aprobación para liberar "
+        "dinero es siempre humana.”</div>"
         "<div style='font-size:11px;color:#9FB3C8 !important;margin-top:8px;'>"
         "Modo demo · datos 100% sintéticos<br>Sin API keys · sin red · local</div></div>",
         unsafe_allow_html=True,

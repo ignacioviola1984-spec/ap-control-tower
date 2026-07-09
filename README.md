@@ -3,7 +3,7 @@
 Sistema de agentes maker-checker para el proceso de Cuentas a Pagar (AP/P2P) de una consultora.
 Demo comercial que corre 100% local: **sin API keys, sin integraciones externas, sin acceso a red**. Todo con datos sinteticos.
 
-> **El sistema bloquea solo. Liberar dinero siempre es humano.**
+> **El sistema se auto-bloquea ante alertas. La aprobación para liberar dinero es siempre humana.**
 
 Cada etapa tiene un agente *maker* que produce y un agente *checker* independiente que valida contra reglas explicitas. Los controles que bloquean son automaticos: la factura que falla queda en la cola de excepciones sin intervencion humana. El unico gate humano del sistema es la liberacion del lote de pago al banco.
 
@@ -54,6 +54,12 @@ docker run --rm -p 8080:8080 -e PORT=8080 -e AP_DEMO_PASSWORD=ensayo-local ap-co
 `.dockerignore` excluye `docs/`, `*.docx`, `.env`, `.git`, `runs/` y `__pycache__`:
 el material confidencial jamas entra a la imagen. En Cloud Run, `--port` y las
 env vars se pasan en el deploy; la imagen no fija ninguno de los dos.
+
+## TODO (post-validacion)
+
+- La leyenda del sidebar "Modo demo · datos 100% sinteticos · Sin API keys ·
+  sin red · local" se actualizara cuando el sistema este validado con
+  documentos reales y deployado en cloud.
 
 ## Como correr y verificar (Dia 1)
 

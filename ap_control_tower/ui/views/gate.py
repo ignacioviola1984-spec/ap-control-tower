@@ -46,8 +46,9 @@ def _signoff_card(title: str, so) -> str:
 def render() -> None:
     st.markdown("## Aprobación de pagos · el único gate humano")
     st.markdown(
-        "<div class='apct-card'><b>“El sistema bloquea solo. Liberar dinero siempre "
-        "es humano.”</b><br><span style='color:#5A6572;'>Cada lote llega acá con el "
+        "<div class='apct-card'><b>“El sistema se auto-bloquea ante alertas. La "
+        "aprobación para liberar dinero es siempre humana.”</b><br>"
+        "<span style='color:#5A6572;'>Cada lote llega acá con el "
         "doble sign-off agéntico ya firmado: el checker A revalidó cada factura contra "
         "los 7 controles y el checker B validó el agregado. Nada se libera al banco "
         "sin una aprobación humana con nombre, decisión y timestamp.</span></div>",

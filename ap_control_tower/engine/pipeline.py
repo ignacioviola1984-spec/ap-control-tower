@@ -15,7 +15,7 @@ MonthRunner procesa de a UNA factura (process_next), para que la UI muestre
 al motor trabajando en vivo; run_month() lo drena entero de una vez.
 
 El gate humano de liberacion del lote NO vive aca: el pipeline solo llega
-hasta "en_lote". Liberar dinero siempre es humano.
+hasta "en_lote". La aprobación para liberar dinero es siempre humana.
 """
 
 from __future__ import annotations

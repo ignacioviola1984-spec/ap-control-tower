@@ -2,8 +2,7 @@
 
 Las metricas que ELLOS declararon versus lo medido en la corrida. Sin inventar
 numeros: la columna izquierda sale de su propia lamina de riesgos/metricas y
-la derecha de la corrida de esta sesion. La unica estimacion (horas) es un
-parametro visible y ajustable con la clienta.
+la derecha de la corrida de esta sesion.
 """
 
 from __future__ import annotations
@@ -14,7 +13,7 @@ import streamlit as st
 
 from ...models import STATUS_BLOQUEADA
 from ..state import get_dataset, get_run, run_is_ready
-from ..theme import badge, eur, kpi
+from ..theme import eur, kpi
 
 
 def render() -> None:
@@ -73,44 +72,3 @@ def render() -> None:
                     unsafe_allow_html=True)
         c6.markdown(kpi("Aprobaciones trazables", "100%",
                         "nombre + decisión + timestamp"), unsafe_allow_html=True)
-
-    st.markdown("#### Cobertura de los tres huecos del proceso actual")
-    g1, g2, g3 = st.columns(3)
-    dup_cases = [o for o in blocked if o.blocking_control == "C2_DUPLICADOS"]
-    dup_amount = sum((invoices[o.invoice_id].amount_total for o in dup_cases), Decimal("0"))
-    conc = next(o for o in blocked if o.blocking_control == "C7_CONCILIACION")
-    g1.markdown(
-        f"<div class='apct-card'>{badge('CUBIERTO', 'ok')} <b>Duplicados</b>"
-        f"<div style='color:#5A6572;margin-top:6px;'>Riesgo declarado por ellos. "
-        f"Esta corrida: <b>{len(dup_cases)} duplicadas bloqueadas</b> "
-        f"({eur(dup_amount)} €), incluida una casi-duplicada con número distinto.</div></div>",
-        unsafe_allow_html=True)
-    g2.markdown(
-        f"<div class='apct-card'>{badge('CUBIERTO', 'ok')} <b>Fraude bancario</b>"
-        f"<div style='color:#5A6572;margin-top:6px;'>Hallazgo nuestro: cero validación "
-        f"de datos bancarios. Esta corrida: <b>1 alerta de posible fraude</b> con "
-        f"{eur(fraud_amount)} € retenidos antes de llegar al banco.</div></div>",
-        unsafe_allow_html=True)
-    g3.markdown(
-        f"<div class='apct-card'>{badge('CUBIERTO', 'ok')} <b>Conciliación Excel/ERP</b>"
-        f"<div style='color:#5A6572;margin-top:6px;'>Hallazgo nuestro: dos fuentes de "
-        f"verdad sin conciliar. Esta corrida: <b>1 divergencia detectada</b> "
-        f"(1.476,30 vs 1.467,30: un tipeo de 9,00 € que nadie iba a ver).</div></div>",
-        unsafe_allow_html=True)
-
-    st.markdown("#### Horas de carga y control manual eliminadas (parámetro ajustable)")
-    mins = st.slider(
-        "Minutos de trabajo manual por factura en el proceso actual "
-        "(cargar, archivar, matchear, listar, aprobar por email, conciliar)",
-        5, 40, 15,
-    )
-    hours = len(result.outcomes) * mins / 60
-    st.markdown(
-        f"<div class='apct-card'><span style='font-size:22px;font-weight:800;'>"
-        f"≈ {hours:.1f} horas/mes</span> de carga y control manual que el agente "
-        f"absorbe con este volumen ({len(result.outcomes)} facturas × {mins} min). "
-        f"<span style='color:#5A6572;'>Es el único número estimado de esta vista: "
-        f"el parámetro se calibra con la clienta; todo lo demás sale de la corrida "
-        f"o de sus propios datos declarados.</span></div>",
-        unsafe_allow_html=True,
-    )

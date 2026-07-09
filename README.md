@@ -9,21 +9,51 @@ Cada etapa tiene un agente *maker* que produce y un agente *checker* independien
 
 Repositorio **privado**. El material de referencia del proceso real vive en `docs/` (gitignoreado, confidencial, nunca se commitea).
 
-## Estado (Dia 2 de 4)
+## Estado (Dia 3 de 4)
 
 | Entregable | Estado |
 |---|---|
 | Repo privado + docs/ blindado | Listo |
-| Data model (proveedor, OC con lineas, factura, resultados, lotes) | Listo |
-| Dataset sintetico completo (junio 2026, 36 facturas, 10 casos plantados) | Auditado y aprobado (Dia 1) |
-| Expected outputs (derivados de la intencion, no del motor) | Listo |
-| Motor de controles C1-C7 + audit trail hash-chained | Listo |
-| Lote de pago: doble sign-off agentico (checker A + checker B) | Listo |
-| Gate humano: maquina de estados con aprobacion nominada | Listo |
-| Cierre: conciliacion automatica pago vs pasivo | Listo |
-| Evals con contrato de exit code (12 grupos, incl. gate e invariantes) | Verdes (exit 0) |
-| Facturas renderizadas como documento (6) | Listo (`data/doc_previews/`) |
-| UI Streamlit (6 vistas) + theming | Dia 3 |
+| Dataset sintetico (junio 2026, 36 facturas, 10 casos plantados) | Auditado y aprobado (Dia 1) |
+| Motor de controles C1-C7 + audit trail hash-chained | Listo (Dia 2) |
+| Doble sign-off agentico + gate humano + cierre | Listo (Dia 2) |
+| UI Streamlit: 6 vistas + theming corporativo + gate vivo | Listo |
+| Password gate server-side (env AP_DEMO_PASSWORD) | Listo |
+| Dockerfile + .dockerignore (puerto por CLI/PORT, sin hardcodeo) | Listo (build no ejecutado localmente: sin Docker en esta maquina) |
+| Evals con contrato de exit code (14 grupos, incl. arranque de la app) | Verdes (exit 0) |
+| Ensayo humano + fixes | Dia 4 |
+
+## Como correr la UI
+
+```powershell
+# Windows (PowerShell) - el password es el que VOS elijas, nunca esta en el repo
+$env:AP_DEMO_PASSWORD = 'eleg-un-password'
+streamlit run app.py --server.port 8501
+```
+
+```bash
+# Linux / macOS
+AP_DEMO_PASSWORD='eleg-un-password' streamlit run app.py --server.port 8501
+```
+
+- Sin `AP_DEMO_PASSWORD` la app muestra "demo no configurada" y no renderiza nada.
+- El puerto se pasa SIEMPRE por CLI (`--server.port`); no hay puertos hardcodeados.
+- La sesion autenticada dura lo que dura la session_state (recargar la pagina pide password de nuevo).
+
+## Docker (ensayo local y Cloud Run)
+
+```bash
+# build (GIT_COMMIT queda en el audit trail de la imagen)
+docker build --build-arg GIT_COMMIT=$(git rev-parse --short HEAD) -t ap-control-tower .
+
+# ensayo local: mismo contrato que Cloud Run (PORT + AP_DEMO_PASSWORD por env)
+docker run --rm -p 8080:8080 -e PORT=8080 -e AP_DEMO_PASSWORD=ensayo-local ap-control-tower
+# abrir http://localhost:8080
+```
+
+`.dockerignore` excluye `docs/`, `*.docx`, `.env`, `.git`, `runs/` y `__pycache__`:
+el material confidencial jamas entra a la imagen. En Cloud Run, `--port` y las
+env vars se pasan en el deploy; la imagen no fija ninguno de los dos.
 
 ## Como correr y verificar (Dia 1)
 
@@ -37,7 +67,8 @@ python -m ap_control_tower.dataset_builder
 python -m ap_control_tower.run_month
 
 # 3. Evals: exit 0 = verde, distinto de 0 = contrato roto
-python evals/run_evals.py
+python evals/run_evals.py            # 14 grupos (incluye arranque real de la app)
+python evals/run_evals.py --sin-app  # salta el grupo de arranque (CI sin GUI)
 
 # 4. (opcional) Regenerar las facturas visuales
 python -m ap_control_tower.render_invoices
@@ -108,6 +139,8 @@ Tolerancias y reglas viven en `ap_control_tower/config.py`, explicitas y configu
 ## Estructura
 
 ```
+app.py                 # entrypoint Streamlit (password gate primero)
+Dockerfile             # python slim, requirements-first, ARG/ENV GIT_COMMIT
 ap_control_tower/
   config.py            # tolerancias y reglas explicitas
   catalogs.py          # plan de cuentas, BUs, proyectos
@@ -118,11 +151,36 @@ ap_control_tower/
   run_month.py         # CLI de corrida (llega hasta el gate, jamas lo cruza)
   engine/
     controls.py        # C1-C7 (makers y checkers)
-    pipeline.py        # orquestacion cronologica del mes
+    pipeline.py        # MonthRunner incremental + orquestacion del mes
     batch.py           # doble sign-off agentico + maquina de estados del gate
     closing.py         # cierre: conciliacion pago vs pasivo
+  ui/
+    auth.py            # password gate server-side (AP_DEMO_PASSWORD)
+    theme.py           # theming corporativo (paleta, badges, cards, tablas)
+    state.py           # corrida y workflows en session_state
+    views/             # inbox, detalle, excepciones, gate, auditoria, caso de negocio
 data/                  # dataset + expected + doc_previews (committeados)
-evals/run_evals.py     # exit 0/1 como contrato
+evals/run_evals.py     # exit 0/1 como contrato (14 grupos)
 runs/                  # audit trails por corrida (gitignoreado)
 docs/                  # confidencial, gitignoreado, NUNCA commitear
 ```
+
+## Las 6 vistas del tablero
+
+1. **Corrida del mes**: "Procesar mes" corre el motor real factura por factura
+   con progreso visible y velocidad regulable (instantaneo / ~40 s / modo
+   reunion ~3 min). KPIs, lotes y las 36 facturas con badges de estado.
+2. **Detalle de factura**: el documento sintetico renderizado al lado de los
+   datos extraidos y el resultado de cada control, en orden.
+3. **Cola de excepciones**: las bloqueadas con control, evidencia (esperado vs
+   recibido) y dueno sugerido. El fraude bancario tiene pantalla dedicada con
+   el diff contra el maestro y accion recomendada.
+4. **Aprobacion de pagos (EL gate)**: lote del jueves con los dos sign-offs
+   agenticos, total a liberar, y el flujo humano vivo: aprobar pide nombre y
+   registra decision + timestamp; rechazar devuelve el lote con motivo. Tras
+   liberar: cierre con conciliacion pago vs pasivo.
+5. **Registro de auditoria**: tabla cronologica completa filtrable por factura
+   / agente / control, cadena de hashes verificada en vivo, export a CSV.
+6. **Caso de negocio**: sus metricas declaradas vs lo medido en la corrida;
+   cobertura de los 3 huecos (duplicados, fraude bancario, conciliacion).
+   Unico numero estimado: horas/mes, con el parametro visible y ajustable.

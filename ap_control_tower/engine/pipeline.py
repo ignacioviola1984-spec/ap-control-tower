@@ -11,6 +11,9 @@ la factura sigue):
         -> contabilizacion simulada (ERP) -> C7 conciliacion pre-pago
         -> asignacion a lote del primer jueves posterior a la recepcion
 
+MonthRunner procesa de a UNA factura (process_next), para que la UI muestre
+al motor trabajando en vivo; run_month() lo drena entero de una vez.
+
 El gate humano de liberacion del lote NO vive aca: el pipeline solo llega
 hasta "en_lote". Liberar dinero siempre es humano.
 """
@@ -20,7 +23,7 @@ from __future__ import annotations
 from decimal import Decimal
 
 from ..audit import AuditTrail
-from ..config import DEFAULT_CONFIG, EXCEPTION_OWNERS, EngineConfig
+from ..config import DEFAULT_CONFIG, EXCEPTION_OWNERS, Controls, EngineConfig
 from ..envutil import resolve_commit
 from ..models import (
     ControlResult,
@@ -46,8 +49,6 @@ from .controls import (
     checker_validate_imputacion,
     maker_propose_imputacion,
 )
-from ..config import Controls
-
 
 FLAG_BY_CONTROL_SOFT = {
     Controls.C5_MATCH: "MATCH_TOLERANCIA_MENOR",
@@ -63,35 +64,62 @@ def _next_thursday(after, config: EngineConfig):
     return None
 
 
-def _audit_control(audit: AuditTrail, inv: Invoice, res: ControlResult) -> None:
-    audit.add(
-        agent=res.checker,
-        action=f"control:{res.control_id}",
-        invoice_id=inv.invoice_id,
-        control_id=res.control_id,
-        result=("pasa" if res.passed else f"{'falla-hard' if res.severity == 'hard' else 'flag-soft'}"),
-        evidence={"detalle": res.detail, **res.evidence},
-    )
+class MonthRunner:
+    """Corre el mes de a una factura por vez, en orden cronologico de recepcion.
 
-
-def run_month(dataset: Dataset, config: EngineConfig = DEFAULT_CONFIG,
-              run_id: str | None = None) -> tuple[RunResult, AuditTrail, "RunContext"]:
-    """Corre el mes completo en orden cronologico de recepcion. Deterministico.
-
-    Devuelve tambien el RunContext (cashflow/ERP/consumos) porque los checkers
-    de lote (engine/batch.py) revalidan contra ese estado.
+    Uso incremental (UI):  while (step := runner.process_next()): ...
+    Uso de una vez:        run_month(dataset) drena el runner completo.
+    Deterministico: mismo dataset -> mismos resultados.
     """
-    audit = AuditTrail(run_id=run_id, commit=resolve_commit())
-    ctx = RunContext(dataset=dataset, config=config)
-    outcomes: dict[str, InvoiceOutcome] = {}
-    exceptions: list[ExceptionItem] = []
-    batch_map: dict = {}
-    carryover: list[str] = []
 
-    audit.add(agent="orquestador", action="inicio-corrida",
-              evidence={"mes": config.demo_month, "facturas": len(dataset.invoices)})
+    def __init__(self, dataset: Dataset, config: EngineConfig = DEFAULT_CONFIG,
+                 run_id: str | None = None) -> None:
+        self.dataset = dataset
+        self.config = config
+        self.audit = AuditTrail(run_id=run_id, commit=resolve_commit())
+        self.ctx = RunContext(dataset=dataset, config=config)
+        self.outcomes: dict[str, InvoiceOutcome] = {}
+        self.exceptions: list[ExceptionItem] = []
+        self.carryover: list[str] = []
+        self._batch_map: dict = {}
+        self._invoices = list(dataset.invoices)  # ya ordenadas por recepcion
+        self._pos = 0
+        self._finalized: RunResult | None = None
+        self.audit.add(agent="orquestador", action="inicio-corrida",
+                       evidence={"mes": config.demo_month, "facturas": len(self._invoices)})
 
-    for inv in dataset.invoices:  # ya vienen ordenadas por recepcion
+    # ------------------------------------------------------------------
+    @property
+    def total_invoices(self) -> int:
+        return len(self._invoices)
+
+    @property
+    def processed_count(self) -> int:
+        return self._pos
+
+    def process_next(self) -> tuple[Invoice, InvoiceOutcome] | None:
+        """Procesa la siguiente factura; None cuando el mes esta completo."""
+        if self._pos >= len(self._invoices):
+            return None
+        inv = self._invoices[self._pos]
+        self._pos += 1
+        outcome = self._process(inv)
+        return inv, outcome
+
+    # ------------------------------------------------------------------
+    def _audit_control(self, inv: Invoice, res: ControlResult) -> None:
+        self.audit.add(
+            agent=res.checker,
+            action=f"control:{res.control_id}",
+            invoice_id=inv.invoice_id,
+            control_id=res.control_id,
+            result=("pasa" if res.passed
+                    else ("falla-hard" if res.severity == "hard" else "flag-soft")),
+            evidence={"detalle": res.detail, **res.evidence},
+        )
+
+    def _process(self, inv: Invoice) -> InvoiceOutcome:
+        ctx, audit, dataset = self.ctx, self.audit, self.dataset
         results: list[ControlResult] = []
         flags: list[str] = []
         blocking: ControlResult | None = None
@@ -104,13 +132,13 @@ def run_month(dataset: Dataset, config: EngineConfig = DEFAULT_CONFIG,
 
         # --- C1 completitud (hard, corta antes de registrar nada) ---
         res = check_completitud(inv, ctx)
-        results.append(res); _audit_control(audit, inv, res)
+        results.append(res); self._audit_control(inv, res)
         if not res.passed:
             blocking = res
         else:
             # --- C2 duplicados (hard) contra la historia ya ingresada ---
             res = check_duplicados(inv, ctx)
-            results.append(res); _audit_control(audit, inv, res)
+            results.append(res); self._audit_control(inv, res)
             if not res.passed:
                 blocking = res
 
@@ -134,7 +162,7 @@ def run_month(dataset: Dataset, config: EngineConfig = DEFAULT_CONFIG,
 
             # --- C3 autorizacion de OC (hard) ---
             res = check_autorizacion_oc(inv, ctx)
-            results.append(res); _audit_control(audit, inv, res)
+            results.append(res); self._audit_control(inv, res)
             if not res.passed:
                 blocking = res
 
@@ -146,7 +174,7 @@ def run_month(dataset: Dataset, config: EngineConfig = DEFAULT_CONFIG,
             audit.add(agent="maker-imputacion", action="propuesta-imputacion",
                       invoice_id=inv.invoice_id, evidence=proposal)
             res = checker_validate_imputacion(inv, proposal, ctx)
-            results.append(res); _audit_control(audit, inv, res)
+            results.append(res); self._audit_control(inv, res)
             if not res.passed:
                 flags.append(FLAG_BY_CONTROL_SOFT[Controls.C4_IMPUTACION])
             if res.evidence.get("clasificacion") == "intercompany":
@@ -154,7 +182,7 @@ def run_month(dataset: Dataset, config: EngineConfig = DEFAULT_CONFIG,
 
             # --- C5 match con tolerancias (hard/soft) ---
             res = check_match(inv, ctx)
-            results.append(res); _audit_control(audit, inv, res)
+            results.append(res); self._audit_control(inv, res)
             if not res.passed:
                 if res.severity == SEVERITY_SOFT:
                     flags.append(FLAG_BY_CONTROL_SOFT[Controls.C5_MATCH])
@@ -164,7 +192,7 @@ def run_month(dataset: Dataset, config: EngineConfig = DEFAULT_CONFIG,
         if blocking is None:
             # --- C6 datos bancarios vs maestro (hard + alerta fraude) ---
             res = check_datos_bancarios(inv, ctx)
-            results.append(res); _audit_control(audit, inv, res)
+            results.append(res); self._audit_control(inv, res)
             if not res.passed:
                 blocking = res
 
@@ -181,7 +209,7 @@ def run_month(dataset: Dataset, config: EngineConfig = DEFAULT_CONFIG,
 
             # --- C7 conciliacion pre-pago cashflow vs ERP (hard) ---
             res = check_conciliacion(inv, ctx)
-            results.append(res); _audit_control(audit, inv, res)
+            results.append(res); self._audit_control(inv, res)
             if not res.passed:
                 blocking = res
 
@@ -191,7 +219,7 @@ def run_month(dataset: Dataset, config: EngineConfig = DEFAULT_CONFIG,
             if inv.invoice_id in ctx.cashflow:
                 ctx.cashflow[inv.invoice_id]["estado"] = "bloqueada"
             fraud = blocking.control_id == Controls.C6_DATOS_BANCARIOS
-            exceptions.append(ExceptionItem(
+            self.exceptions.append(ExceptionItem(
                 invoice_id=inv.invoice_id,
                 control_id=blocking.control_id,
                 severity=blocking.severity,
@@ -205,7 +233,7 @@ def run_month(dataset: Dataset, config: EngineConfig = DEFAULT_CONFIG,
                       result="bloqueada",
                       evidence={"dueno_sugerido": EXCEPTION_OWNERS.get(blocking.control_id, "AP"),
                                 "alerta_fraude": fraud})
-            outcomes[inv.invoice_id] = InvoiceOutcome(
+            outcome = InvoiceOutcome(
                 invoice_id=inv.invoice_id, status=STATUS_BLOQUEADA,
                 blocking_control=blocking.control_id, flags=sorted(set(flags)),
                 batch_date=None, control_results=results,
@@ -215,15 +243,15 @@ def run_month(dataset: Dataset, config: EngineConfig = DEFAULT_CONFIG,
             ctx.po_consumed[inv.po_ref] = (
                 ctx.po_consumed.get(inv.po_ref, Decimal("0")) + inv.amount_total
             )
-            batch_date = _next_thursday(inv.received_date, config)
+            batch_date = _next_thursday(inv.received_date, self.config)
             if batch_date is None:
-                carryover.append(inv.invoice_id)
+                self.carryover.append(inv.invoice_id)
                 status, bdate = STATUS_PROXIMO_CICLO, None
                 audit.add(agent="orquestador", action="programada-proximo-ciclo",
                           invoice_id=inv.invoice_id, result="proximo_ciclo",
                           evidence={"motivo": "sin jueves de pago restante en el mes"})
             else:
-                b = batch_map.setdefault(batch_date, PaymentBatch(
+                b = self._batch_map.setdefault(batch_date, PaymentBatch(
                     batch_date=batch_date, invoice_ids=[], total=Decimal("0")))
                 b.invoice_ids.append(inv.invoice_id)
                 b.total += inv.amount_total
@@ -233,22 +261,44 @@ def run_month(dataset: Dataset, config: EngineConfig = DEFAULT_CONFIG,
                           evidence={"lote": batch_date.isoformat(),
                                     "importe": str(inv.amount_total),
                                     "flags": sorted(set(flags))})
-            outcomes[inv.invoice_id] = InvoiceOutcome(
+            outcome = InvoiceOutcome(
                 invoice_id=inv.invoice_id, status=status,
                 blocking_control=None, flags=sorted(set(flags)),
                 batch_date=bdate, control_results=results,
             )
 
+        self.outcomes[inv.invoice_id] = outcome
         # Toda factura ingresada (pase o no) queda en la historia para duplicados
         ctx.ingested.append(inv)
+        return outcome
 
-    batches = [batch_map[d] for d in sorted(batch_map)]
-    audit.add(agent="orquestador", action="fin-corrida",
-              evidence={"lotes": {b.batch_date.isoformat(): str(b.total) for b in batches},
-                        "bloqueadas": sum(1 for o in outcomes.values() if o.status == STATUS_BLOQUEADA),
-                        "proximo_ciclo": len(carryover)})
+    # ------------------------------------------------------------------
+    def finalize(self) -> RunResult:
+        """Cierra la corrida (procesa lo pendiente si quedara) y arma el RunResult."""
+        if self._finalized is not None:
+            return self._finalized
+        while self.process_next() is not None:
+            pass
+        batches = [self._batch_map[d] for d in sorted(self._batch_map)]
+        self.audit.add(agent="orquestador", action="fin-corrida",
+                       evidence={"lotes": {b.batch_date.isoformat(): str(b.total) for b in batches},
+                                 "bloqueadas": sum(1 for o in self.outcomes.values()
+                                                   if o.status == STATUS_BLOQUEADA),
+                                 "proximo_ciclo": len(self.carryover)})
+        self._finalized = RunResult(
+            run_id=self.audit.run_id, commit=self.audit.commit, outcomes=self.outcomes,
+            batches=batches, exceptions=self.exceptions, carryover_ids=self.carryover,
+        )
+        return self._finalized
 
-    return RunResult(
-        run_id=audit.run_id, commit=audit.commit, outcomes=outcomes,
-        batches=batches, exceptions=exceptions, carryover_ids=carryover,
-    ), audit, ctx
+
+def run_month(dataset: Dataset, config: EngineConfig = DEFAULT_CONFIG,
+              run_id: str | None = None) -> tuple[RunResult, AuditTrail, RunContext]:
+    """Corre el mes completo de una vez. Deterministico.
+
+    Devuelve tambien el RunContext (cashflow/ERP/consumos) porque los checkers
+    de lote (engine/batch.py) revalidan contra ese estado.
+    """
+    runner = MonthRunner(dataset, config=config, run_id=run_id)
+    result = runner.finalize()
+    return result, runner.audit, runner.ctx

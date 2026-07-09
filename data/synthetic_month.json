@@ -1,0 +1,1280 @@
+{
+  "meta": {
+    "title": "AP Control Tower - dataset sintetico junio 2026",
+    "disclaimer": "Datos 100% sinteticos. Ningun dato real de ninguna empresa.",
+    "month": "2026-06",
+    "currency": "EUR",
+    "payment_thursdays": [
+      "2026-06-04",
+      "2026-06-11",
+      "2026-06-18",
+      "2026-06-25"
+    ],
+    "buyer": "Meridia Consulting SL (nombre inventado de la consultora)"
+  },
+  "vendors": [
+    {
+      "vendor_id": "V001",
+      "name": "Estudio Lezama Abogados SLP",
+      "tax_id": "B81234561",
+      "iban": "ES6100751234510600000021",
+      "bank_name": "Banco Popular Iberico",
+      "payment_terms_days": 30,
+      "intercompany": false,
+      "category": "Asesoria legal"
+    },
+    {
+      "vendor_id": "V002",
+      "name": "TalentBridge Seleccion SL",
+      "tax_id": "B82345672",
+      "iban": "ES2400811234560600000034",
+      "bank_name": "Banco del Comercio",
+      "payment_terms_days": 30,
+      "intercompany": false,
+      "category": "Seleccion de personal"
+    },
+    {
+      "vendor_id": "V003",
+      "name": "Nubia Cloud Services SL",
+      "tax_id": "B83456783",
+      "iban": "ES4001821234570600000047",
+      "bank_name": "Banco Azul",
+      "payment_terms_days": 30,
+      "intercompany": false,
+      "category": "Cloud y hosting"
+    },
+    {
+      "vendor_id": "V004",
+      "name": "Ofisur Coworking SA",
+      "tax_id": "A84567894",
+      "iban": "ES1800491234580600000050",
+      "bank_name": "Banco del Sur",
+      "payment_terms_days": 15,
+      "intercompany": false,
+      "category": "Alquiler de oficina"
+    },
+    {
+      "vendor_id": "V005",
+      "name": "Viajes Meridiano SL",
+      "tax_id": "B85678905",
+      "iban": "ES9321001234590600000063",
+      "bank_name": "Caja Meridional",
+      "payment_terms_days": 15,
+      "intercompany": false,
+      "category": "Agencia de viajes"
+    },
+    {
+      "vendor_id": "V006",
+      "name": "Telco Iberica SA",
+      "tax_id": "A86789016",
+      "iban": "ES7100301234600600000076",
+      "bank_name": "Banco Central Iberico",
+      "payment_terms_days": 30,
+      "intercompany": false,
+      "category": "Telecomunicaciones"
+    },
+    {
+      "vendor_id": "V007",
+      "name": "Kreativa Estudio SL",
+      "tax_id": "B87890127",
+      "iban": "ES4920381234610600000089",
+      "bank_name": "Banco de Levante",
+      "payment_terms_days": 30,
+      "intercompany": false,
+      "category": "Diseno y branding"
+    },
+    {
+      "vendor_id": "V008",
+      "name": "DataPulse Analytics SL",
+      "tax_id": "B88901238",
+      "iban": "ES2700721234620600000092",
+      "bank_name": "Banco Digital SA",
+      "payment_terms_days": 30,
+      "intercompany": false,
+      "category": "Licencias SaaS"
+    },
+    {
+      "vendor_id": "V009",
+      "name": "Consultores Andino SL",
+      "tax_id": "B89012349",
+      "iban": "ES0500611234630600000105",
+      "bank_name": "Banco Andino Iberia",
+      "payment_terms_days": 30,
+      "intercompany": false,
+      "category": "Subcontratacion consultoria"
+    },
+    {
+      "vendor_id": "V010",
+      "name": "Beatriz Roldan Casas",
+      "tax_id": "51234567Q",
+      "iban": "ES8320851234640600000118",
+      "bank_name": "Caja Rural del Este",
+      "payment_terms_days": 15,
+      "intercompany": false,
+      "category": "Consultora freelance"
+    },
+    {
+      "vendor_id": "V011",
+      "name": "Grupo Meridia UK Ltd",
+      "tax_id": "GB-990011",
+      "iban": "GB29NWBK60161331926819",
+      "bank_name": "NatWest (UK)",
+      "payment_terms_days": 45,
+      "intercompany": true,
+      "category": "Intercompany: management fee"
+    },
+    {
+      "vendor_id": "V012",
+      "name": "Meridia Advisory Mexico SA",
+      "tax_id": "MX-880022",
+      "iban": "ES6114651234660600000134",
+      "bank_name": "Banco Iberico Global",
+      "payment_terms_days": 45,
+      "intercompany": true,
+      "category": "Intercompany: shared services"
+    },
+    {
+      "vendor_id": "V013",
+      "name": "Limpiezas Aurora SL",
+      "tax_id": "B90123450",
+      "iban": "ES3900191234670600000147",
+      "bank_name": "Banco del Norte",
+      "payment_terms_days": 30,
+      "intercompany": false,
+      "category": "Limpieza de oficina"
+    },
+    {
+      "vendor_id": "V014",
+      "name": "Seguros Atlas SA",
+      "tax_id": "A91234561",
+      "iban": "ES1700081234680600000150",
+      "bank_name": "Banco Asegurador",
+      "payment_terms_days": 30,
+      "intercompany": false,
+      "category": "Seguros de empresa"
+    },
+    {
+      "vendor_id": "V015",
+      "name": "Academia Delta Formacion SL",
+      "tax_id": "B92345672",
+      "iban": "ES9502391234690600000163",
+      "bank_name": "Banco de Formento",
+      "payment_terms_days": 30,
+      "intercompany": false,
+      "category": "Formacion"
+    },
+    {
+      "vendor_id": "V016",
+      "name": "Gestoria Fuentes SL",
+      "tax_id": "B93456783",
+      "iban": "ES7301281234700600000176",
+      "bank_name": "Banco Fiduciario",
+      "payment_terms_days": 15,
+      "intercompany": false,
+      "category": "Gestoria y nominas"
+    },
+    {
+      "vendor_id": "V017",
+      "name": "Impresiones Rapidas SL",
+      "tax_id": "B94567894",
+      "iban": "ES5120481234710600000189",
+      "bank_name": "Caja Grafica",
+      "payment_terms_days": 15,
+      "intercompany": false,
+      "category": "Imprenta"
+    },
+    {
+      "vendor_id": "V018",
+      "name": "Mobiliario Norte SL",
+      "tax_id": "B95678905",
+      "iban": "ES2900731234720600000192",
+      "bank_name": "Banco del Norte",
+      "payment_terms_days": 30,
+      "intercompany": false,
+      "category": "Mobiliario de oficina"
+    }
+  ],
+  "purchase_orders": [
+    {
+      "po_id": "PO-2026-012",
+      "vendor_id": "V004",
+      "project_code": "CO-001",
+      "gl_account": "621000",
+      "mgmt_category": "Instalaciones y oficina",
+      "currency": "EUR",
+      "status": "aprobada",
+      "valid_from": "2026-01-01",
+      "valid_to": "2026-12-31",
+      "amount_authorized": "109680.00",
+      "lines": [
+        {
+          "line_id": "alquiler-junio",
+          "description": "Alquiler oficina Madrid - junio 2026",
+          "amount": "8500.00"
+        },
+        {
+          "line_id": "salas-parking-junio",
+          "description": "Salas de reunion y parking - junio 2026",
+          "amount": "640.00"
+        }
+      ]
+    },
+    {
+      "po_id": "PO-2026-019",
+      "vendor_id": "V006",
+      "project_code": "CO-001",
+      "gl_account": "628000",
+      "mgmt_category": "IT y sistemas",
+      "currency": "EUR",
+      "status": "aprobada",
+      "valid_from": "2026-01-01",
+      "valid_to": "2026-12-31",
+      "amount_authorized": "10800.00",
+      "lines": [
+        {
+          "line_id": "fibra-fijo-junio",
+          "description": "Fibra y telefonia fija - junio 2026",
+          "amount": "455.90"
+        },
+        {
+          "line_id": "moviles-junio",
+          "description": "Lineas moviles equipo - junio 2026",
+          "amount": "389.20"
+        }
+      ]
+    },
+    {
+      "po_id": "PO-2026-009",
+      "vendor_id": "V016",
+      "project_code": "CO-001",
+      "gl_account": "623000",
+      "mgmt_category": "Overhead general",
+      "currency": "EUR",
+      "status": "aprobada",
+      "valid_from": "2026-01-01",
+      "valid_to": "2026-12-31",
+      "amount_authorized": "11400.00",
+      "lines": [
+        {
+          "line_id": "gestoria-mayo",
+          "description": "Gestoria laboral y fiscal - mayo 2026",
+          "amount": "950.00"
+        },
+        {
+          "line_id": "gestoria-junio",
+          "description": "Gestoria laboral y fiscal - junio 2026",
+          "amount": "950.00"
+        }
+      ]
+    },
+    {
+      "po_id": "PO-2026-022",
+      "vendor_id": "V013",
+      "project_code": "CO-001",
+      "gl_account": "629000",
+      "mgmt_category": "Instalaciones y oficina",
+      "currency": "EUR",
+      "status": "aprobada",
+      "valid_from": "2026-01-01",
+      "valid_to": "2026-12-31",
+      "amount_authorized": "8900.00",
+      "lines": [
+        {
+          "line_id": "limpieza-junio",
+          "description": "Limpieza oficina - junio 2026",
+          "amount": "680.00"
+        },
+        {
+          "line_id": "limpieza-extra-junio",
+          "description": "Limpieza extraordinaria post evento",
+          "amount": "215.00"
+        }
+      ]
+    },
+    {
+      "po_id": "PO-2026-050",
+      "vendor_id": "V009",
+      "project_code": "TD-410",
+      "gl_account": "623100",
+      "mgmt_category": "Coste directo de proyecto",
+      "currency": "EUR",
+      "status": "aprobada",
+      "valid_from": "2026-01-01",
+      "valid_to": "2026-12-31",
+      "amount_authorized": "40000.00",
+      "lines": [
+        {
+          "line_id": "sprint-mayo",
+          "description": "Equipo consultores - sprint mayo",
+          "amount": "11200.00"
+        },
+        {
+          "line_id": "sprint-junio-1",
+          "description": "Equipo consultores - sprint junio (1a quincena)",
+          "amount": "9800.00"
+        },
+        {
+          "line_id": "sprint-junio-2",
+          "description": "Equipo consultores - sprint junio (2a quincena)",
+          "amount": "8600.00"
+        }
+      ]
+    },
+    {
+      "po_id": "PO-2026-089",
+      "vendor_id": "V008",
+      "project_code": "CO-014",
+      "gl_account": "628000",
+      "mgmt_category": "IT y sistemas",
+      "currency": "EUR",
+      "status": "aprobada",
+      "valid_from": "2026-01-01",
+      "valid_to": "2026-12-31",
+      "amount_authorized": "9000.00",
+      "lines": [
+        {
+          "line_id": "licencias-junio",
+          "description": "Licencias plataforma analytics - junio",
+          "amount": "1850.00"
+        },
+        {
+          "line_id": "modulo-reporting",
+          "description": "Modulo adicional de reporting",
+          "amount": "2090.00"
+        },
+        {
+          "line_id": "licencias-adicionales",
+          "description": "5 licencias adicionales",
+          "amount": "740.00"
+        }
+      ]
+    },
+    {
+      "po_id": "PO-2026-061",
+      "vendor_id": "V010",
+      "project_code": "CN-215",
+      "gl_account": "623100",
+      "mgmt_category": "Coste directo de proyecto",
+      "currency": "EUR",
+      "status": "aprobada",
+      "valid_from": "2026-01-01",
+      "valid_to": "2026-12-31",
+      "amount_authorized": "25000.00",
+      "lines": [
+        {
+          "line_id": "fase-1",
+          "description": "Diagnostico operaciones retail - fase 1",
+          "amount": "6400.00"
+        },
+        {
+          "line_id": "fase-2",
+          "description": "Rediseno de procesos - fase 2",
+          "amount": "5900.00"
+        }
+      ]
+    },
+    {
+      "po_id": "PO-2026-076",
+      "vendor_id": "V005",
+      "project_code": "CO-016",
+      "gl_account": "624000",
+      "mgmt_category": "Viajes",
+      "currency": "EUR",
+      "status": "aprobada",
+      "valid_from": "2026-01-01",
+      "valid_to": "2026-12-31",
+      "amount_authorized": "30000.00",
+      "lines": [
+        {
+          "line_id": "viaje-cliente-industrial",
+          "description": "Viajes equipo proyecto industrial",
+          "amount": "2340.50"
+        },
+        {
+          "line_id": "viaje-taller-bcn",
+          "description": "Desplazamiento taller Barcelona",
+          "amount": "890.75"
+        },
+        {
+          "line_id": "viaje-comite-lisboa",
+          "description": "Comite de direccion Lisboa",
+          "amount": "1467.30"
+        }
+      ]
+    },
+    {
+      "po_id": "PO-2026-041",
+      "vendor_id": "V001",
+      "project_code": "CO-005",
+      "gl_account": "623000",
+      "mgmt_category": "Overhead general",
+      "currency": "EUR",
+      "status": "aprobada",
+      "valid_from": "2026-01-01",
+      "valid_to": "2026-12-31",
+      "amount_authorized": "42480.00",
+      "lines": [
+        {
+          "line_id": "iguala-junio",
+          "description": "Iguala asesoria legal - junio 2026",
+          "amount": "3540.00"
+        }
+      ]
+    },
+    {
+      "po_id": "PO-2026-058",
+      "vendor_id": "V001",
+      "project_code": "FS-120",
+      "gl_account": "623000",
+      "mgmt_category": "Coste directo de proyecto",
+      "currency": "EUR",
+      "status": "aprobada",
+      "valid_from": "2026-01-01",
+      "valid_to": "2026-12-31",
+      "amount_authorized": "10000.00",
+      "lines": [
+        {
+          "line_id": "asesoria-ma",
+          "description": "Asesoria legal operacion M&A - hito 1",
+          "amount": "5200.00"
+        }
+      ]
+    },
+    {
+      "po_id": "PO-2026-071",
+      "vendor_id": "V018",
+      "project_code": "CO-001",
+      "gl_account": "629000",
+      "mgmt_category": "Instalaciones y oficina",
+      "currency": "EUR",
+      "status": "aprobada",
+      "valid_from": "2026-01-01",
+      "valid_to": "2026-12-31",
+      "amount_authorized": "9000.00",
+      "lines": [
+        {
+          "line_id": "entrega-1",
+          "description": "Mobiliario puestos flexibles - entrega 1",
+          "amount": "6800.00"
+        },
+        {
+          "line_id": "entrega-2",
+          "description": "Mobiliario puestos flexibles - entrega 2",
+          "amount": "2200.00"
+        }
+      ]
+    },
+    {
+      "po_id": "PO-2026-005",
+      "vendor_id": "V011",
+      "project_code": "CO-002",
+      "gl_account": "623900",
+      "mgmt_category": "Overhead general",
+      "currency": "EUR",
+      "status": "aprobada",
+      "valid_from": "2026-01-01",
+      "valid_to": "2026-12-31",
+      "amount_authorized": "48000.00",
+      "lines": [
+        {
+          "line_id": "mgmt-fee-q2",
+          "description": "Management fee grupo - Q2 2026",
+          "amount": "12000.00"
+        },
+        {
+          "line_id": "refacturacion-gastos-q2",
+          "description": "Refacturacion gastos de grupo - Q2",
+          "amount": "2450.00"
+        }
+      ]
+    },
+    {
+      "po_id": "PO-2026-006",
+      "vendor_id": "V012",
+      "project_code": "CO-003",
+      "gl_account": "623900",
+      "mgmt_category": "Overhead general",
+      "currency": "EUR",
+      "status": "aprobada",
+      "valid_from": "2026-01-01",
+      "valid_to": "2026-12-31",
+      "amount_authorized": "22400.00",
+      "lines": [
+        {
+          "line_id": "shared-services-junio",
+          "description": "Shared services - junio 2026",
+          "amount": "5600.00"
+        }
+      ]
+    },
+    {
+      "po_id": "PO-2026-068",
+      "vendor_id": "V015",
+      "project_code": "CO-030",
+      "gl_account": "629100",
+      "mgmt_category": "Personas y talento",
+      "currency": "EUR",
+      "status": "aprobada",
+      "valid_from": "2026-01-01",
+      "valid_to": "2026-12-31",
+      "amount_authorized": "6000.00",
+      "lines": [
+        {
+          "line_id": "programa-consultores",
+          "description": "Programa formacion consultores junior",
+          "amount": "1780.00"
+        },
+        {
+          "line_id": "taller-datos",
+          "description": "Taller de analisis de datos",
+          "amount": "960.00"
+        }
+      ]
+    },
+    {
+      "po_id": "PO-2026-014",
+      "vendor_id": "V014",
+      "project_code": "CO-001",
+      "gl_account": "625000",
+      "mgmt_category": "Overhead general",
+      "currency": "EUR",
+      "status": "aprobada",
+      "valid_from": "2026-01-01",
+      "valid_to": "2026-12-31",
+      "amount_authorized": "4941.60",
+      "lines": [
+        {
+          "line_id": "prima-t3",
+          "description": "Prima trimestral RC profesional - T3",
+          "amount": "1235.40"
+        }
+      ]
+    },
+    {
+      "po_id": "PO-2026-102",
+      "vendor_id": "V003",
+      "project_code": "CO-014",
+      "gl_account": "628000",
+      "mgmt_category": "IT y sistemas",
+      "currency": "EUR",
+      "status": "aprobada",
+      "valid_from": "2026-01-01",
+      "valid_to": "2026-12-31",
+      "amount_authorized": "18000.00",
+      "lines": [
+        {
+          "line_id": "cloud-mayo",
+          "description": "Servicios cloud - mayo 2026",
+          "amount": "1420.00"
+        }
+      ]
+    },
+    {
+      "po_id": "PO-2026-117",
+      "vendor_id": "V003",
+      "project_code": "CO-014",
+      "gl_account": "628000",
+      "mgmt_category": "IT y sistemas",
+      "currency": "EUR",
+      "status": "aprobada",
+      "valid_from": "2026-01-01",
+      "valid_to": "2026-12-31",
+      "amount_authorized": "9340.00",
+      "lines": [
+        {
+          "line_id": "migracion-datacenter",
+          "description": "Migracion a datacenter secundario",
+          "amount": "9340.00"
+        }
+      ]
+    },
+    {
+      "po_id": "PO-2026-033",
+      "vendor_id": "V002",
+      "project_code": "CO-030",
+      "gl_account": "623000",
+      "mgmt_category": "Personas y talento",
+      "currency": "EUR",
+      "status": "aprobada",
+      "valid_from": "2026-01-01",
+      "valid_to": "2026-12-31",
+      "amount_authorized": "7500.00",
+      "lines": [
+        {
+          "line_id": "fee-consultor-senior",
+          "description": "Fee seleccion consultor senior",
+          "amount": "7500.00"
+        }
+      ]
+    },
+    {
+      "po_id": "PO-2026-095",
+      "vendor_id": "V017",
+      "project_code": "CO-020",
+      "gl_account": "629000",
+      "mgmt_category": "Marketing y ventas",
+      "currency": "EUR",
+      "status": "aprobada",
+      "valid_from": "2026-01-01",
+      "valid_to": "2026-12-31",
+      "amount_authorized": "1500.00",
+      "lines": [
+        {
+          "line_id": "material-propuestas",
+          "description": "Impresion material de propuestas",
+          "amount": "312.60"
+        }
+      ]
+    }
+  ],
+  "invoices": [
+    {
+      "invoice_id": "INV-001",
+      "vendor_id": "V004",
+      "vendor_name": "Ofisur Coworking SA",
+      "invoice_number": "OF-2026-0601",
+      "issue_date": "2026-05-28",
+      "received_date": "2026-06-01",
+      "currency": "EUR",
+      "amount_total": "8500.00",
+      "description": "Alquiler oficina Madrid - junio 2026",
+      "po_ref": "PO-2026-012",
+      "po_line_ref": "alquiler-junio",
+      "iban_on_invoice": "ES1800491234580600000050",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "CO-001",
+      "case_note": "limpia"
+    },
+    {
+      "invoice_id": "INV-002",
+      "vendor_id": "V006",
+      "vendor_name": "Telco Iberica SA",
+      "invoice_number": "TI-2026-06-77812",
+      "issue_date": "2026-05-29",
+      "received_date": "2026-06-01",
+      "currency": "EUR",
+      "amount_total": "455.90",
+      "description": "Fibra y telefonia fija - junio 2026",
+      "po_ref": "PO-2026-019",
+      "po_line_ref": "fibra-fijo-junio",
+      "iban_on_invoice": "ES7100301234600600000076",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "CO-001",
+      "case_note": "limpia"
+    },
+    {
+      "invoice_id": "INV-003",
+      "vendor_id": "V016",
+      "vendor_name": "Gestoria Fuentes SL",
+      "invoice_number": "GF-2026-05",
+      "issue_date": "2026-05-30",
+      "received_date": "2026-06-02",
+      "currency": "EUR",
+      "amount_total": "950.00",
+      "description": "Gestoria laboral y fiscal - mayo 2026",
+      "po_ref": "PO-2026-009",
+      "po_line_ref": "gestoria-mayo",
+      "iban_on_invoice": "ES7301281234700600000176",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "CO-001",
+      "case_note": "limpia"
+    },
+    {
+      "invoice_id": "INV-004",
+      "vendor_id": "V013",
+      "vendor_name": "Limpiezas Aurora SL",
+      "invoice_number": "LA-06-2026",
+      "issue_date": "2026-05-31",
+      "received_date": "2026-06-02",
+      "currency": "EUR",
+      "amount_total": "680.00",
+      "description": "Limpieza oficina - junio 2026",
+      "po_ref": "PO-2026-022",
+      "po_line_ref": "limpieza-junio",
+      "iban_on_invoice": "ES3900191234670600000147",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "CO-001",
+      "case_note": "limpia"
+    },
+    {
+      "invoice_id": "INV-005",
+      "vendor_id": "V009",
+      "vendor_name": "Consultores Andino SL",
+      "invoice_number": "CA-2026-0507",
+      "issue_date": "2026-05-31",
+      "received_date": "2026-06-03",
+      "currency": "EUR",
+      "amount_total": "11200.00",
+      "description": "Equipo consultores - sprint mayo",
+      "po_ref": "PO-2026-050",
+      "po_line_ref": "sprint-mayo",
+      "iban_on_invoice": "ES0500611234630600000105",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "TD-410",
+      "case_note": "limpia (luego llega su duplicada: INV-023)"
+    },
+    {
+      "invoice_id": "INV-006",
+      "vendor_id": "V008",
+      "vendor_name": "DataPulse Analytics SL",
+      "invoice_number": "DP-INV-3301",
+      "issue_date": "2026-06-01",
+      "received_date": "2026-06-04",
+      "currency": "EUR",
+      "amount_total": "1850.00",
+      "description": "Licencias plataforma analytics - junio",
+      "po_ref": "PO-2026-089",
+      "po_line_ref": "licencias-junio",
+      "iban_on_invoice": "ES2700721234620600000092",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "CO-014",
+      "case_note": "limpia"
+    },
+    {
+      "invoice_id": "INV-007",
+      "vendor_id": "V010",
+      "vendor_name": "Beatriz Roldan Casas",
+      "invoice_number": "2026-27",
+      "issue_date": "2026-06-04",
+      "received_date": "2026-06-05",
+      "currency": "EUR",
+      "amount_total": "6400.00",
+      "description": "Diagnostico operaciones retail - fase 1",
+      "po_ref": "PO-2026-061",
+      "po_line_ref": "fase-1",
+      "iban_on_invoice": "ES8320851234640600000118",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "CN-215",
+      "case_note": "limpia (luego llega su casi-duplicada: INV-015)"
+    },
+    {
+      "invoice_id": "INV-008",
+      "vendor_id": "V005",
+      "vendor_name": "Viajes Meridiano SL",
+      "invoice_number": "VM-88412",
+      "issue_date": "2026-06-03",
+      "received_date": "2026-06-05",
+      "currency": "EUR",
+      "amount_total": "2340.50",
+      "description": "Viajes equipo proyecto industrial",
+      "po_ref": "PO-2026-076",
+      "po_line_ref": "viaje-cliente-industrial",
+      "iban_on_invoice": "ES9321001234590600000063",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "CO-016",
+      "case_note": "limpia"
+    },
+    {
+      "invoice_id": "INV-009",
+      "vendor_id": "V001",
+      "vendor_name": "Estudio Lezama Abogados SLP",
+      "invoice_number": "F-2026/231",
+      "issue_date": "2026-06-05",
+      "received_date": "2026-06-08",
+      "currency": "EUR",
+      "amount_total": "3600.00",
+      "description": "Iguala asesoria legal - junio 2026",
+      "po_ref": "PO-2026-041",
+      "po_line_ref": "iguala-junio",
+      "iban_on_invoice": "ES6100751234510600000021",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "CO-005",
+      "case_note": "PLANTADA soft: +60.00 EUR (+1.69%) vs OC, bajo materialidad"
+    },
+    {
+      "invoice_id": "INV-010",
+      "vendor_id": "V018",
+      "vendor_name": "Mobiliario Norte SL",
+      "invoice_number": "MN-2026-0088",
+      "issue_date": "2026-06-05",
+      "received_date": "2026-06-08",
+      "currency": "EUR",
+      "amount_total": "6800.00",
+      "description": "Mobiliario puestos flexibles - entrega 1",
+      "po_ref": "PO-2026-071",
+      "po_line_ref": "entrega-1",
+      "iban_on_invoice": "ES2900731234720600000192",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "CO-001",
+      "case_note": "limpia"
+    },
+    {
+      "invoice_id": "INV-011",
+      "vendor_id": "V011",
+      "vendor_name": "Grupo Meridia UK Ltd",
+      "invoice_number": "GM-UK-2026-Q2-07",
+      "issue_date": "2026-06-08",
+      "received_date": "2026-06-09",
+      "currency": "EUR",
+      "amount_total": "12000.00",
+      "description": "Management fee grupo - Q2 2026",
+      "po_ref": "PO-2026-005",
+      "po_line_ref": "mgmt-fee-q2",
+      "iban_on_invoice": "GB29NWBK60161331926819",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "CO-002",
+      "case_note": "limpia intercompany (flag informativo)"
+    },
+    {
+      "invoice_id": "INV-012",
+      "vendor_id": "V015",
+      "vendor_name": "Academia Delta Formacion SL",
+      "invoice_number": "AD-2026-118",
+      "issue_date": "2026-06-08",
+      "received_date": "2026-06-09",
+      "currency": "EUR",
+      "amount_total": "1780.00",
+      "description": "Programa formacion consultores junior",
+      "po_ref": "PO-2026-068",
+      "po_line_ref": "programa-consultores",
+      "iban_on_invoice": "ES9502391234690600000163",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "CO-030",
+      "case_note": "limpia"
+    },
+    {
+      "invoice_id": "INV-013",
+      "vendor_id": "V014",
+      "vendor_name": "Seguros Atlas SA",
+      "invoice_number": "SA-PRIMA-2026-T3",
+      "issue_date": "2026-06-09",
+      "received_date": "2026-06-10",
+      "currency": "EUR",
+      "amount_total": "1235.40",
+      "description": "Prima trimestral RC profesional - T3",
+      "po_ref": "PO-2026-014",
+      "po_line_ref": "prima-t3",
+      "iban_on_invoice": "ES1700081234680600000150",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "CO-001",
+      "case_note": "limpia"
+    },
+    {
+      "invoice_id": "INV-014",
+      "vendor_id": "V007",
+      "vendor_name": "Kreativa Estudio SL",
+      "invoice_number": "KR-2026-041",
+      "issue_date": "2026-06-09",
+      "received_date": "2026-06-10",
+      "currency": "EUR",
+      "amount_total": "4850.00",
+      "description": "Rediseno identidad visual y plantillas",
+      "po_ref": null,
+      "po_line_ref": null,
+      "iban_on_invoice": "ES4920381234610600000089",
+      "has_invoice_pdf": true,
+      "has_po_pdf": false,
+      "project_code": null,
+      "case_note": "PLANTADA: email sin OC adjunta -> bloqueo por completitud"
+    },
+    {
+      "invoice_id": "INV-015",
+      "vendor_id": "V010",
+      "vendor_name": "Beatriz Roldan Casas",
+      "invoice_number": "2026-31",
+      "issue_date": "2026-06-07",
+      "received_date": "2026-06-12",
+      "currency": "EUR",
+      "amount_total": "6400.00",
+      "description": "Diagnostico operaciones retail - fase 1",
+      "po_ref": "PO-2026-061",
+      "po_line_ref": "fase-1",
+      "iban_on_invoice": "ES8320851234640600000118",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "CN-215",
+      "case_note": "PLANTADA: casi-duplicada de INV-007 (mismo proveedor e importe, numero distinto, emision a 3 dias)"
+    },
+    {
+      "invoice_id": "INV-016",
+      "vendor_id": "V003",
+      "vendor_name": "Nubia Cloud Services SL",
+      "invoice_number": "NB-26-0598",
+      "issue_date": "2026-06-10",
+      "received_date": "2026-06-11",
+      "currency": "EUR",
+      "amount_total": "1420.00",
+      "description": "Servicios cloud - mayo 2026",
+      "po_ref": "PO-2026-102",
+      "po_line_ref": "cloud-mayo",
+      "iban_on_invoice": "ES4001821234570600000047",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "CO-014",
+      "case_note": "limpia (establece a Nubia como proveedor habitual antes del fraude)"
+    },
+    {
+      "invoice_id": "INV-017",
+      "vendor_id": "V002",
+      "vendor_name": "TalentBridge Seleccion SL",
+      "invoice_number": "TB-260118",
+      "issue_date": "2026-06-11",
+      "received_date": "2026-06-12",
+      "currency": "EUR",
+      "amount_total": "7500.00",
+      "description": "Fee seleccion consultor senior",
+      "po_ref": "PO-2026-033",
+      "po_line_ref": "fee-consultor-senior",
+      "iban_on_invoice": "ES2400811234560600000034",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "CO-030",
+      "case_note": "limpia (consume todo el saldo de la OC; luego llega INV-033)"
+    },
+    {
+      "invoice_id": "INV-018",
+      "vendor_id": "V005",
+      "vendor_name": "Viajes Meridiano SL",
+      "invoice_number": "VM-88515",
+      "issue_date": "2026-06-12",
+      "received_date": "2026-06-15",
+      "currency": "EUR",
+      "amount_total": "890.75",
+      "description": "Desplazamiento taller Barcelona",
+      "po_ref": "PO-2026-076",
+      "po_line_ref": "viaje-taller-bcn",
+      "iban_on_invoice": "ES9321001234590600000063",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "CO-016",
+      "case_note": "limpia"
+    },
+    {
+      "invoice_id": "INV-019",
+      "vendor_id": "V009",
+      "vendor_name": "Consultores Andino SL",
+      "invoice_number": "CA-2026-0533",
+      "issue_date": "2026-06-12",
+      "received_date": "2026-06-15",
+      "currency": "EUR",
+      "amount_total": "9800.00",
+      "description": "Equipo consultores - sprint junio (1a quincena)",
+      "po_ref": "PO-2026-050",
+      "po_line_ref": "sprint-junio-1",
+      "iban_on_invoice": "ES0500611234630600000105",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "TD-410",
+      "case_note": "limpia"
+    },
+    {
+      "invoice_id": "INV-020",
+      "vendor_id": "V008",
+      "vendor_name": "DataPulse Analytics SL",
+      "invoice_number": "DP-INV-3342",
+      "issue_date": "2026-06-15",
+      "received_date": "2026-06-16",
+      "currency": "EUR",
+      "amount_total": "2120.00",
+      "description": "Modulo adicional de reporting",
+      "po_ref": "PO-2026-089",
+      "po_line_ref": "modulo-reporting",
+      "iban_on_invoice": "ES2700721234620600000092",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "CO-014",
+      "case_note": "PLANTADA soft: +30.00 EUR (+1.44%) vs OC, bajo materialidad"
+    },
+    {
+      "invoice_id": "INV-021",
+      "vendor_id": "V017",
+      "vendor_name": "Impresiones Rapidas SL",
+      "invoice_number": "IR-10233",
+      "issue_date": "2026-06-15",
+      "received_date": "2026-06-16",
+      "currency": "EUR",
+      "amount_total": "312.60",
+      "description": "Impresion material de propuestas",
+      "po_ref": "PO-2026-095",
+      "po_line_ref": "material-propuestas",
+      "iban_on_invoice": "ES5120481234710600000189",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "CO-020",
+      "case_note": "limpia"
+    },
+    {
+      "invoice_id": "INV-022",
+      "vendor_id": "V012",
+      "vendor_name": "Meridia Advisory Mexico SA",
+      "invoice_number": "MX-2026-0630",
+      "issue_date": "2026-06-16",
+      "received_date": "2026-06-17",
+      "currency": "EUR",
+      "amount_total": "5600.00",
+      "description": "Shared services - junio 2026",
+      "po_ref": "PO-2026-006",
+      "po_line_ref": "shared-services-junio",
+      "iban_on_invoice": "ES6114651234660600000134",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "CO-003",
+      "case_note": "limpia intercompany (flag informativo)"
+    },
+    {
+      "invoice_id": "INV-023",
+      "vendor_id": "V009",
+      "vendor_name": "Consultores Andino SL",
+      "invoice_number": "CA-2026-0507",
+      "issue_date": "2026-05-31",
+      "received_date": "2026-06-15",
+      "currency": "EUR",
+      "amount_total": "11200.00",
+      "description": "Equipo consultores - sprint mayo",
+      "po_ref": "PO-2026-050",
+      "po_line_ref": "sprint-mayo",
+      "iban_on_invoice": "ES0500611234630600000105",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "TD-410",
+      "case_note": "PLANTADA: duplicada EXACTA de INV-005 (proveedor+numero+importe+fecha); reenvio del proveedor"
+    },
+    {
+      "invoice_id": "INV-024",
+      "vendor_id": "V003",
+      "vendor_name": "Nubia Cloud Services SL",
+      "invoice_number": "NB-26-0644",
+      "issue_date": "2026-06-15",
+      "received_date": "2026-06-16",
+      "currency": "EUR",
+      "amount_total": "9340.00",
+      "description": "Migracion a datacenter secundario",
+      "po_ref": "PO-2026-117",
+      "po_line_ref": "migracion-datacenter",
+      "iban_on_invoice": "ES1714651009120038466210",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "CO-014",
+      "case_note": "PLANTADA: EL FRAUDE. Todo matchea perfecto, pero el IBAN de la factura no es el del maestro"
+    },
+    {
+      "invoice_id": "INV-025",
+      "vendor_id": "V001",
+      "vendor_name": "Estudio Lezama Abogados SLP",
+      "invoice_number": "F-2026/244",
+      "issue_date": "2026-06-16",
+      "received_date": "2026-06-17",
+      "currency": "EUR",
+      "amount_total": "6150.00",
+      "description": "Asesoria legal operacion M&A",
+      "po_ref": "PO-2026-058",
+      "po_line_ref": "asesoria-ma",
+      "iban_on_invoice": "ES6100751234510600000021",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "FS-120",
+      "case_note": "PLANTADA: match fuera de tolerancia grande: +950.00 EUR (+18.27%) vs OC -> hard"
+    },
+    {
+      "invoice_id": "INV-026",
+      "vendor_id": "V004",
+      "vendor_name": "Ofisur Coworking SA",
+      "invoice_number": "OF-2026-0615",
+      "issue_date": "2026-06-17",
+      "received_date": "2026-06-18",
+      "currency": "EUR",
+      "amount_total": "640.00",
+      "description": "Salas de reunion y parking - junio 2026",
+      "po_ref": "PO-2026-012",
+      "po_line_ref": "salas-parking-junio",
+      "iban_on_invoice": "ES1800491234580600000050",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "CO-001",
+      "case_note": "limpia"
+    },
+    {
+      "invoice_id": "INV-027",
+      "vendor_id": "V006",
+      "vendor_name": "Telco Iberica SA",
+      "invoice_number": "TI-2026-06-79034",
+      "issue_date": "2026-06-18",
+      "received_date": "2026-06-19",
+      "currency": "EUR",
+      "amount_total": "389.20",
+      "description": "Lineas moviles equipo - junio 2026",
+      "po_ref": "PO-2026-019",
+      "po_line_ref": "moviles-junio",
+      "iban_on_invoice": "ES7100301234600600000076",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "CO-001",
+      "case_note": "limpia"
+    },
+    {
+      "invoice_id": "INV-028",
+      "vendor_id": "V010",
+      "vendor_name": "Beatriz Roldan Casas",
+      "invoice_number": "2026-33",
+      "issue_date": "2026-06-18",
+      "received_date": "2026-06-19",
+      "currency": "EUR",
+      "amount_total": "5900.00",
+      "description": "Rediseno de procesos - fase 2",
+      "po_ref": "PO-2026-061",
+      "po_line_ref": "fase-2",
+      "iban_on_invoice": "ES8320851234640600000118",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "CN-215",
+      "case_note": "limpia"
+    },
+    {
+      "invoice_id": "INV-029",
+      "vendor_id": "V005",
+      "vendor_name": "Viajes Meridiano SL",
+      "invoice_number": "VM-88601",
+      "issue_date": "2026-06-19",
+      "received_date": "2026-06-22",
+      "currency": "EUR",
+      "amount_total": "1467.30",
+      "description": "Comite de direccion Lisboa",
+      "po_ref": "PO-2026-076",
+      "po_line_ref": "viaje-comite-lisboa",
+      "iban_on_invoice": "ES9321001234590600000063",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "CO-016",
+      "case_note": "limpia"
+    },
+    {
+      "invoice_id": "INV-030",
+      "vendor_id": "V015",
+      "vendor_name": "Academia Delta Formacion SL",
+      "invoice_number": "AD-2026-129",
+      "issue_date": "2026-06-19",
+      "received_date": "2026-06-22",
+      "currency": "EUR",
+      "amount_total": "960.00",
+      "description": "Taller de analisis de datos",
+      "po_ref": "PO-2026-068",
+      "po_line_ref": "taller-datos",
+      "iban_on_invoice": "ES9502391234690600000163",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "CO-030",
+      "case_note": "limpia"
+    },
+    {
+      "invoice_id": "INV-031",
+      "vendor_id": "V008",
+      "vendor_name": "DataPulse Analytics SL",
+      "invoice_number": "DP-INV-3367",
+      "issue_date": "2026-06-22",
+      "received_date": "2026-06-23",
+      "currency": "EUR",
+      "amount_total": "740.00",
+      "description": "5 licencias adicionales",
+      "po_ref": "PO-2026-089",
+      "po_line_ref": "licencias-adicionales",
+      "iban_on_invoice": "ES2700721234620600000092",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "CO-014",
+      "case_note": "limpia"
+    },
+    {
+      "invoice_id": "INV-032",
+      "vendor_id": "V013",
+      "vendor_name": "Limpiezas Aurora SL",
+      "invoice_number": "LA-06-2026-EXT",
+      "issue_date": "2026-06-22",
+      "received_date": "2026-06-23",
+      "currency": "EUR",
+      "amount_total": "215.00",
+      "description": "Limpieza extraordinaria post evento",
+      "po_ref": "PO-2026-022",
+      "po_line_ref": "limpieza-extra-junio",
+      "iban_on_invoice": "ES3900191234670600000147",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "CO-001",
+      "case_note": "limpia"
+    },
+    {
+      "invoice_id": "INV-033",
+      "vendor_id": "V002",
+      "vendor_name": "TalentBridge Seleccion SL",
+      "invoice_number": "TB-260131",
+      "issue_date": "2026-06-19",
+      "received_date": "2026-06-22",
+      "currency": "EUR",
+      "amount_total": "7500.00",
+      "description": "Fee seleccion consultor senior",
+      "po_ref": "PO-2026-033",
+      "po_line_ref": "fee-consultor-senior",
+      "iban_on_invoice": "ES2400811234560600000034",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "CO-030",
+      "case_note": "PLANTADA: OC sin saldo (INV-017 ya consumio los 7500.00 autorizados). Emision a 8 dias de INV-017: fuera de la ventana de casi-duplicados, bloquea C3"
+    },
+    {
+      "invoice_id": "INV-034",
+      "vendor_id": "V016",
+      "vendor_name": "Gestoria Fuentes SL",
+      "invoice_number": "GF-2026-06",
+      "issue_date": "2026-06-24",
+      "received_date": "2026-06-25",
+      "currency": "EUR",
+      "amount_total": "950.00",
+      "description": "Gestoria laboral y fiscal - junio 2026",
+      "po_ref": "PO-2026-009",
+      "po_line_ref": "gestoria-junio",
+      "iban_on_invoice": "ES7301281234700600000176",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "CO-001",
+      "case_note": "limpia, programada para el primer jueves de julio"
+    },
+    {
+      "invoice_id": "INV-035",
+      "vendor_id": "V009",
+      "vendor_name": "Consultores Andino SL",
+      "invoice_number": "CA-2026-0561",
+      "issue_date": "2026-06-26",
+      "received_date": "2026-06-29",
+      "currency": "EUR",
+      "amount_total": "8600.00",
+      "description": "Equipo consultores - sprint junio (2a quincena)",
+      "po_ref": "PO-2026-050",
+      "po_line_ref": "sprint-junio-2",
+      "iban_on_invoice": "ES0500611234630600000105",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "TD-410",
+      "case_note": "limpia, programada para el primer jueves de julio"
+    },
+    {
+      "invoice_id": "INV-036",
+      "vendor_id": "V011",
+      "vendor_name": "Grupo Meridia UK Ltd",
+      "invoice_number": "GM-UK-2026-Q2-11",
+      "issue_date": "2026-06-29",
+      "received_date": "2026-06-30",
+      "currency": "EUR",
+      "amount_total": "2450.00",
+      "description": "Refacturacion gastos de grupo - Q2",
+      "po_ref": "PO-2026-005",
+      "po_line_ref": "refacturacion-gastos-q2",
+      "iban_on_invoice": "GB29NWBK60161331926819",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "CO-002",
+      "case_note": "limpia intercompany, programada para el primer jueves de julio"
+    }
+  ]
+}

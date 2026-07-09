@@ -1,0 +1,4 @@
+# El motor y los evals usan solo la libreria estandar (Python 3.11+).
+# Streamlit y pandas se usan a partir del Dia 3 (UI).
+streamlit>=1.36
+pandas>=2.0

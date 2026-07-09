@@ -11,8 +11,8 @@ Maquina de estados del lote (las transiciones invalidas levantan GateViolation):
 
 Doctrina: los dos checkers son agentes; la aprobacion es EL unico gate humano
 del sistema. "liberado_al_banco" es inalcanzable sin una aprobacion humana
-registrada (nombre + decision + timestamp en el audit trail). El sistema
-bloquea solo. Liberar dinero siempre es humano.
+registrada (nombre + decision + timestamp en el audit trail). El sistema se
+auto-bloquea ante alertas. La aprobación para liberar dinero es siempre humana.
 
 Checker A (revalidacion factura por factura): re-ejecuta TODOS los controles
 de cada factura del lote contra el estado del mundo AL JUEVES del lote

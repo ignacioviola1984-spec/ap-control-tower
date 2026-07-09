@@ -75,8 +75,12 @@ def _audit_control(audit: AuditTrail, inv: Invoice, res: ControlResult) -> None:
 
 
 def run_month(dataset: Dataset, config: EngineConfig = DEFAULT_CONFIG,
-              run_id: str | None = None) -> tuple[RunResult, AuditTrail]:
-    """Corre el mes completo en orden cronologico de recepcion. Deterministico."""
+              run_id: str | None = None) -> tuple[RunResult, AuditTrail, "RunContext"]:
+    """Corre el mes completo en orden cronologico de recepcion. Deterministico.
+
+    Devuelve tambien el RunContext (cashflow/ERP/consumos) porque los checkers
+    de lote (engine/batch.py) revalidan contra ese estado.
+    """
     audit = AuditTrail(run_id=run_id, commit=resolve_commit())
     ctx = RunContext(dataset=dataset, config=config)
     outcomes: dict[str, InvoiceOutcome] = {}
@@ -110,16 +114,23 @@ def run_month(dataset: Dataset, config: EngineConfig = DEFAULT_CONFIG,
             if not res.passed:
                 blocking = res
 
-        # La factura que paso completitud+duplicados entra al registro operativo
-        # (el agente registra en el cashflow; el humano ya no tipea).
+        # La factura que paso completitud+duplicados entra al registro operativo.
+        # Si ya existia una carga manual heredada en el Excel, se respeta tal
+        # cual esta (no se pisa): la divergencia la detecta C7, no la esconde
+        # el registro. El humano ya no tipea.
         if blocking is None:
+            manual = inv.cashflow_amount_manual
             ctx.cashflow[inv.invoice_id] = {
-                "amount": inv.amount_total, "vendor": inv.vendor_id,
+                "amount": manual if manual is not None else inv.amount_total,
+                "vendor": inv.vendor_id,
                 "estado": "en proceso de pago", "disputa": False,
+                "fuente": "carga manual previa (Excel heredado)" if manual is not None
+                          else "registrado por el agente",
             }
             audit.add(agent="maker-registro", action="registro-cashflow",
                       invoice_id=inv.invoice_id,
-                      evidence={"importe": str(inv.amount_total)})
+                      evidence={"importe": str(ctx.cashflow[inv.invoice_id]["amount"]),
+                                "fuente": ctx.cashflow[inv.invoice_id]["fuente"]})
 
             # --- C3 autorizacion de OC (hard) ---
             res = check_autorizacion_oc(inv, ctx)
@@ -240,4 +251,4 @@ def run_month(dataset: Dataset, config: EngineConfig = DEFAULT_CONFIG,
     return RunResult(
         run_id=audit.run_id, commit=audit.commit, outcomes=outcomes,
         batches=batches, exceptions=exceptions, carryover_ids=carryover,
-    ), audit
+    ), audit, ctx

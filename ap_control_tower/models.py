@@ -71,16 +71,24 @@ class Invoice:
     has_invoice_pdf: bool     # adjuntos del email simulado
     has_po_pdf: bool
     project_code: str | None  # codigo de proyecto que trae la factura
+    # Importe que YA estaba tipeado a mano en el Excel de cashflow antes de que
+    # el agente procese el email (None = no habia carga manual previa). Simula
+    # el registro operativo heredado; si difiere del importe real, C7 lo detecta.
+    cashflow_amount_manual: Decimal | None = None
 
 
 # ---------- Resultados del motor ----------
 
-# Estados de pipeline (Dia 1). Los estados de gate humano (lote aprobado,
-# liberado al banco) se agregan con el motor completo: "liberada_al_banco"
-# es inalcanzable sin aprobacion humana registrada, por diseno.
+# Estados de factura. El pipeline solo emite los tres primeros; los demas
+# solo pueden crearlos el gate humano (engine/batch.py) y el cierre
+# (engine/closing.py). "liberada_al_banco" es inalcanzable sin aprobacion
+# humana registrada, por diseno y por eval.
 STATUS_BLOQUEADA = "bloqueada"
 STATUS_EN_LOTE = "en_lote"
 STATUS_PROXIMO_CICLO = "proximo_ciclo"
+STATUS_LOTE_DEVUELTO = "lote_devuelto"          # el gate humano rechazo el lote
+STATUS_LIBERADA_AL_BANCO = "liberada_al_banco"  # solo tras aprobacion humana
+STATUS_CERRADA = "cerrada"                      # pago conciliado y pasivo cancelado
 
 SEVERITY_HARD = "hard"
 SEVERITY_SOFT = "soft"
@@ -185,6 +193,9 @@ def invoice_from_dict(d: dict) -> Invoice:
         has_invoice_pdf=d["has_invoice_pdf"],
         has_po_pdf=d["has_po_pdf"],
         project_code=d["project_code"],
+        cashflow_amount_manual=(
+            _dec(d["cashflow_amount_manual"]) if d.get("cashflow_amount_manual") else None
+        ),
     )
 
 

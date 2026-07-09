@@ -181,10 +181,10 @@
       "batch_date": "2026-06-25"
     },
     "INV-029": {
-      "status": "en_lote",
-      "blocking_control": null,
+      "status": "bloqueada",
+      "blocking_control": "C7_CONCILIACION",
       "flags": [],
-      "batch_date": "2026-06-25"
+      "batch_date": null
     },
     "INV-030": {
       "status": "en_lote",
@@ -275,21 +275,20 @@
         "INV-026",
         "INV-027",
         "INV-028",
-        "INV-029",
         "INV-030",
         "INV-031",
         "INV-032"
       ],
-      "count": 7,
-      "total": "10311.50"
+      "count": 6,
+      "total": "8844.20"
     }
   },
   "summary": {
     "total_invoices": 36,
-    "blocked_count": 6,
-    "blocked_amount": "45440.00",
-    "in_batches_count": 27,
-    "in_batches_total": "95746.65",
+    "blocked_count": 7,
+    "blocked_amount": "46907.30",
+    "in_batches_count": 26,
+    "in_batches_total": "94279.35",
     "carryover_count": 3,
     "soft_flagged_ids": [
       "INV-009",
@@ -311,6 +310,7 @@
     "INV-023": "PLANTADA: duplicada EXACTA de INV-005 (proveedor+numero+importe+fecha); reenvio del proveedor",
     "INV-024": "PLANTADA: EL FRAUDE. Todo matchea perfecto, pero el IBAN de la factura no es el del maestro",
     "INV-025": "PLANTADA: match fuera de tolerancia grande: +950.00 EUR (+18.27%) vs OC -> hard",
+    "INV-029": "PLANTADA: divergencia cashflow vs ERP. El Excel heredado tiene 1476.30 tipeado a mano (transposicion de digitos); la factura y el ERP dicen 1467.30. C7 bloquea con el diff",
     "INV-033": "PLANTADA: OC sin saldo (INV-017 ya consumio los 7500.00 autorizados). Emision a 8 dias de INV-017: fuera de la ventana de casi-duplicados, bloquea C3"
   }
 }

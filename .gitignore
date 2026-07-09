@@ -1,0 +1,39 @@
+# ============================================================
+# MATERIAL CONFIDENCIAL DE LA CLIENTA - NUNCA COMMITEAR
+# docs/ contiene el mapa AS-IS real y el analisis del proceso.
+# ============================================================
+docs/
+*.docx
+*.doc
+Proceso actual de Accounts Payable de la Consultora.png
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Secrets / entorno
+.env
+.env.*
+.streamlit/secrets.toml
+
+# Artefactos locales de corridas (se regeneran)
+runs/
+*.db
+*.duckdb
+
+# OS / editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+
+# OneDrive / Office temporales
+~$*
+*.tmp

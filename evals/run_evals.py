@@ -19,8 +19,14 @@ la intencion declarada del dataset, NUNCA de correr el motor). Verifica:
       checker B detenga el lote.
   12. Rechazo humano: devuelve el lote, las facturas quedan en lote_devuelto
       y la liberacion posterior es imposible.
+  13. Password gate: comparacion server-side correcta; el password nunca
+      aparece en el codigo del repo.
+  14. La app ARRANCA sin API keys y sin red externa: se lanza streamlit en un
+      subproceso con un entorno minimo (solo AP_DEMO_PASSWORD) en un puerto
+      libre elegido al azar, y el health endpoint responde ok.
 
-Uso: python evals/run_evals.py
+Uso: python evals/run_evals.py            (14 grupos)
+     python evals/run_evals.py --sin-app  (salta el grupo 14, p. ej. en CI sin GUI)
 """
 
 from __future__ import annotations
@@ -72,6 +78,60 @@ def expect_violation(fn, label: str) -> None:
         check(True, f"{label} -> GateViolation: {e}")
     else:
         check(False, f"{label} -> NO levanto GateViolation")
+
+
+def _boot_app_check(timeout_s: float = 60.0) -> bool:
+    """Lanza streamlit en subproceso con entorno minimo y verifica el health.
+
+    - Puerto: uno libre elegido por el SO (nada hardcodeado), pasado por CLI.
+    - Entorno: PATH/SYSTEMROOT del sistema + AP_DEMO_PASSWORD. Ninguna API key.
+    - Red: solo localhost (el health endpoint propio de streamlit).
+    """
+    import os
+    import socket
+    import subprocess
+    import time
+    import urllib.request
+
+    with socket.socket() as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+
+    env = {k: v for k, v in os.environ.items()
+           if k in ("PATH", "SYSTEMROOT", "SYSTEMDRIVE", "TEMP", "TMP", "COMSPEC",
+                    "PATHEXT", "WINDIR", "HOME", "USERPROFILE", "APPDATA",
+                    "LOCALAPPDATA", "PROGRAMDATA", "LANG")}
+    env["AP_DEMO_PASSWORD"] = "eval-arranque"
+    env["PYTHONIOENCODING"] = "utf-8"
+
+    proc = subprocess.Popen(
+        [sys.executable, "-m", "streamlit", "run", str(ROOT / "app.py"),
+         "--server.port", str(port), "--server.address", "127.0.0.1",
+         "--server.headless", "true", "--browser.gatherUsageStats", "false"],
+        cwd=str(ROOT), env=env,
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    )
+    url = f"http://127.0.0.1:{port}/_stcore/health"
+    deadline = time.monotonic() + timeout_s
+    ok = False
+    try:
+        while time.monotonic() < deadline:
+            if proc.poll() is not None:
+                break  # el proceso murio: arranque fallido
+            try:
+                with urllib.request.urlopen(url, timeout=2) as resp:
+                    if resp.status == 200 and resp.read().strip() == b"ok":
+                        ok = True
+                        break
+            except OSError:
+                time.sleep(0.5)
+    finally:
+        proc.terminate()
+        try:
+            proc.wait(timeout=10)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+    return ok
 
 
 def snapshot(result) -> dict:
@@ -251,6 +311,33 @@ def main() -> int:
     check(len(reject_events) == 1
           and reject_events[0].evidence.get("motivo") == "Revisar prioridad de pagos con Tesoreria",
           "audit trail registra el rechazo con motivo")
+
+    print("== 13. Password gate server-side ==")
+    from ap_control_tower.ui.auth import PASSWORD_ENV_VAR, verify_password
+    check(verify_password("s3creta", "s3creta"), "password correcta -> acceso")
+    check(not verify_password("otra", "s3creta"), "password incorrecta -> denegado")
+    check(not verify_password("", "s3creta") and not verify_password("x", ""),
+          "vacios -> denegado (sin env var no hay acceso)")
+    # En el codigo de la APP (app.py + paquete) la env var solo puede LEERSE;
+    # asignarle un literal seria un password en el repo. Mencionar su NOMBRE
+    # (docstrings, mensajes) es valido. (Los evals si setean un password
+    # descartable para el subproceso de arranque: fuera de alcance.)
+    import re
+    assign_pat = re.compile(r"""["']?AP_DEMO_PASSWORD["']?\s*\]?\s*=\s*["']""")
+    leaked = []
+    app_files = [ROOT / "app.py"] + sorted((ROOT / "ap_control_tower").rglob("*.py"))
+    for py in app_files:
+        for line in py.read_text(encoding="utf-8", errors="ignore").splitlines():
+            if assign_pat.search(line):
+                leaked.append(f"{py.name}: {line.strip()}")
+    check(not leaked, f"ningun password asignado como literal en el codigo de la app {leaked or ''}")
+
+    if "--sin-app" in sys.argv:
+        print("== 14. Arranque de la app: SALTEADO (--sin-app) ==")
+    else:
+        print("== 14. La app arranca sin API keys ni red externa ==")
+        check(_boot_app_check(), "streamlit sirve el health endpoint con entorno minimo "
+                                 "(solo AP_DEMO_PASSWORD) en un puerto libre por CLI")
 
     print()
     if failures:

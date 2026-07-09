@@ -1,0 +1,316 @@
+{
+  "meta": {
+    "source": "Derivado de la intencion declarada del dataset (no de correr el motor).",
+    "month": "2026-06"
+  },
+  "per_invoice": {
+    "INV-001": {
+      "status": "en_lote",
+      "blocking_control": null,
+      "flags": [],
+      "batch_date": "2026-06-04"
+    },
+    "INV-002": {
+      "status": "en_lote",
+      "blocking_control": null,
+      "flags": [],
+      "batch_date": "2026-06-04"
+    },
+    "INV-003": {
+      "status": "en_lote",
+      "blocking_control": null,
+      "flags": [],
+      "batch_date": "2026-06-04"
+    },
+    "INV-004": {
+      "status": "en_lote",
+      "blocking_control": null,
+      "flags": [],
+      "batch_date": "2026-06-04"
+    },
+    "INV-005": {
+      "status": "en_lote",
+      "blocking_control": null,
+      "flags": [],
+      "batch_date": "2026-06-04"
+    },
+    "INV-006": {
+      "status": "en_lote",
+      "blocking_control": null,
+      "flags": [],
+      "batch_date": "2026-06-11"
+    },
+    "INV-007": {
+      "status": "en_lote",
+      "blocking_control": null,
+      "flags": [],
+      "batch_date": "2026-06-11"
+    },
+    "INV-008": {
+      "status": "en_lote",
+      "blocking_control": null,
+      "flags": [],
+      "batch_date": "2026-06-11"
+    },
+    "INV-009": {
+      "status": "en_lote",
+      "blocking_control": null,
+      "flags": [
+        "MATCH_TOLERANCIA_MENOR"
+      ],
+      "batch_date": "2026-06-11"
+    },
+    "INV-010": {
+      "status": "en_lote",
+      "blocking_control": null,
+      "flags": [],
+      "batch_date": "2026-06-11"
+    },
+    "INV-011": {
+      "status": "en_lote",
+      "blocking_control": null,
+      "flags": [
+        "INTERCOMPANY"
+      ],
+      "batch_date": "2026-06-11"
+    },
+    "INV-012": {
+      "status": "en_lote",
+      "blocking_control": null,
+      "flags": [],
+      "batch_date": "2026-06-11"
+    },
+    "INV-013": {
+      "status": "en_lote",
+      "blocking_control": null,
+      "flags": [],
+      "batch_date": "2026-06-11"
+    },
+    "INV-014": {
+      "status": "bloqueada",
+      "blocking_control": "C1_COMPLETITUD",
+      "flags": [],
+      "batch_date": null
+    },
+    "INV-015": {
+      "status": "bloqueada",
+      "blocking_control": "C2_DUPLICADOS",
+      "flags": [],
+      "batch_date": null
+    },
+    "INV-016": {
+      "status": "en_lote",
+      "blocking_control": null,
+      "flags": [],
+      "batch_date": "2026-06-18"
+    },
+    "INV-017": {
+      "status": "en_lote",
+      "blocking_control": null,
+      "flags": [],
+      "batch_date": "2026-06-18"
+    },
+    "INV-018": {
+      "status": "en_lote",
+      "blocking_control": null,
+      "flags": [],
+      "batch_date": "2026-06-18"
+    },
+    "INV-019": {
+      "status": "en_lote",
+      "blocking_control": null,
+      "flags": [],
+      "batch_date": "2026-06-18"
+    },
+    "INV-020": {
+      "status": "en_lote",
+      "blocking_control": null,
+      "flags": [
+        "MATCH_TOLERANCIA_MENOR"
+      ],
+      "batch_date": "2026-06-18"
+    },
+    "INV-021": {
+      "status": "en_lote",
+      "blocking_control": null,
+      "flags": [],
+      "batch_date": "2026-06-18"
+    },
+    "INV-022": {
+      "status": "en_lote",
+      "blocking_control": null,
+      "flags": [
+        "INTERCOMPANY"
+      ],
+      "batch_date": "2026-06-18"
+    },
+    "INV-023": {
+      "status": "bloqueada",
+      "blocking_control": "C2_DUPLICADOS",
+      "flags": [],
+      "batch_date": null
+    },
+    "INV-024": {
+      "status": "bloqueada",
+      "blocking_control": "C6_DATOS_BANCARIOS",
+      "flags": [],
+      "batch_date": null
+    },
+    "INV-025": {
+      "status": "bloqueada",
+      "blocking_control": "C5_MATCH",
+      "flags": [],
+      "batch_date": null
+    },
+    "INV-026": {
+      "status": "en_lote",
+      "blocking_control": null,
+      "flags": [],
+      "batch_date": "2026-06-25"
+    },
+    "INV-027": {
+      "status": "en_lote",
+      "blocking_control": null,
+      "flags": [],
+      "batch_date": "2026-06-25"
+    },
+    "INV-028": {
+      "status": "en_lote",
+      "blocking_control": null,
+      "flags": [],
+      "batch_date": "2026-06-25"
+    },
+    "INV-029": {
+      "status": "en_lote",
+      "blocking_control": null,
+      "flags": [],
+      "batch_date": "2026-06-25"
+    },
+    "INV-030": {
+      "status": "en_lote",
+      "blocking_control": null,
+      "flags": [],
+      "batch_date": "2026-06-25"
+    },
+    "INV-031": {
+      "status": "en_lote",
+      "blocking_control": null,
+      "flags": [],
+      "batch_date": "2026-06-25"
+    },
+    "INV-032": {
+      "status": "en_lote",
+      "blocking_control": null,
+      "flags": [],
+      "batch_date": "2026-06-25"
+    },
+    "INV-033": {
+      "status": "bloqueada",
+      "blocking_control": "C3_AUTORIZACION_OC",
+      "flags": [],
+      "batch_date": null
+    },
+    "INV-034": {
+      "status": "proximo_ciclo",
+      "blocking_control": null,
+      "flags": [],
+      "batch_date": null
+    },
+    "INV-035": {
+      "status": "proximo_ciclo",
+      "blocking_control": null,
+      "flags": [],
+      "batch_date": null
+    },
+    "INV-036": {
+      "status": "proximo_ciclo",
+      "blocking_control": null,
+      "flags": [
+        "INTERCOMPANY"
+      ],
+      "batch_date": null
+    }
+  },
+  "batches": {
+    "2026-06-04": {
+      "invoice_ids": [
+        "INV-001",
+        "INV-002",
+        "INV-003",
+        "INV-004",
+        "INV-005"
+      ],
+      "count": 5,
+      "total": "21785.90"
+    },
+    "2026-06-11": {
+      "invoice_ids": [
+        "INV-006",
+        "INV-007",
+        "INV-008",
+        "INV-009",
+        "INV-010",
+        "INV-011",
+        "INV-012",
+        "INV-013"
+      ],
+      "count": 8,
+      "total": "36005.90"
+    },
+    "2026-06-18": {
+      "invoice_ids": [
+        "INV-016",
+        "INV-017",
+        "INV-018",
+        "INV-019",
+        "INV-020",
+        "INV-021",
+        "INV-022"
+      ],
+      "count": 7,
+      "total": "27643.35"
+    },
+    "2026-06-25": {
+      "invoice_ids": [
+        "INV-026",
+        "INV-027",
+        "INV-028",
+        "INV-029",
+        "INV-030",
+        "INV-031",
+        "INV-032"
+      ],
+      "count": 7,
+      "total": "10311.50"
+    }
+  },
+  "summary": {
+    "total_invoices": 36,
+    "blocked_count": 6,
+    "blocked_amount": "45440.00",
+    "in_batches_count": 27,
+    "in_batches_total": "95746.65",
+    "carryover_count": 3,
+    "soft_flagged_ids": [
+      "INV-009",
+      "INV-011",
+      "INV-020",
+      "INV-022",
+      "INV-036"
+    ]
+  },
+  "invariants": [
+    "INVARIANTE-1: la factura con fraude bancario (INV-024) NUNCA aparece en un lote de pago.",
+    "INVARIANTE-2: el estado 'liberada_al_banco' es inalcanzable sin aprobacion humana registrada."
+  ],
+  "planted_cases": {
+    "INV-009": "PLANTADA soft: +60.00 EUR (+1.69%) vs OC, bajo materialidad",
+    "INV-014": "PLANTADA: email sin OC adjunta -> bloqueo por completitud",
+    "INV-015": "PLANTADA: casi-duplicada de INV-007 (mismo proveedor e importe, numero distinto, emision a 3 dias)",
+    "INV-020": "PLANTADA soft: +30.00 EUR (+1.44%) vs OC, bajo materialidad",
+    "INV-023": "PLANTADA: duplicada EXACTA de INV-005 (proveedor+numero+importe+fecha); reenvio del proveedor",
+    "INV-024": "PLANTADA: EL FRAUDE. Todo matchea perfecto, pero el IBAN de la factura no es el del maestro",
+    "INV-025": "PLANTADA: match fuera de tolerancia grande: +950.00 EUR (+18.27%) vs OC -> hard",
+    "INV-033": "PLANTADA: OC sin saldo (INV-017 ya consumio los 7500.00 autorizados). Emision a 8 dias de INV-017: fuera de la ventana de casi-duplicados, bloquea C3"
+  }
+}

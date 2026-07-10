@@ -30,6 +30,7 @@ from ap_control_tower.ui.views import (  # noqa: E402
     gate,
     inbox,
     invoice_detail,
+    pdf_upload,
     review,
 )
 
@@ -41,6 +42,7 @@ VIEWS = {
     "🧾  Detalle de factura": invoice_detail.render,
     "🚨  Cola de excepciones": exceptions.render,
     "📋  Revisión humana": review.render,
+    "📄  PoC documentos reales": pdf_upload.render,
     "✅  Aprobación de pagos (gate)": gate.render,
     "📜  Registro de auditoría": audit_view.render,
     "📊  Caso de negocio": business_case.render,

@@ -29,10 +29,16 @@ la intencion declarada del dataset, NUNCA de correr el motor). Verifica:
       null (null==null es acierto; inventar donde era null es ALUCINACION y
       se reporta por separado), regla de vencimiento calculable, y prompt con
       la regla anti-alucinacion y document_type primero.
-  16. Confidencialidad: el material real del cliente (docs/, invoices & OC/,
+  16. Flujos reales (negativos y unitarios): clasificador de documento,
+      proveedor sin tax_id -> retencion de alta, domiciliacion sin mandato ->
+      bloqueo C11, proforma sin presupuesto aprobado -> anticipo retenido.
+  17. Confidencialidad: el material real del cliente (docs/, invoices & OC/,
       Golden Records.xlsx, *.pdf) esta git-ignoreado.
 
-Uso: python evals/run_evals.py            (16 grupos)
+Invariantes ademas de los originales: INVARIANTE-3, una proforma JAMAS puede
+aparecer en un lote de pago (grupo 4).
+
+Uso: python evals/run_evals.py            (17 grupos)
      python evals/run_evals.py --sin-app  (salta el grupo 14, p. ej. en CI sin GUI)
 """
 
@@ -205,12 +211,22 @@ def main() -> int:
          if result.outcomes[i.invoice_id].status == "bloqueada"),
         Decimal("0"),
     )
-    check(len(result.outcomes) == s["total_invoices"], f"facturas procesadas: {len(result.outcomes)}")
+    check(len(result.outcomes) == s["total_invoices"], f"documentos procesados: {len(result.outcomes)}")
     check(len(blocked) == s["blocked_count"], f"bloqueadas: {len(blocked)}")
     check(str(blocked_amount) == s["blocked_amount"],
           f"monto retenido por bloqueos: EUR {blocked_amount}")
     check(len(result.carryover_ids) == s["carryover_count"],
           f"proximo ciclo: {len(result.carryover_ids)}")
+    check(sorted(r.invoice_id for r in result.retenciones) == s["retenciones_ids"],
+          f"retenciones (pendientes de datos, distinto de bloqueo): {s['retenciones_ids']}")
+    check(all(r.propuesta for r in result.retenciones if r.reason == "datos_internos"),
+          "toda retencion non-PO lleva la propuesta del agente (el humano confirma)")
+    check(sorted(t.invoice_id for t in result.tareas) == s["tareas_conciliacion_ids"],
+          f"tareas de conciliacion DD/tarjeta: {s['tareas_conciliacion_ids']}")
+    anticipos_exc = [e.invoice_id for e in result.exceptions
+                     if e.control_id == "C8_ANTICIPO_SIN_FACTURA_FINAL"]
+    check(sorted(anticipos_exc) == s["anticipos_excepcion_ids"],
+          f"anticipos pagados sin factura final -> excepcion C8: {s['anticipos_excepcion_ids']}")
 
     print("== 4. INVARIANTE-1: el fraude nunca entra a un lote ==")
     in_any_batch = any(FRAUD_INVOICE in b.invoice_ids for b in result.batches)
@@ -221,6 +237,15 @@ def main() -> int:
           f"{FRAUD_INVOICE} bloqueada por C6_DATOS_BANCARIOS")
     check(any(e.invoice_id == FRAUD_INVOICE and e.fraud_alert for e in result.exceptions),
           f"{FRAUD_INVOICE} con alerta de fraude en la cola de excepciones")
+
+    print("== 4b. INVARIANTE-3: una proforma jamas entra a un lote de pago ==")
+    proformas = [i.invoice_id for i in dataset.invoices if i.invoice_number is None]
+    check(len(proformas) >= 1, f"hay proformas en el dataset: {proformas}")
+    in_batches_ids = {i for b in result.batches for i in b.invoice_ids}
+    check(not (set(proformas) & in_batches_ids),
+          f"ninguna proforma ({proformas}) aparece en ningun lote")
+    check(all(result.outcomes[p].status.startswith("anticipo") for p in proformas),
+          "toda proforma termina en el flujo de anticipos, nunca en el de facturas")
 
     print("== 5. INVARIANTE-2 (pipeline): sin liberacion al banco desde el pipeline ==")
     emitted = {o.status for o in result.outcomes.values()}
@@ -426,7 +451,58 @@ def main() -> int:
           and prompt.index("document_type") < prompt.index("proveedor_nombre_comercial"),
           "prompt: todos los campos presentes y document_type primero")
 
-    print("== 16. Confidencialidad: material real del cliente git-ignoreado ==")
+    print("== 16. Flujos reales: clasificador y negativos ==")
+    from dataclasses import replace as _replace
+
+    from ap_control_tower.engine.controls import classify_document
+    from ap_control_tower.models import Dataset as _Dataset
+
+    inv104 = next(i for i in dataset.invoices if i.invoice_id == "INV-104")
+    inv101 = next(i for i in dataset.invoices if i.invoice_id == "INV-101")
+    check(classify_document(inv104)[0] == "invoice",
+          "clasificador: numero fiscal + IVA tratado -> invoice")
+    check(classify_document(inv101)[0] == "proforma_or_advance_request",
+          "clasificador: sin numero + sin IVA desglosado + menciona factura final -> proforma")
+    raro = _replace(inv104, tratamiento_iva="no_desglosado")
+    check(classify_document(raro)[0] == "other",
+          "clasificador: numero fiscal pero IVA sin desglosar -> other (revision manual)")
+
+    # proveedor sin tax_id -> retencion de alta (V024 emite INV-106)
+    ds_v = _Dataset(
+        vendors={**dataset.vendors,
+                 "V024": _replace(dataset.vendors["V024"], tax_id="")},
+        pos=dataset.pos, invoices=dataset.invoices)
+    r_v, _, _ = run_month(ds_v)
+    o_v = r_v.outcomes["INV-106"]
+    check(o_v.status == "retenido_alta_proveedor"
+          and any(r.invoice_id == "INV-106" and r.reason == "alta_proveedor"
+                  for r in r_v.retenciones),
+          "proveedor sin tax_id -> retenido_alta_proveedor (retencion, no bloqueo)")
+
+    # domiciliacion sin mandato SEPA -> bloqueo C11
+    ds_m = _Dataset(
+        vendors={**dataset.vendors,
+                 "V020": _replace(dataset.vendors["V020"], sepa_mandate_ref=None)},
+        pos=dataset.pos, invoices=dataset.invoices)
+    r_m, _, _ = run_month(ds_m)
+    o_m = r_m.outcomes["INV-102"]
+    check(o_m.status == "bloqueada" and o_m.blocking_control == "C11_MANDATO_DOMICILIACION",
+          "domiciliacion sin mandato registrado -> bloqueada por C11")
+    check(not any(t.invoice_id == "INV-102" for t in r_m.tareas),
+          "sin mandato no se genera tarea de conciliacion post-debito")
+
+    # proforma sin presupuesto aprobado -> anticipo retenido
+    ds_p = _Dataset(
+        vendors=dataset.vendors, pos=dataset.pos,
+        invoices=[_replace(i, presupuesto_aprobado=False)
+                  if i.invoice_id == "INV-101" else i for i in dataset.invoices])
+    r_p, _, _ = run_month(ds_p)
+    check(r_p.outcomes["INV-101"].status == "anticipo_retenido_sin_aprobacion",
+          "proforma sin aprobacion interna del presupuesto -> anticipo retenido")
+    check(not any(e.invoice_id == "INV-101" for e in r_p.exceptions),
+          "anticipo retenido no dispara C8 (todavia no hay dinero salido)")
+
+    print("== 17. Confidencialidad: material real del cliente git-ignoreado ==")
     import subprocess
     try:
         probe = subprocess.run(

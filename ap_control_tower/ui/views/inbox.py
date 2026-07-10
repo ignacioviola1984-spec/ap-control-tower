@@ -27,6 +27,8 @@ SPEEDS = {
 def _feed_row(inv, outcome) -> str:
     if outcome.status == STATUS_BLOQUEADA:
         b = badge(f"BLOQUEADA · {outcome.blocking_control}", "block")
+    elif outcome.status not in (STATUS_EN_LOTE, "proximo_ciclo"):
+        b = status_badge(outcome.status)
     elif outcome.flags:
         b = badge("VALIDADA CON FLAG", "flag") + " " + " ".join(
             badge(f, "flag") for f in outcome.flags)
@@ -94,7 +96,7 @@ def _dashboard() -> None:
     flagged = [o for o in result.outcomes.values() if o.flags]
 
     c1, c2, c3, c4, c5 = st.columns(5)
-    c1.markdown(kpi("Facturas del mes", str(len(result.outcomes)),
+    c1.markdown(kpi("Documentos del mes", str(len(result.outcomes)),
                     "junio 2026 · 4 jueves de pago"), unsafe_allow_html=True)
     c2.markdown(kpi("En lotes de pago", f"{in_batches}",
                     f"{eur(batch_total)} € propuestos"), unsafe_allow_html=True)
@@ -104,6 +106,19 @@ def _dashboard() -> None:
                     "avanzan, marcadas para revisión"), unsafe_allow_html=True)
     c5.markdown(kpi("Próximo ciclo", str(len(result.carryover_ids)),
                     "sin jueves restante en el mes"), unsafe_allow_html=True)
+
+    if result.retenciones or result.tareas:
+        anticipos = [o for o in result.outcomes.values() if o.status.startswith("anticipo")]
+        d1, d2, d3 = st.columns(3)
+        d1.markdown(kpi("Pendientes de datos internos", str(len(result.retenciones)),
+                        "retenidas con propuesta del agente (no bloqueadas)"),
+                    unsafe_allow_html=True)
+        d2.markdown(kpi("Tareas de conciliación", str(len(result.tareas)),
+                        "domiciliaciones y tarjetas (fuera del lote)"),
+                    unsafe_allow_html=True)
+        d3.markdown(kpi("Anticipos (proformas)", str(len(anticipos)),
+                        "flujo propio · jamás entran a un lote"),
+                    unsafe_allow_html=True)
 
     st.markdown("#### Lotes del jueves")
     rows = []

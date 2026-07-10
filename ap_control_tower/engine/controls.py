@@ -12,11 +12,21 @@ from dataclasses import dataclass, field
 from decimal import Decimal
 from typing import Any
 
-from ..catalogs import BUSINESS_UNITS, CHART_OF_ACCOUNTS, MGMT_CATEGORIES, PROJECT_CODES, bu_from_project
-from ..config import CONTROL_NAMES, Controls, EngineConfig
+from ..catalogs import (
+    BUSINESS_UNITS,
+    CHART_OF_ACCOUNTS,
+    MGMT_CATEGORIES,
+    PROJECT_CODES,
+    bu_from_project,
+    non_po_rule_for,
+)
+from ..config import ASIENTO_TRATAMIENTOS_FACTURA, CONTROL_NAMES, Controls, EngineConfig
 from ..models import (
     ControlResult,
     Dataset,
+    DOC_INVOICE,
+    DOC_OTHER,
+    DOC_PROFORMA,
     Invoice,
     PurchaseOrder,
     SEVERITY_HARD,
@@ -48,22 +58,51 @@ def _result(control_id: str, severity: str, passed: bool, detail: str,
     )
 
 
+# ------------------------------------------------------------------ C0
+def classify_document(inv: Invoice) -> tuple[str, dict[str, Any]]:
+    """Etapa 0: clasifica el documento con reglas explicitas.
+
+    invoice  = tiene numero de factura y el IVA esta tratado (desglosado o con
+               regla explicita: nacional / inversion del sujeto pasivo).
+    proforma = sin numero fiscal y sin IVA desglosado, o menciona factura
+               final futura.
+    other    = combinaciones dudosas (ej. numero fiscal pero IVA sin desglosar)
+               que requieren revision manual.
+    """
+    tiene_numero = bool(inv.invoice_number)
+    iva_tratado = inv.tratamiento_iva != "no_desglosado"
+    if tiene_numero and iva_tratado and not inv.menciona_factura_final:
+        kind = DOC_INVOICE
+    elif not tiene_numero and (not iva_tratado or inv.menciona_factura_final):
+        kind = DOC_PROFORMA
+    else:
+        kind = DOC_OTHER
+    evidence = {
+        "numero_fiscal": inv.invoice_number,
+        "tratamiento_iva": inv.tratamiento_iva,
+        "menciona_factura_final": inv.menciona_factura_final,
+        "clasificacion": kind,
+    }
+    return kind, evidence
+
+
 # ------------------------------------------------------------------ C1
 def check_completitud(inv: Invoice, ctx: RunContext) -> ControlResult:
-    """Hard: el email debe traer factura y OC (ambos PDFs) y referencia de OC."""
+    """Hard: el documento principal debe estar adjunto; si el documento
+    referencia una OC, el PDF de la OC tambien. Un documento SIN referencia
+    de OC ya no es incompleto: va a la ruta non-PO gobernada."""
     missing = []
     if not inv.has_invoice_pdf:
-        missing.append("factura (PDF)")
-    if not inv.has_po_pdf:
-        missing.append("orden de compra (PDF)")
-    if inv.po_ref is None:
-        missing.append("referencia de OC")
+        missing.append("documento principal (PDF)")
+    if inv.po_ref is not None and not inv.has_po_pdf:
+        missing.append(f"orden de compra referenciada ({inv.po_ref}) sin PDF adjunto")
     passed = not missing
     return _result(
         Controls.C1_COMPLETITUD, SEVERITY_HARD, passed,
         "Documentacion completa" if passed else f"Faltan adjuntos: {', '.join(missing)}",
-        {"esperado": "factura (PDF) + orden de compra (PDF)",
-         "recibido": "factura (PDF)" + (" + orden de compra (PDF)" if inv.has_po_pdf else " solamente"),
+        {"esperado": ("documento (PDF)" + (" + OC (PDF)" if inv.po_ref else "")),
+         "recibido": ("documento (PDF)" if inv.has_invoice_pdf else "sin documento")
+                     + (" + OC (PDF)" if inv.has_po_pdf else ""),
          "faltante": missing},
         checker="checker-recepcion",
     )
@@ -151,22 +190,40 @@ def check_autorizacion_oc(inv: Invoice, ctx: RunContext) -> ControlResult:
 
 # ------------------------------------------------------------------ C4
 def maker_propose_imputacion(inv: Invoice, po: PurchaseOrder) -> dict[str, Any]:
-    """MAKER: propone imputacion contable y de gestion leyendo la OC
-    (pasos 5-7 del proceso: la imputacion viene definida en la OC)."""
-    vendor_ic = None  # se resuelve en el checker con el maestro
+    """MAKER (ruta PO): propone imputacion leyendo la OC (pasos 5-7 del
+    proceso: la imputacion viene definida en la OC). El tratamiento de IVA es
+    atributo del asiento propuesto y sale del documento."""
     return {
         "gl_account": po.gl_account,
         "mgmt_category": po.mgmt_category,
         "project_code": po.project_code,
         "bu": bu_from_project(po.project_code),
-        "clasificacion_ic": vendor_ic,
+        "tratamiento_iva": inv.tratamiento_iva,
         "fuente": f"OC {po.po_id}",
+    }
+
+
+def maker_propose_imputacion_non_po(inv: Invoice, ctx: RunContext) -> dict[str, Any]:
+    """MAKER (ruta non-PO): propone imputacion por reglas proveedor->area,
+    usando el centro de coste confirmado como codigo de proyecto."""
+    vendor = ctx.dataset.vendors[inv.vendor_id]
+    cc_regla, _aprobador, gl, mgmt = non_po_rule_for(vendor.category)
+    project = inv.cost_center or cc_regla
+    return {
+        "gl_account": gl,
+        "mgmt_category": mgmt,
+        "project_code": project,
+        "bu": bu_from_project(project),
+        "tratamiento_iva": inv.tratamiento_iva,
+        "fuente": f"regla proveedor->area ({vendor.category})",
     }
 
 
 def checker_validate_imputacion(inv: Invoice, proposal: dict[str, Any], ctx: RunContext) -> ControlResult:
     """CHECKER independiente: valida la propuesta contra plan de cuentas y
-    catalogos, y clasifica local vs intercompany con el maestro de proveedores.
+    catalogos, clasifica local vs intercompany con el maestro, y valida el
+    tratamiento de IVA del asiento ("no_desglosado" es imposible en una
+    factura: solo existe en proformas, que no llegan aca).
     Soft: una propuesta invalida genera flag, no bloquea."""
     issues: list[str] = []
     if proposal["gl_account"] not in CHART_OF_ACCOUNTS:
@@ -177,13 +234,17 @@ def checker_validate_imputacion(inv: Invoice, proposal: dict[str, Any], ctx: Run
         issues.append(f"BU no derivable del proyecto {proposal['project_code']}")
     if proposal["mgmt_category"] not in MGMT_CATEGORIES:
         issues.append(f"categoria de gestion '{proposal['mgmt_category']}' fuera de catalogo")
+    if proposal["tratamiento_iva"] not in ASIENTO_TRATAMIENTOS_FACTURA:
+        issues.append(f"tratamiento de IVA '{proposal['tratamiento_iva']}' no admisible "
+                      f"en el asiento de una factura (solo {ASIENTO_TRATAMIENTOS_FACTURA})")
 
     vendor = ctx.dataset.vendors[inv.vendor_id]
     clasificacion = "intercompany" if vendor.intercompany else "local"
     passed = not issues
     return _result(
         Controls.C4_IMPUTACION, SEVERITY_SOFT, passed,
-        (f"Imputacion validada; clasificacion {clasificacion}"
+        (f"Imputacion validada; clasificacion {clasificacion}; "
+         f"tratamiento {proposal['tratamiento_iva']}"
          if passed else "Propuesta con observaciones: " + "; ".join(issues)),
         {"propuesta_maker": proposal,
          "clasificacion": clasificacion,
@@ -264,6 +325,93 @@ def check_datos_bancarios(inv: Invoice, ctx: RunContext) -> ControlResult:
          "accion_recomendada": (None if passed else
                                 "NO pagar. Verificar con el proveedor por canal independiente "
                                 "(telefono conocido, nunca respondiendo al email recibido).")},
+        checker="checker-tesoreria",
+    )
+
+
+# ------------------------------------------------------------------ C8
+def check_anticipo(inv: Invoice, ctx: RunContext) -> ControlResult:
+    """Excepcion del flujo de anticipos: un anticipo PAGADO sin factura final
+    posterior vinculada es una excepcion (dinero salido sin documento fiscal)."""
+    problema = inv.anticipo_pagado and not inv.factura_final_ref
+    return _result(
+        Controls.C8_ANTICIPO_SIN_FACTURA_FINAL, SEVERITY_HARD, not problema,
+        ("Anticipo consistente" if not problema else
+         "Anticipo pagado sin factura final posterior: dinero salido sin documento fiscal"),
+        {"anticipo_pagado": inv.anticipo_pagado,
+         "factura_final_ref": inv.factura_final_ref,
+         "presupuesto_aprobado": inv.presupuesto_aprobado},
+        checker="checker-anticipos",
+    )
+
+
+# ------------------------------------------------------------------ C9
+def check_vendor_master(inv: Invoice, ctx: RunContext) -> ControlResult:
+    """Retencion (no bloqueo): proveedor sin tax_id o con razon social legal
+    ambigua queda retenido hasta completar el alta de proveedor. El alta o
+    cambio de datos bancarios sigue exigiendo doble aprobacion humana."""
+    vendor = ctx.dataset.vendors[inv.vendor_id]
+    missing = []
+    if not (vendor.tax_id or "").strip():
+        missing.append("tax_id (CIF/NIF/VAT)")
+    if not vendor.razon_social_confirmada:
+        missing.append("razon social legal confirmada")
+    passed = not missing
+    return _result(
+        Controls.C9_VENDOR_MASTER, SEVERITY_HARD, passed,
+        ("Maestro de proveedor completo" if passed else
+         f"Alta de proveedor incompleta: falta {', '.join(missing)}"),
+        {"proveedor": vendor.name, "faltante": missing,
+         "nota": "el alta/cambio de datos bancarios requiere doble aprobacion humana"},
+        checker="checker-vendor-master",
+    )
+
+
+# ------------------------------------------------------------------ C10
+def maker_propose_gobierno_non_po(inv: Invoice, ctx: RunContext) -> dict[str, Any]:
+    """MAKER: propone centro de coste y aprobador por reglas proveedor->area.
+    La propuesta NUNCA se autoconfirma: el humano confirma los datos internos."""
+    vendor = ctx.dataset.vendors[inv.vendor_id]
+    cc, aprobador, _gl, _mgmt = non_po_rule_for(vendor.category)
+    return {"cost_center_propuesto": cc, "aprobador_propuesto": aprobador,
+            "regla": f"proveedor->area ({vendor.category})"}
+
+
+def check_gobierno_non_po(inv: Invoice, ctx: RunContext) -> ControlResult:
+    """Ruta non-PO gobernada: exige (a) aprobador interno asignado, (b) centro
+    de coste asignado, (c) contrato o soporte referenciado. Si falta alguno,
+    el documento queda RETENIDO en 'pendiente de datos internos' (distinto de
+    bloqueado por control)."""
+    missing = []
+    if not inv.internal_approver:
+        missing.append("aprobador interno")
+    if not inv.cost_center:
+        missing.append("centro de coste")
+    if not inv.contract_ref:
+        missing.append("contrato o soporte referenciado")
+    passed = not missing
+    return _result(
+        Controls.C10_GOBIERNO_NON_PO, SEVERITY_HARD, passed,
+        ("Gobierno non-PO completo" if passed else
+         f"Datos internos pendientes: {', '.join(missing)}"),
+        {"aprobador_interno": inv.internal_approver,
+         "centro_de_coste": inv.cost_center,
+         "contrato_soporte": inv.contract_ref,
+         "faltante": missing},
+        checker="checker-gobierno-non-po",
+    )
+
+
+# ------------------------------------------------------------------ C11
+def check_mandato_domiciliacion(inv: Invoice, ctx: RunContext) -> ControlResult:
+    """Hard: una domiciliacion requiere mandato SEPA registrado en el maestro."""
+    vendor = ctx.dataset.vendors[inv.vendor_id]
+    passed = bool(vendor.sepa_mandate_ref)
+    return _result(
+        Controls.C11_MANDATO_DOMICILIACION, SEVERITY_HARD, passed,
+        (f"Mandato SEPA registrado ({vendor.sepa_mandate_ref})" if passed else
+         "Domiciliacion sin mandato SEPA registrado en el maestro"),
+        {"proveedor": vendor.name, "mandato": vendor.sepa_mandate_ref},
         checker="checker-tesoreria",
     )
 

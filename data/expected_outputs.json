@@ -87,8 +87,8 @@
       "batch_date": "2026-06-11"
     },
     "INV-014": {
-      "status": "bloqueada",
-      "blocking_control": "C1_COMPLETITUD",
+      "status": "pendiente_datos_internos",
+      "blocking_control": null,
       "flags": [],
       "batch_date": null
     },
@@ -229,6 +229,42 @@
         "INTERCOMPANY"
       ],
       "batch_date": null
+    },
+    "INV-101": {
+      "status": "anticipo_pagado_sin_factura_final",
+      "blocking_control": null,
+      "flags": [],
+      "batch_date": null
+    },
+    "INV-102": {
+      "status": "domiciliacion_pendiente_conciliacion",
+      "blocking_control": null,
+      "flags": [],
+      "batch_date": null
+    },
+    "INV-103": {
+      "status": "tarjeta_pendiente_conciliacion",
+      "blocking_control": null,
+      "flags": [],
+      "batch_date": null
+    },
+    "INV-104": {
+      "status": "en_lote",
+      "blocking_control": null,
+      "flags": [],
+      "batch_date": "2026-06-25"
+    },
+    "INV-105": {
+      "status": "en_lote",
+      "blocking_control": null,
+      "flags": [],
+      "batch_date": "2026-06-25"
+    },
+    "INV-106": {
+      "status": "pendiente_datos_internos",
+      "blocking_control": null,
+      "flags": [],
+      "batch_date": null
     }
   },
   "batches": {
@@ -277,18 +313,20 @@
         "INV-028",
         "INV-030",
         "INV-031",
-        "INV-032"
+        "INV-032",
+        "INV-104",
+        "INV-105"
       ],
-      "count": 6,
-      "total": "8844.20"
+      "count": 8,
+      "total": "13424.70"
     }
   },
   "summary": {
-    "total_invoices": 36,
-    "blocked_count": 7,
-    "blocked_amount": "46907.30",
-    "in_batches_count": 26,
-    "in_batches_total": "94279.35",
+    "total_invoices": 42,
+    "blocked_count": 6,
+    "blocked_amount": "42057.30",
+    "in_batches_count": 28,
+    "in_batches_total": "98859.85",
     "carryover_count": 3,
     "soft_flagged_ids": [
       "INV-009",
@@ -296,21 +334,39 @@
       "INV-020",
       "INV-022",
       "INV-036"
+    ],
+    "retenciones_ids": [
+      "INV-014",
+      "INV-106"
+    ],
+    "tareas_conciliacion_ids": [
+      "INV-102",
+      "INV-103"
+    ],
+    "anticipos_excepcion_ids": [
+      "INV-101"
     ]
   },
   "invariants": [
     "INVARIANTE-1: la factura con fraude bancario (INV-024) NUNCA aparece en un lote de pago.",
-    "INVARIANTE-2: el estado 'liberada_al_banco' es inalcanzable sin aprobacion humana registrada."
+    "INVARIANTE-2: el estado 'liberada_al_banco' es inalcanzable sin aprobacion humana registrada.",
+    "INVARIANTE-3: una proforma JAMAS puede aparecer en un lote de pago."
   ],
   "planted_cases": {
     "INV-009": "PLANTADA soft: +60.00 EUR (+1.69%) vs OC, bajo materialidad",
-    "INV-014": "PLANTADA: email sin OC adjunta -> bloqueo por completitud",
+    "INV-014": "PLANTADA: factura sin OC -> ruta non-PO gobernada; sin aprobador, centro de coste ni contrato queda RETENIDA en 'pendiente de datos internos' (antes era bloqueo hard); el agente propone Marketing/CO-020 por regla proveedor->area",
     "INV-015": "PLANTADA: casi-duplicada de INV-007 (mismo proveedor e importe, numero distinto, emision a 3 dias)",
     "INV-020": "PLANTADA soft: +30.00 EUR (+1.44%) vs OC, bajo materialidad",
     "INV-023": "PLANTADA: duplicada EXACTA de INV-005 (proveedor+numero+importe+fecha); reenvio del proveedor",
     "INV-024": "PLANTADA: EL FRAUDE. Todo matchea perfecto, pero el IBAN de la factura no es el del maestro",
     "INV-025": "PLANTADA: match fuera de tolerancia grande: +950.00 EUR (+18.27%) vs OC -> hard",
     "INV-029": "PLANTADA: divergencia cashflow vs ERP. El Excel heredado tiene 1476.30 tipeado a mano (transposicion de digitos); la factura y el ERP dicen 1467.30. C7 bloquea con el diff",
-    "INV-033": "PLANTADA: OC sin saldo (INV-017 ya consumio los 7500.00 autorizados). Emision a 8 dias de INV-017: fuera de la ventana de casi-duplicados, bloquea C3"
+    "INV-033": "PLANTADA: OC sin saldo (INV-017 ya consumio los 7500.00 autorizados). Emision a 8 dias de INV-017: fuera de la ventana de casi-duplicados, bloquea C3",
+    "INV-101": "PLANTADA: PROFORMA/anticipo (sin numero fiscal, sin IVA desglosado, menciona factura final). Presupuesto aprobado y anticipo PAGADO sin factura final posterior -> excepcion C8. Jamas entra a un lote de pago",
+    "INV-102": "PLANTADA: DOMICILIACION SEPA con mandato registrado, non-PO con gobierno completo. No entra al lote: genera tarea de conciliacion post-debito. Sin control de IBAN (aplica solo a transferencias)",
+    "INV-103": "PLANTADA: pago con TARJETA, non-PO con gobierno completo. No entra al lote: genera tarea de conciliacion contra extracto de tarjeta",
+    "INV-104": "PLANTADA: INTRACOMUNITARIA con inversion del sujeto pasivo (proveedor NL), con OC y match exacto; el asiento propone tratamiento intracomunitario",
+    "INV-105": "PLANTADA: NON-PO LIMPIA con gobierno completo (aprobador + centro de coste + acta soporte); imputacion propuesta por regla proveedor->area y entra al lote",
+    "INV-106": "PLANTADA: NON-PO SIN datos internos (ni aprobador, ni centro de coste, ni soporte) -> RETENIDA en 'pendiente de datos internos' con la propuesta del agente (Operaciones/CO-001) esperando confirmacion humana"
   }
 }

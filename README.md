@@ -126,8 +126,15 @@ Casos plantados:
 | INV-029 | Divergencia cashflow vs ERP: Excel heredado con 1.476,30 tipeado a mano, la factura real dice 1.467,30 | C7 conciliacion | Bloqueada |
 | INV-009 | Match +1.69% vs OC (bajo materialidad) | C5 match | Avanza con flag |
 | INV-020 | Match +1.44% vs OC (bajo materialidad) | C5 match | Avanza con flag |
+| INV-014 | Factura sin OC (ruta non-PO sin aprobador/CC/soporte) | C10 gobierno non-PO | Pendiente de datos internos |
+| INV-101 | Proforma: anticipo pagado sin factura final | C0 + C8 anticipos | Excepcion (jamas en lote) |
+| INV-102 | Domiciliacion SEPA con mandato, non-PO gobernada | C11 mandato | Tarea conciliacion post-debito |
+| INV-103 | Pago con tarjeta, non-PO gobernada | flujo tarjeta | Tarea conciliacion extracto |
+| INV-104 | Intracomunitaria con inversion del sujeto pasivo (con OC) | C4 tratamiento IVA | En lote 25-jun |
+| INV-105 | Non-PO limpia con gobierno completo (notaria) | C10 + C4 por reglas | En lote 25-jun |
+| INV-106 | Non-PO sin datos internos (mensajeria) | C10 gobierno non-PO | Pendiente de datos internos |
 
-Resultado de la corrida: 26 facturas pagables en 4 lotes (EUR 94.279,35), 7 bloqueadas (EUR 46.907,30 retenidos), 3 programadas para el proximo ciclo, 5 con flag soft (2 match menor + 3 intercompany). Lotes: 04-jun 21.785,90 / 11-jun 36.005,90 / 18-jun 27.643,35 / 25-jun 8.844,20.
+Resultado de la corrida: 42 documentos; 28 facturas pagables en 4 lotes (EUR 98.859,85), 6 bloqueadas (EUR 42.057,30 retenidos), 2 pendientes de datos internos, 2 tareas de conciliacion (DD/tarjeta), 1 anticipo en excepcion, 3 programadas para el proximo ciclo, 5 con flag soft. Lotes: 04-jun 21.785,90 / 11-jun 36.005,90 / 18-jun 27.643,35 / 25-jun 13.424,70.
 
 ## El lote de pago y EL gate humano
 
@@ -152,17 +159,46 @@ excepciones, no el 100%.
 
 ## Controles del pipeline
 
-| # | Control | Severidad |
+| # | Control | Efecto |
 |---|---|---|
-| C1 | Completitud documental (factura + OC en el email) | Hard |
+| C0 | Clasificacion del documento: factura / proforma / otro (etapa 0) | Enruta el flujo |
+| C1 | Completitud documental (si referencia OC, el PDF de la OC es obligatorio) | Hard |
 | C2 | Duplicados y casi-duplicados | Hard |
-| C3 | Autorizacion de OC: aprobada, vigente, con saldo | Hard |
-| C4 | Imputacion contable y BU (maker propone, checker valida) + local/intercompany | Soft |
-| C5 | Match factura vs OC con tolerancias (5% / EUR 750) | Hard sobre materialidad, soft debajo |
-| C6 | Datos bancarios del proveedor vs maestro | Hard + alerta de fraude |
+| C3 | Autorizacion de OC: aprobada, vigente, con saldo (solo ruta PO) | Hard |
+| C4 | Imputacion contable, BU y tratamiento de IVA (maker propone, checker valida) | Soft |
+| C5 | Match factura vs OC con tolerancias (5% / EUR 750; solo ruta PO) | Hard sobre materialidad, soft debajo |
+| C6 | Datos bancarios del proveedor vs maestro (SOLO transferencias) | Hard + alerta de fraude |
 | C7 | Conciliacion pre-pago cashflow vs ERP | Hard |
+| C8 | Anticipo pagado sin factura final posterior | Excepcion |
+| C9 | Completitud del maestro de proveedores (tax_id, razon social) | Retencion |
+| C10 | Gobierno non-PO: aprobador + centro de coste + contrato/soporte | Retencion |
+| C11 | Mandato SEPA registrado para domiciliaciones | Hard |
 
 Tolerancias y reglas viven en `ap_control_tower/config.py`, explicitas y configurables.
+
+## Flujos reales (rama feat/real-world-flows)
+
+La realidad AP del cliente es mayormente non-PO, con proformas y varios
+metodos de pago. El motor lo refleja:
+
+- **Etapa 0**: clasificador de documento. Una proforma NUNCA entra al flujo
+  de facturas: va al flujo de anticipos (exige aprobacion interna del
+  presupuesto; anticipo pagado sin factura final = excepcion C8) y JAMAS
+  puede aparecer en un lote de pago (INVARIANTE-3, bajo eval).
+- **Bifurcacion PO / non-PO**: sin OC ya no es bloqueo hard. La ruta non-PO
+  gobernada exige aprobador interno + centro de coste + contrato/soporte;
+  si falta algo, el documento queda en la cola "pendiente de datos internos"
+  (distinto de bloqueada) con la PROPUESTA del agente por reglas
+  proveedor->area; el humano confirma.
+- **Metodos de pago**: transferencia -> IBAN vs maestro + lote del jueves +
+  gate humano. Domiciliacion -> mandato SEPA + tarea de conciliacion
+  post-debito, sin lote. Tarjeta -> tarea de conciliacion contra extracto,
+  sin lote. El control de fraude por IBAN aplica solo a transferencias.
+- **Maestro de proveedores**: sin tax_id o razon social ambigua -> retencion
+  hasta completar el alta (datos bancarios siempre con doble aprobacion humana).
+- **Tratamiento de IVA** como atributo del asiento propuesto: nacional /
+  intracomunitario con inversion del sujeto pasivo / no desglosado (esto
+  ultimo solo posible en proformas).
 
 ## Invariantes (los evals los hacen contrato)
 

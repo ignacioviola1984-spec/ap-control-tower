@@ -121,7 +121,8 @@
       "bank_name": "NatWest (UK)",
       "payment_terms_days": 45,
       "intercompany": true,
-      "category": "Intercompany: management fee"
+      "category": "Intercompany: management fee",
+      "country": "GB"
     },
     {
       "vendor_id": "V012",
@@ -131,7 +132,8 @@
       "bank_name": "Banco Iberico Global",
       "payment_terms_days": 45,
       "intercompany": true,
-      "category": "Intercompany: shared services"
+      "category": "Intercompany: shared services",
+      "country": "MX"
     },
     {
       "vendor_id": "V013",
@@ -192,6 +194,68 @@
       "payment_terms_days": 30,
       "intercompany": false,
       "category": "Mobiliario de oficina"
+    },
+    {
+      "vendor_id": "V019",
+      "name": "Instituto Qualia Research SL",
+      "tax_id": "B12890344",
+      "iban": "ES3701821234730600000205",
+      "bank_name": "Banco de Estudios",
+      "payment_terms_days": 30,
+      "intercompany": false,
+      "category": "Investigacion de mercado"
+    },
+    {
+      "vendor_id": "V020",
+      "name": "Nimbus Suscripciones SL",
+      "tax_id": "B66123456",
+      "iban": "ES8500721234740600000218",
+      "bank_name": "Banco Digital SA",
+      "payment_terms_days": 15,
+      "intercompany": false,
+      "category": "Software por suscripcion",
+      "sepa_mandate_ref": "MANDATO-NB-4411"
+    },
+    {
+      "vendor_id": "V021",
+      "name": "CloudSuite Tools SL",
+      "tax_id": "B77345211",
+      "iban": "ES6301821234750600000221",
+      "bank_name": "Banco Azul",
+      "payment_terms_days": 15,
+      "intercompany": false,
+      "category": "Software por suscripcion"
+    },
+    {
+      "vendor_id": "V022",
+      "name": "Panelbase Europe BV",
+      "tax_id": "NL823456789B01",
+      "iban": "NL02ABNA0123456789",
+      "bank_name": "ABN AMRO (NL)",
+      "payment_terms_days": 30,
+      "intercompany": false,
+      "category": "Investigacion de mercado",
+      "country": "NL"
+    },
+    {
+      "vendor_id": "V023",
+      "name": "Notaria Ferran y Asociados SLP",
+      "tax_id": "J40112233",
+      "iban": "ES4101281234760600000234",
+      "bank_name": "Banco Fiduciario",
+      "payment_terms_days": 15,
+      "intercompany": false,
+      "category": "Notaria"
+    },
+    {
+      "vendor_id": "V024",
+      "name": "Mensajeria Rayo SL",
+      "tax_id": "B09877655",
+      "iban": "ES2000491234770600000247",
+      "bank_name": "Caja Urbana",
+      "payment_terms_days": 15,
+      "intercompany": false,
+      "category": "Mensajeria"
     }
   ],
   "purchase_orders": [
@@ -625,6 +689,25 @@
           "amount": "312.60"
         }
       ]
+    },
+    {
+      "po_id": "PO-2026-130",
+      "vendor_id": "V022",
+      "project_code": "CN-215",
+      "gl_account": "623100",
+      "mgmt_category": "Coste directo de proyecto",
+      "currency": "EUR",
+      "status": "aprobada",
+      "valid_from": "2026-01-01",
+      "valid_to": "2026-12-31",
+      "amount_authorized": "12000.00",
+      "lines": [
+        {
+          "line_id": "panel-consumo",
+          "description": "Panel online estudio de consumo Espana",
+          "amount": "4200.00"
+        }
+      ]
     }
   ],
   "invoices": [
@@ -892,7 +975,7 @@
       "has_po_pdf": false,
       "project_code": null,
       "cashflow_amount_manual": null,
-      "case_note": "PLANTADA: email sin OC adjunta -> bloqueo por completitud"
+      "case_note": "PLANTADA: factura sin OC -> ruta non-PO gobernada; sin aprobador, centro de coste ni contrato queda RETENIDA en 'pendiente de datos internos' (antes era bloqueo hard); el agente propone Marketing/CO-020 por regla proveedor->area"
     },
     {
       "invoice_id": "INV-015",
@@ -1311,6 +1394,136 @@
       "project_code": "CO-002",
       "cashflow_amount_manual": null,
       "case_note": "limpia intercompany, programada para el primer jueves de julio"
+    },
+    {
+      "invoice_id": "INV-101",
+      "vendor_id": "V019",
+      "vendor_name": "Instituto Qualia Research SL",
+      "invoice_number": null,
+      "issue_date": "2026-06-19",
+      "received_date": "2026-06-22",
+      "currency": "EUR",
+      "amount_total": "4500.00",
+      "description": "Anticipo 50% estudio cualitativo consumidor",
+      "po_ref": null,
+      "po_line_ref": null,
+      "iban_on_invoice": "ES3701821234730600000205",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": null,
+      "cashflow_amount_manual": null,
+      "case_note": "PLANTADA: PROFORMA/anticipo (sin numero fiscal, sin IVA desglosado, menciona factura final). Presupuesto aprobado y anticipo PAGADO sin factura final posterior -> excepcion C8. Jamas entra a un lote de pago",
+      "tratamiento_iva": "no_desglosado",
+      "menciona_factura_final": true,
+      "presupuesto_aprobado": true,
+      "anticipo_pagado": true
+    },
+    {
+      "invoice_id": "INV-102",
+      "vendor_id": "V020",
+      "vendor_name": "Nimbus Suscripciones SL",
+      "invoice_number": "NB-2026-0187",
+      "issue_date": "2026-06-22",
+      "received_date": "2026-06-23",
+      "currency": "EUR",
+      "amount_total": "217.80",
+      "description": "Cuota JULIO 2026 - plan Business (10 usuarios)",
+      "po_ref": null,
+      "po_line_ref": null,
+      "iban_on_invoice": null,
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": null,
+      "cashflow_amount_manual": null,
+      "case_note": "PLANTADA: DOMICILIACION SEPA con mandato registrado, non-PO con gobierno completo. No entra al lote: genera tarea de conciliacion post-debito. Sin control de IBAN (aplica solo a transferencias)",
+      "metodo_pago": "domiciliacion_direct_debit",
+      "internal_approver": "IT / R. Duarte",
+      "cost_center": "CO-014",
+      "contract_ref": "CONTRATO-NB-2026"
+    },
+    {
+      "invoice_id": "INV-103",
+      "vendor_id": "V021",
+      "vendor_name": "CloudSuite Tools SL",
+      "invoice_number": "CS-2026-8812",
+      "issue_date": "2026-06-22",
+      "received_date": "2026-06-23",
+      "currency": "EUR",
+      "amount_total": "96.80",
+      "description": "Suscripcion mensual herramientas de diseno",
+      "po_ref": null,
+      "po_line_ref": null,
+      "iban_on_invoice": null,
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": null,
+      "cashflow_amount_manual": null,
+      "case_note": "PLANTADA: pago con TARJETA, non-PO con gobierno completo. No entra al lote: genera tarea de conciliacion contra extracto de tarjeta",
+      "metodo_pago": "tarjeta",
+      "internal_approver": "IT / R. Duarte",
+      "cost_center": "CO-014",
+      "contract_ref": "SUSCRIPCION-CS-889"
+    },
+    {
+      "invoice_id": "INV-104",
+      "vendor_id": "V022",
+      "vendor_name": "Panelbase Europe BV",
+      "invoice_number": "PB-2026-0455",
+      "issue_date": "2026-06-23",
+      "received_date": "2026-06-24",
+      "currency": "EUR",
+      "amount_total": "4200.00",
+      "description": "Panel online estudio de consumo Espana",
+      "po_ref": "PO-2026-130",
+      "po_line_ref": "panel-consumo",
+      "iban_on_invoice": "NL02ABNA0123456789",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": "CN-215",
+      "cashflow_amount_manual": null,
+      "case_note": "PLANTADA: INTRACOMUNITARIA con inversion del sujeto pasivo (proveedor NL), con OC y match exacto; el asiento propone tratamiento intracomunitario",
+      "tratamiento_iva": "intracomunitario_inversion_sujeto_pasivo"
+    },
+    {
+      "invoice_id": "INV-105",
+      "vendor_id": "V023",
+      "vendor_name": "Notaria Ferran y Asociados SLP",
+      "invoice_number": "NF-2026-0912",
+      "issue_date": "2026-06-23",
+      "received_date": "2026-06-24",
+      "currency": "EUR",
+      "amount_total": "380.50",
+      "description": "Escritura de poderes y legitimaciones",
+      "po_ref": null,
+      "po_line_ref": null,
+      "iban_on_invoice": "ES4101281234760600000234",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": null,
+      "cashflow_amount_manual": null,
+      "case_note": "PLANTADA: NON-PO LIMPIA con gobierno completo (aprobador + centro de coste + acta soporte); imputacion propuesta por regla proveedor->area y entra al lote",
+      "internal_approver": "Direccion Financiera / L. Ortega",
+      "cost_center": "CO-001",
+      "contract_ref": "ACTA-2026-77"
+    },
+    {
+      "invoice_id": "INV-106",
+      "vendor_id": "V024",
+      "vendor_name": "Mensajeria Rayo SL",
+      "invoice_number": "MR-2026-3301",
+      "issue_date": "2026-06-24",
+      "received_date": "2026-06-25",
+      "currency": "EUR",
+      "amount_total": "145.20",
+      "description": "Mensajeria urgente propuestas cliente",
+      "po_ref": null,
+      "po_line_ref": null,
+      "iban_on_invoice": "ES2000491234770600000247",
+      "has_invoice_pdf": true,
+      "has_po_pdf": true,
+      "project_code": null,
+      "cashflow_amount_manual": null,
+      "case_note": "PLANTADA: NON-PO SIN datos internos (ni aprobador, ni centro de coste, ni soporte) -> RETENIDA en 'pendiente de datos internos' con la propuesta del agente (Operaciones/CO-001) esperando confirmacion humana"
     }
   ]
 }

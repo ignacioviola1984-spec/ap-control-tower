@@ -55,6 +55,33 @@ docker run --rm -p 8080:8080 -e PORT=8080 -e AP_DEMO_PASSWORD=ensayo-local ap-co
 el material confidencial jamas entra a la imagen. En Cloud Run, `--port` y las
 env vars se pasan en el deploy; la imagen no fija ninguno de los dos.
 
+## Extraccion de documentos (esquema v2)
+
+Modulo `ap_control_tower/extraction/`, ajustado con el analisis de facturas
+reales del cliente (las facturas reales viven fuera del repo: `invoices & OC/`
+y `Golden Records.xlsx` estan gitignoreados y un eval lo verifica).
+
+- **Esquema** (`schema.py`): `document_type` PRIMERO ("invoice" |
+  "proforma_or_advance_request" | "other"; la clasificacion es parte del
+  output evaluado) + 26 campos: identidad fiscal del proveedor (razon social
+  NUNCA inventada), fechas (vencimiento texto crudo + calculado), periodo de
+  servicio estructurado, IVA con `tratamiento_iva`, metodo de pago, IBAN con
+  soporte de enmascarado, y separacion estricta `po_reference` (solo si esta
+  etiquetado como PO/OC/pedido) vs `project_reference` (ORD-xxx y similares).
+- **Prompt** (`prompt.py`): generado desde el esquema, con la regla
+  anti-alucinacion explicita: campo no visible = null, nunca inferido;
+  "no esta" se distingue de "esta pero ilegible" via `campos_ilegibles`.
+- **Comparador** (`comparator.py`): los null cuentan (null==null es acierto);
+  inventar valor donde el humano etiqueto null es **alucinacion** y se
+  reporta por separado; ademas omisiones y discrepancias, con normalizacion
+  por tipo de campo.
+- **Fixtures** (`data/extraction/`): 5 documentos sinteticos que cubren los
+  casos reales: proforma sin CIF, domiciliacion SEPA, intracomunitaria con
+  reverse charge, IBAN enmascarado, vencimiento "45 days end of month".
+  Regenerar con `python -m ap_control_tower.extraction.synthetic_fixtures`.
+- **Etiquetado**: `data/extraction/labels_template.csv` (columnas
+  sincronizadas al esquema por eval) para etiquetar documentos nuevos.
+
 ## TODO (post-validacion)
 
 - La leyenda del sidebar "Modo demo · datos 100% sinteticos · Sin API keys ·

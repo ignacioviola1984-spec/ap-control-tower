@@ -1,0 +1,14 @@
+NIMBUS SUSCRIPCIONES SL
+CIF B66123456
+Factura n.: NB-2026-0187
+Fecha de emision: 01/07/2026
+
+Cliente: Meridia Consulting SL - CIF B00000000
+
+Concepto: cuota JULIO 2026 - plan Business (10 usuarios)
+Base imponible: 180,00 EUR
+IVA (21%): 37,80 EUR
+TOTAL: 217,80 EUR
+
+Forma de pago: domiciliacion bancaria SEPA. Mandato NB-4411.
+El cargo se realizara en la cuenta habitual del cliente.

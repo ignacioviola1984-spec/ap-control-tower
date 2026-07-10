@@ -1,8 +1,14 @@
 # ============================================================
 # MATERIAL CONFIDENCIAL DE LA CLIENTA - NUNCA COMMITEAR
 # docs/ contiene el mapa AS-IS real y el analisis del proceso.
+# invoices & OC/ contiene FACTURAS REALES del cliente y
+# Golden Records.xlsx el etiquetado humano sobre esas facturas.
 # ============================================================
 docs/
+invoices & OC/
+Golden Records.xlsx
+*.pdf
+*.xlsx
 *.docx
 *.doc
 Proceso actual de Accounts Payable de la Consultora.png

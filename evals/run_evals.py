@@ -24,8 +24,15 @@ la intencion declarada del dataset, NUNCA de correr el motor). Verifica:
   14. La app ARRANCA sin API keys y sin red externa: se lanza streamlit en un
       subproceso con un entorno minimo (solo AP_DEMO_PASSWORD) en un puerto
       libre elegido al azar, y el health endpoint responde ok.
+  15. Extraccion v2: esquema/template sincronizados, golden labels de las 5
+      fixtures validan y cubren los casos nuevos, comparador con semantica de
+      null (null==null es acierto; inventar donde era null es ALUCINACION y
+      se reporta por separado), regla de vencimiento calculable, y prompt con
+      la regla anti-alucinacion y document_type primero.
+  16. Confidencialidad: el material real del cliente (docs/, invoices & OC/,
+      Golden Records.xlsx, *.pdf) esta git-ignoreado.
 
-Uso: python evals/run_evals.py            (14 grupos)
+Uso: python evals/run_evals.py            (16 grupos)
      python evals/run_evals.py --sin-app  (salta el grupo 14, p. ej. en CI sin GUI)
 """
 
@@ -338,6 +345,98 @@ def main() -> int:
         print("== 14. La app arranca sin API keys ni red externa ==")
         check(_boot_app_check(), "streamlit sirve el health endpoint con entorno minimo "
                                  "(solo AP_DEMO_PASSWORD) en un puerto libre por CLI")
+
+    print("== 15. Extraccion v2: esquema, fixtures, comparador y prompt ==")
+    from datetime import date as _date
+
+    from ap_control_tower.extraction.comparator import (
+        compare_batch, labels_template_row, load_labels_csv)
+    from ap_control_tower.extraction.prompt import (
+        ANTI_HALLUCINATION_RULE, build_extraction_prompt)
+    from ap_control_tower.extraction.schema import (
+        FIELD_ORDER, compute_due_date, validate_document)
+
+    ext_dir = ROOT / "data" / "extraction"
+    with open(ext_dir / "labels_template.csv", encoding="utf-8-sig") as fh:
+        template_cols = fh.readline().strip().split(",")
+    check(template_cols == labels_template_row(),
+          f"labels_template.csv sincronizado con el esquema ({len(template_cols)} columnas)")
+    check(FIELD_ORDER[0] == "document_type", "document_type es el primer campo del esquema")
+
+    golden = load_labels_csv(ext_dir / "golden_labels.csv")
+    check(len(golden) == 5, f"5 fixtures en golden_labels.csv ({sorted(golden)})")
+    schema_errors = {d: validate_document(doc) for d, doc in golden.items()}
+    check(all(not e for e in schema_errors.values()),
+          f"golden labels validan contra el esquema {[ (d, e) for d, e in schema_errors.items() if e ] or ''}")
+
+    g1, g3, g4, g5 = golden["EXT-001"], golden["EXT-003"], golden["EXT-004"], golden["EXT-005"]
+    check(g1["document_type"] == "proforma_or_advance_request"
+          and g1["proveedor_tax_id"] is None and g1["numero_factura"] is None
+          and g1["tratamiento_iva"] == "no_desglosado"
+          and g1["fecha_vencimiento_calculada"] is None,
+          "EXT-001: proforma sin CIF, sin numero fiscal, IVA no desglosado, vencimiento no calculable")
+    check(golden["EXT-002"]["metodo_pago"] == "domiciliacion_direct_debit"
+          and golden["EXT-002"]["periodo_servicio_desde"] == "2026-07-01"
+          and golden["EXT-002"]["periodo_servicio_hasta"] == "2026-07-31",
+          "EXT-002: direct debit + 'cuota JULIO 2026' estructurada como periodo")
+    check(g3["tratamiento_iva"] == "intracomunitario_inversion_sujeto_pasivo"
+          and g3["proveedor_registro"] == "KVK 87654321"
+          and g3["po_reference"] is None and g3["project_reference"] == "ORD-2026-114",
+          "EXT-003: reverse charge + KVK + 'Order ref' va a project_reference, NO a po_reference")
+    check(g4["iban_enmascarado"] is True and "****" in (g4["iban"] or "")
+          and g4["po_reference"] == "PO-4471",
+          "EXT-004: IBAN enmascarado con digitos visibles + PO etiquetada")
+    check(g5["fecha_vencimiento_texto"] == "45 days end of month"
+          and g5["fecha_vencimiento_calculada"] == "2026-08-14",
+          "EXT-005: vencimiento '45 days end of month' etiquetado 2026-08-14")
+
+    check(compute_due_date("45 days end of month", _date(2026, 6, 10)) == _date(2026, 8, 14)
+          and compute_due_date("30 days", _date(2026, 6, 12)) == _date(2026, 7, 12)
+          and compute_due_date("15 dias", _date(2026, 6, 18)) == _date(2026, 7, 3)
+          and compute_due_date("al inicio del estudio", _date(2026, 6, 5)) is None,
+          "compute_due_date: reglas calculables y texto no calculable -> null")
+
+    perfect = compare_batch([(d, dict(doc), doc) for d, doc in golden.items()])
+    ps = perfect.summary()
+    check(ps["aciertos"] == ps["campos_comparados"] and ps["alucinaciones"] == 0
+          and ps["accuracy"] == 1.0,
+          f"extraccion perfecta -> 100% aciertos ({ps['campos_comparados']} campos)")
+    check(ps["aciertos_null"] > 30,
+          f"los null cuentan: {ps['aciertos_null']} aciertos donde el humano etiqueto null")
+
+    corrupted = {d: dict(doc) for d, doc in golden.items()}
+    corrupted["EXT-001"]["proveedor_razon_social_legal"] = "Estudio Delfos Investigacion SL"
+    corrupted["EXT-005"]["importe_total"] = "6543.00"
+    corrupted["EXT-003"]["iban"] = None
+    bad = compare_batch([(d, corrupted[d], golden[d]) for d in golden])
+    bs = bad.summary()
+    aluc = bad.alucinaciones
+    check(bs["alucinaciones"] == 1 and aluc[0].doc_id == "EXT-001"
+          and aluc[0].field == "proveedor_razon_social_legal",
+          "razon social inventada donde era null -> 1 ALUCINACION reportada por separado")
+    check(bs["discrepancias"] == 1 and bad.discrepancias[0].field == "importe_total",
+          "importe_total alterado -> 1 discrepancia")
+    check(bs["omisiones"] == 1 and bad.omisiones[0].field == "iban",
+          "IBAN no extraido donde existia -> 1 omision")
+
+    prompt = build_extraction_prompt("TEXTO DE PRUEBA")
+    check(ANTI_HALLUCINATION_RULE in prompt and "TEXTO DE PRUEBA" in prompt,
+          "prompt: regla anti-alucinacion explicita + documento inyectado")
+    check(all(f in prompt for f in FIELD_ORDER)
+          and prompt.index("document_type") < prompt.index("proveedor_nombre_comercial"),
+          "prompt: todos los campos presentes y document_type primero")
+
+    print("== 16. Confidencialidad: material real del cliente git-ignoreado ==")
+    import subprocess
+    try:
+        probe = subprocess.run(
+            ["git", "check-ignore", "docs/x.docx", "invoices & OC/factura.pdf",
+             "Golden Records.xlsx", "cualquier-cosa.pdf"],
+            cwd=str(ROOT), capture_output=True, text=True, timeout=10)
+        check(probe.returncode == 0 and len(probe.stdout.strip().splitlines()) == 4,
+              "docs/, invoices & OC/, Golden Records.xlsx y *.pdf estan ignorados")
+    except (OSError, subprocess.TimeoutExpired):
+        print("  SKIP  git no disponible en este entorno")
 
     print()
     if failures:

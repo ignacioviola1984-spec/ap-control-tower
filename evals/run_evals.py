@@ -32,13 +32,18 @@ la intencion declarada del dataset, NUNCA de correr el motor). Verifica:
   16. Flujos reales (negativos y unitarios): clasificador de documento,
       proveedor sin tax_id -> retencion de alta, domiciliacion sin mandato ->
       bloqueo C11, proforma sin presupuesto aprobado -> anticipo retenido.
-  17. Confidencialidad: el material real del cliente (docs/, invoices & OC/,
+  17. Revision humana: INVARIANTE-4, una non-PO sin confirmacion humana de
+      datos internos jamas llega a un lote; INVARIANTE-5, confirmar datos NO
+      libera pagos (el lote que recibe la factura confirmada vuelve a
+      necesitar sign-offs + gate); confirmaciones con nombre + timestamp en
+      el audit trail; guards de ReviewError; aprobacion de anticipo.
+  18. Confidencialidad: el material real del cliente (docs/, invoices & OC/,
       Golden Records.xlsx, *.pdf) esta git-ignoreado.
 
 Invariantes ademas de los originales: INVARIANTE-3, una proforma JAMAS puede
 aparecer en un lote de pago (grupo 4).
 
-Uso: python evals/run_evals.py            (17 grupos)
+Uso: python evals/run_evals.py            (18 grupos)
      python evals/run_evals.py --sin-app  (salta el grupo 14, p. ej. en CI sin GUI)
 """
 
@@ -502,7 +507,111 @@ def main() -> int:
     check(not any(e.invoice_id == "INV-101" for e in r_p.exceptions),
           "anticipo retenido no dispara C8 (todavia no hay dinero salido)")
 
-    print("== 17. Confidencialidad: material real del cliente git-ignoreado ==")
+    print("== 17. Revision humana: confirmar datos cambia estado, jamas libera ==")
+    from ap_control_tower.engine.review import ReviewError, approve_anticipo, confirm_internal_data
+
+    def expect_review_error(fn, label):
+        try:
+            fn()
+        except ReviewError as e:
+            check(True, f"{label} -> ReviewError: {e}")
+        else:
+            check(False, f"{label} -> NO levanto ReviewError")
+
+    # INVARIANTE-4 estructural: ninguna non-PO sin confirmacion en un lote
+    d18 = load_dataset(str(dataset_path))
+    r18, a18, c18 = run_month(d18)
+    in_batch_ids = {i for b in r18.batches for i in b.invoice_ids}
+    invs18 = {i.invoice_id: i for i in d18.invoices}
+    nonpo_in_batches = [i for i in in_batch_ids if invs18[i].po_ref is None]
+    check(all(invs18[i].internal_approver and invs18[i].cost_center
+              and invs18[i].contract_ref for i in nonpo_in_batches),
+          f"INVARIANTE-4: toda non-PO en un lote tiene gobierno completo ({nonpo_in_batches})")
+    pend18 = [r.invoice_id for r in r18.retenciones if r.reason == "datos_internos"]
+    check(not (set(pend18) & in_batch_ids),
+          f"INVARIANTE-4: las pendientes de datos internos ({pend18}) no estan en ningun lote")
+
+    # guards
+    expect_review_error(
+        lambda: confirm_internal_data(d18, r18, c18, a18, "", "INV-106",
+                                      "CO-001", "Operaciones / M. Sanz", "ACTA-1"),
+        "confirmar sin nombre")
+    expect_review_error(
+        lambda: confirm_internal_data(d18, r18, c18, a18, "Revisora Demo", "INV-106",
+                                      "CO-001", "Operaciones / M. Sanz", "  "),
+        "confirmar sin contrato/soporte")
+    expect_review_error(
+        lambda: confirm_internal_data(d18, r18, c18, a18, "Revisora Demo", "INV-024",
+                                      "CO-001", "X", "Y"),
+        "confirmar una factura que no esta pendiente (bloqueada por fraude)")
+
+    # confirmar INV-014 (recibida 10-jun) con lotes abiertos -> entra al lote 11-jun
+    thursdays = [b.batch_date for b in r18.batches]
+    status14 = confirm_internal_data(
+        d18, r18, c18, a18, "Revisora Demo", "INV-014",
+        "CO-020", "Marketing / J. Peralta", "EMAIL-ENCARGO-2026-05",
+        assignable_thursdays=thursdays)
+    b11 = next(b for b in r18.batches if b.batch_date.isoformat() == "2026-06-11")
+    check(status14 == "en_lote" and "INV-014" in b11.invoice_ids
+          and str(b11.total) == "40855.90",
+          f"INV-014 confirmada -> lote 11-jun (total pasa a EUR {b11.total})")
+    check(not any(r.invoice_id == "INV-014" for r in r18.retenciones),
+          "INV-014 salio de la cola de retenciones")
+    ev14 = [e for e in a18.events if e.action == "confirmacion-datos-internos"
+            and e.invoice_id == "INV-014"]
+    check(len(ev14) == 1 and ev14[0].evidence.get("confirmado_por") == "Revisora Demo"
+          and ev14[0].ts,
+          "audit trail: confirmacion de INV-014 con nombre y timestamp")
+    expect_review_error(
+        lambda: confirm_internal_data(d18, r18, c18, a18, "Revisora Demo", "INV-014",
+                                      "CO-020", "X", "Y"),
+        "confirmar dos veces la misma factura")
+
+    # confirmar INV-106 (recibida 25-jun, sin jueves posterior) -> proximo ciclo
+    status106 = confirm_internal_data(
+        d18, r18, c18, a18, "Revisora Demo", "INV-106",
+        "CO-001", "Operaciones / M. Sanz", "ALBARAN-3301",
+        assignable_thursdays=thursdays)
+    check(status106 == "proximo_ciclo" and "INV-106" in r18.carryover_ids,
+          "INV-106 confirmada sin jueves posterior abierto -> proximo ciclo")
+
+    # INVARIANTE-5: confirmar NO libera pagos
+    check(all(o.status not in ("liberada_al_banco", "cerrada")
+              for o in r18.outcomes.values()),
+          "INVARIANTE-5: ninguna factura quedo liberada/cerrada por confirmar datos")
+    wf18 = BatchWorkflow(b11, r18, c18, a18, DEFAULT_CONFIG)
+    a_sig = wf18.run_checker_a()
+    check(a_sig.ok, "el lote reabierto revalida con checker A viendo los datos confirmados")
+    wf18.run_checker_b()
+    expect_violation(wf18.release_to_bank,
+                     "liberar el lote reabierto sin aprobacion humana del gate")
+    wf18.approve(APPROVER)
+    wf18.release_to_bank()
+    check(wf18.state == ESTADO_LIBERADO,
+          "el gate sigue funcionando tras la confirmacion (con su propia aprobacion)")
+
+    # anticipo: aprobar registra quien y cuando
+    d18b = load_dataset(str(dataset_path))
+    from dataclasses import replace as _rep
+    d18b = type(d18b)(vendors=d18b.vendors, pos=d18b.pos,
+                      invoices=[_rep(i, presupuesto_aprobado=False)
+                                if i.invoice_id == "INV-101" else i
+                                for i in d18b.invoices])
+    r18b, a18b, c18b = run_month(d18b)
+    expect_review_error(lambda: approve_anticipo(d18b, r18b, c18b, a18b, " ", "INV-101"),
+                        "aprobar anticipo sin nombre")
+    st_ant = approve_anticipo(d18b, r18b, c18b, a18b, "Revisora Demo", "INV-101")
+    check(st_ant == "anticipo_pagado_sin_factura_final",
+          "anticipo aprobado -> C8 detecta anticipo ya pagado sin factura final")
+    ev_ant = [e for e in a18b.events if e.action == "aprobacion-anticipo"]
+    check(len(ev_ant) == 1 and ev_ant[0].evidence.get("aprobado_por") == "Revisora Demo",
+          "audit trail: aprobacion de anticipo con nombre y timestamp")
+    check(not any("INV-101" in b.invoice_ids for b in r18b.batches),
+          "el anticipo aprobado sigue sin poder entrar a un lote (INVARIANTE-3)")
+    check(a18.verify_chain() and a18b.verify_chain(),
+          "cadenas de auditoria verificadas tras las acciones de revision humana")
+
+    print("== 18. Confidencialidad: material real del cliente git-ignoreado ==")
     import subprocess
     try:
         probe = subprocess.run(

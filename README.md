@@ -234,7 +234,22 @@ runs/                  # audit trails por corrida (gitignoreado)
 docs/                  # confidencial, gitignoreado, NUNCA commitear
 ```
 
-## Las 6 vistas del tablero
+## Las 7 vistas del tablero
+
+**El humano interviene en dos lugares**: confirma datos en *Revisión humana*,
+libera dinero en *Aprobación de pagos*. Confirmar datos nunca libera un pago:
+si una factura confirmada entra a un lote, ese lote pierde sus sign-offs, se
+revalida por los dos checkers y vuelve al gate. Invariantes bajo eval:
+INVARIANTE-4 (una non-PO sin confirmación humana de datos internos jamás
+llega a un lote) e INVARIANTE-5 (confirmar datos no libera pagos).
+
+0. **Revisión humana**: cola de trabajo de confirmaciones que no son dinero:
+   (a) non-PO pendientes de datos internos, con la propuesta del agente
+   (centro de coste, aprobador, con su regla) y confirmar/corregir que cambia
+   el estado real; (b) anticipos/proformas con su flujo propio (aprobar
+   registra quién y cuándo; pendiente de factura final visible); (c) vendor
+   master incompleto. Ámbar = espera confirmación humana; rojo = bloqueada
+   por control. Todo click queda en el audit trail con nombre y timestamp.
 
 1. **Corrida del mes**: "Procesar mes" corre el motor real factura por factura
    con progreso visible y velocidad regulable (instantaneo / ~40 s / modo

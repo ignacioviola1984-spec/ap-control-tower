@@ -75,20 +75,59 @@ def render() -> None:
 
     with right:
         st.markdown("##### Lo que el agente extrajo y decidió")
+
+        # --- motor v2: clasificacion, ruta, metodo y tratamiento ---
+        from ...engine.controls import classify_document
+
+        kind, _ = classify_document(inv)
+        kind_label = {"invoice": ("Factura fiscal", "info"),
+                      "proforma_or_advance_request": ("Proforma / anticipo", "flag"),
+                      "other": ("Otro documento", "mut")}[kind]
+        ruta = ("Ruta PO · match vs OC", "info") if inv.po_ref else \
+               ("Ruta non-PO gobernada", "flag")
+        flujo = {"transferencia": "Transferencia → lote del jueves + gate humano",
+                 "domiciliacion_direct_debit": "Direct debit → conciliación post-débito (sin lote)",
+                 "tarjeta": "Tarjeta → conciliación contra extracto (sin lote)"}[inv.metodo_pago]
+        causa = "—"
+        if o.blocking_control:
+            causa = f"bloqueada por {o.blocking_control}"
+        elif (ret := next((r for r in run["result"].retenciones
+                           if r.invoice_id == chosen), None)) is not None:
+            causa = f"retenida: falta {', '.join(ret.missing)}"
+        elif (tarea := next((t for t in run["result"].tareas
+                             if t.invoice_id == chosen), None)) is not None:
+            causa = f"tarea de conciliación ({tarea.tipo})"
+        elif o.batch_date:
+            causa = f"lote del jueves {o.batch_date.isoformat()}"
+        elif o.status.startswith("anticipo"):
+            causa = "flujo de anticipos (jamás entra a un lote)"
+        st.markdown(
+            f"<div class='apct-card'>"
+            f"{badge(kind_label[0], kind_label[1])} &nbsp;"
+            f"{badge(ruta[0], ruta[1])} &nbsp;"
+            f"{badge('IVA: ' + inv.tratamiento_iva.replace('_', ' '), 'mut')}"
+            f"<div style='margin-top:8px;color:#5A6572;font-size:13px;'>"
+            f"<b>Método de pago:</b> {flujo}<br>"
+            f"<b>Estado y causa:</b> {o.status} · {causa}"
+            f"{('<br><b>Gobierno non-PO:</b> aprobador ' + (inv.internal_approver or '—') + ' · CC ' + (inv.cost_center or '—') + ' · soporte ' + (inv.contract_ref or '—')) if not inv.po_ref and kind == 'invoice' else ''}"
+            f"</div></div>",
+            unsafe_allow_html=True,
+        )
         st.markdown(
             f"<div class='apct-card'>"
             f"<div style='display:flex;justify-content:space-between;align-items:center;'>"
             f"<div style='font-size:17px;font-weight:750;'>{inv.invoice_id} · "
             f"{inv.vendor_name}</div>{status_badge(o.status)}</div>"
             f"<table class='apct-table' style='margin-top:10px;border:none;'>"
-            f"<tr><td>Número</td><td><b>{inv.invoice_number}</b></td>"
+            f"<tr><td>Número</td><td><b>{inv.invoice_number or '— (sin número fiscal)'}</b></td>"
             f"<td>Emisión / recepción</td><td>{inv.issue_date} / {inv.received_date}</td></tr>"
             f"<tr><td>Importe</td><td><b>{eur(inv.amount_total)} {inv.currency}</b></td>"
             f"<td>OC referenciada</td><td>{inv.po_ref or '—'}"
             f"{(' · línea ' + inv.po_line_ref) if inv.po_line_ref else ''}</td></tr>"
             f"<tr><td>Proyecto / BU</td><td>{(po.project_code + ' · ' + po.project_code[:2]) if po else '—'}</td>"
             f"<td>Cuenta contable</td><td>{po.gl_account if po else '—'}</td></tr>"
-            f"<tr><td>IBAN en factura</td><td colspan='3'><code>{inv.iban_on_invoice}</code></td></tr>"
+            f"<tr><td>IBAN en factura</td><td colspan='3'>"
+            f"{('<code>' + inv.iban_on_invoice + '</code>') if inv.iban_on_invoice else '— (no aplica: ' + inv.metodo_pago.replace('_', ' ') + ')'}</td></tr>"
             f"<tr><td>IBAN en maestro</td><td colspan='3'><code>{vendor.iban}</code></td></tr>"
             f"</table></div>",
             unsafe_allow_html=True,

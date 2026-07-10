@@ -43,6 +43,15 @@ def main() -> int:
     for inv_id, flags in sorted(flagged.items()):
         print(f"  {inv_id}: {', '.join(flags)}")
     print()
+    print(f"Retenidas a la espera de datos (NO bloqueadas) ({len(result.retenciones)}):")
+    for r in result.retenciones:
+        prop = (f" | propuesta del agente: {r.propuesta}" if r.propuesta else "")
+        print(f"  {r.invoice_id} <- {r.reason}: falta {', '.join(r.missing)}{prop}")
+    print()
+    print(f"Tareas de conciliacion (metodos fuera del lote) ({len(result.tareas)}):")
+    for t in result.tareas:
+        print(f"  {t.invoice_id}: {t.tipo} - {t.detail}")
+    print()
 
     print("Lotes de pago: doble sign-off agentico y gate humano:")
     for b in result.batches:

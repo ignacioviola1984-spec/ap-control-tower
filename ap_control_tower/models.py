@@ -18,12 +18,15 @@ from typing import Any
 class Vendor:
     vendor_id: str
     name: str
-    tax_id: str
+    tax_id: str | None        # None/vacio -> retencion hasta completar alta
     iban: str                 # cuenta destino segun el maestro de proveedores
     bank_name: str
     payment_terms_days: int
     intercompany: bool
     category: str             # descripcion del servicio que presta
+    country: str = "ES"
+    razon_social_confirmada: bool = True   # False -> razon social ambigua: retencion
+    sepa_mandate_ref: str | None = None    # mandato SEPA registrado (domiciliacion)
 
 
 @dataclass(frozen=True)
@@ -59,15 +62,15 @@ class Invoice:
     invoice_id: str           # id interno del sistema (INV-xxx)
     vendor_id: str
     vendor_name: str          # nombre tal como figura en la factura
-    invoice_number: str       # numero del proveedor
+    invoice_number: str | None  # numero fiscal del proveedor (None en proformas)
     issue_date: date
     received_date: date
     currency: str
     amount_total: Decimal     # importe total, impuestos incluidos
     description: str
-    po_ref: str | None        # OC referenciada (None si el email vino sin OC)
+    po_ref: str | None        # OC referenciada (None = documento non-PO)
     po_line_ref: str | None
-    iban_on_invoice: str      # cuenta que la factura pide pagar
+    iban_on_invoice: str | None  # cuenta que el documento pide pagar (None en DD/tarjeta)
     has_invoice_pdf: bool     # adjuntos del email simulado
     has_po_pdf: bool
     project_code: str | None  # codigo de proyecto que trae la factura
@@ -76,19 +79,48 @@ class Invoice:
     # el registro operativo heredado; si difiere del importe real, C7 lo detecta.
     cashflow_amount_manual: Decimal | None = None
 
+    # --- flujos reales (non-PO, proformas, metodos de pago) ---
+    tratamiento_iva: str = "nacional"       # nacional | intracomunitario_inversion_sujeto_pasivo | no_desglosado
+    metodo_pago: str = "transferencia"      # transferencia | domiciliacion_direct_debit | tarjeta
+    menciona_factura_final: bool = False    # senial de proforma/anticipo
+    presupuesto_aprobado: bool | None = None    # proformas: aprobacion interna del presupuesto
+    anticipo_pagado: bool = False               # proformas: el anticipo ya se pago
+    factura_final_ref: str | None = None        # proformas: factura fiscal final vinculada
+    internal_approver: str | None = None    # non-PO: aprobador interno asignado
+    cost_center: str | None = None          # non-PO: centro de coste asignado
+    contract_ref: str | None = None         # non-PO: contrato o soporte referenciado
+
 
 # ---------- Resultados del motor ----------
 
-# Estados de factura. El pipeline solo emite los tres primeros; los demas
-# solo pueden crearlos el gate humano (engine/batch.py) y el cierre
-# (engine/closing.py). "liberada_al_banco" es inalcanzable sin aprobacion
-# humana registrada, por diseno y por eval.
+# Estados de documento. El pipeline emite los de la primera lista; los de
+# gate/cierre solo pueden crearlos engine/batch.py y engine/closing.py.
+# "liberada_al_banco" es inalcanzable sin aprobacion humana registrada,
+# por diseno y por eval.
 STATUS_BLOQUEADA = "bloqueada"
 STATUS_EN_LOTE = "en_lote"
 STATUS_PROXIMO_CICLO = "proximo_ciclo"
+# Retenciones (pendientes de datos, NO bloqueos por control):
+STATUS_PENDIENTE_DATOS_INTERNOS = "pendiente_datos_internos"    # non-PO sin gobierno completo
+STATUS_RETENIDO_ALTA_PROVEEDOR = "retenido_alta_proveedor"      # vendor master incompleto
+# Flujo de anticipos (proformas; JAMAS entran a un lote de pago):
+STATUS_ANTICIPO_RETENIDO = "anticipo_retenido_sin_aprobacion"
+STATUS_ANTICIPO_PENDIENTE = "anticipo_pendiente_factura_final"
+STATUS_ANTICIPO_EXCEPCION = "anticipo_pagado_sin_factura_final"
+# Metodos de pago que no pasan por el lote del jueves:
+STATUS_DOMICILIACION = "domiciliacion_pendiente_conciliacion"
+STATUS_TARJETA = "tarjeta_pendiente_conciliacion"
+# Otros documentos:
+STATUS_OTRO_DOC = "otro_documento_revisar"
+# Gate y cierre:
 STATUS_LOTE_DEVUELTO = "lote_devuelto"          # el gate humano rechazo el lote
 STATUS_LIBERADA_AL_BANCO = "liberada_al_banco"  # solo tras aprobacion humana
 STATUS_CERRADA = "cerrada"                      # pago conciliado y pasivo cancelado
+
+# Tipos de documento (etapa 0)
+DOC_INVOICE = "invoice"
+DOC_PROFORMA = "proforma_or_advance_request"
+DOC_OTHER = "other"
 
 SEVERITY_HARD = "hard"
 SEVERITY_SOFT = "soft"
@@ -127,6 +159,24 @@ class ExceptionItem:
 
 
 @dataclass
+class RetencionItem:
+    """Documento retenido a la espera de datos internos (NO bloqueado por control)."""
+    invoice_id: str
+    reason: str               # datos_internos | alta_proveedor | revision_manual
+    missing: list[str]
+    propuesta: dict[str, Any] # lo que el agente propone; el humano confirma
+    detail: str
+
+
+@dataclass
+class TareaConciliacion:
+    """Tarea post-pago para metodos que no pasan por el lote del jueves."""
+    invoice_id: str
+    tipo: str                 # post_debito | extracto_tarjeta
+    detail: str
+
+
+@dataclass
 class PaymentBatch:
     batch_date: date
     invoice_ids: list[str]
@@ -145,6 +195,8 @@ class RunResult:
     batches: list[PaymentBatch]
     exceptions: list[ExceptionItem]
     carryover_ids: list[str]
+    retenciones: list[RetencionItem] = field(default_factory=list)
+    tareas: list[TareaConciliacion] = field(default_factory=list)
 
 
 # ---------- (De)serializacion JSON ----------
@@ -154,6 +206,10 @@ def _dec(v: str) -> Decimal:
 
 
 def vendor_from_dict(d: dict) -> Vendor:
+    d = dict(d)
+    d.setdefault("country", "ES")
+    d.setdefault("razon_social_confirmada", True)
+    d.setdefault("sepa_mandate_ref", None)
     return Vendor(**d)
 
 
@@ -196,6 +252,15 @@ def invoice_from_dict(d: dict) -> Invoice:
         cashflow_amount_manual=(
             _dec(d["cashflow_amount_manual"]) if d.get("cashflow_amount_manual") else None
         ),
+        tratamiento_iva=d.get("tratamiento_iva", "nacional"),
+        metodo_pago=d.get("metodo_pago", "transferencia"),
+        menciona_factura_final=d.get("menciona_factura_final", False),
+        presupuesto_aprobado=d.get("presupuesto_aprobado"),
+        anticipo_pagado=d.get("anticipo_pagado", False),
+        factura_final_ref=d.get("factura_final_ref"),
+        internal_approver=d.get("internal_approver"),
+        cost_center=d.get("cost_center"),
+        contract_ref=d.get("contract_ref"),
     )
 
 

@@ -43,7 +43,11 @@ def exception_severity(exc) -> str:
     """Severidad de presentacion segun el control que bloqueo (ver docstring)."""
     if exc.control_id == Controls.C6_DATOS_BANCARIOS:
         return "maxima"
-    if exc.control_id in (Controls.C2_DUPLICADOS, Controls.C3_AUTORIZACION_OC):
+    if exc.control_id in (Controls.C2_DUPLICADOS, Controls.C3_AUTORIZACION_OC,
+                          Controls.C8_ANTICIPO_SIN_FACTURA_FINAL,
+                          Controls.C11_MANDATO_DOMICILIACION):
+        # anticipo pagado sin factura final = dinero salido sin documento
+        # fiscal; domiciliacion sin mandato = debito sin autorizacion: alta
         return "alta"
     if exc.control_id == Controls.C5_MATCH:
         pct = Decimal(str(exc.evidence.get("diferencia_pct", "0")))

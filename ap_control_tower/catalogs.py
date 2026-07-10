@@ -60,3 +60,23 @@ def bu_from_project(project_code: str) -> str | None:
     """Deriva la BU del prefijo del codigo de proyecto; None si no mapea."""
     prefix = (project_code or "")[:2].upper()
     return prefix if prefix in BUSINESS_UNITS else None
+
+
+# ------------------------------------------------------------ reglas non-PO
+# Para facturas sin OC, el agente PROPONE centro de coste, aprobador interno,
+# cuenta y categoria de gestion segun el rubro del proveedor (proveedor->area).
+# El humano confirma: la propuesta nunca se autoconfirma.
+# (rubro del maestro) -> (centro de coste, aprobador, GL, categoria de gestion)
+VENDOR_AREA_RULES = {
+    "Mensajeria": ("CO-001", "Operaciones / M. Sanz", "629000", "Instalaciones y oficina"),
+    "Notaria": ("CO-001", "Direccion Financiera / L. Ortega", "623000", "Overhead general"),
+    "Diseno y branding": ("CO-020", "Marketing / J. Peralta", "627000", "Marketing y ventas"),
+    "Software por suscripcion": ("CO-014", "IT / R. Duarte", "628000", "IT y sistemas"),
+    "Investigacion de mercado": ("CN-215", "Direccion de Proyectos / A. Braga", "623100", "Coste directo de proyecto"),
+}
+DEFAULT_AREA_RULE = ("CO-001", "Direccion Financiera / L. Ortega", "629000", "Overhead general")
+
+
+def non_po_rule_for(category: str) -> tuple[str, str, str, str]:
+    """Regla proveedor->area para propuestas non-PO (con default documentado)."""
+    return VENDOR_AREA_RULES.get(category, DEFAULT_AREA_RULE)

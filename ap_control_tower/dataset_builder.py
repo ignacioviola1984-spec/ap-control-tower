@@ -19,6 +19,14 @@ Casos plantados (el resto son limpias):
            C7 excepciona con el diff (tercer hallazgo: dos fuentes de verdad
            que nadie concilia)
 
+Flujos reales (INV-101..106): proforma con anticipo pagado sin factura final
+(excepcion C8, jamas en un lote), domiciliacion SEPA con mandato (tarea de
+conciliacion post-debito, sin lote), tarjeta (tarea contra extracto, sin
+lote), intracomunitaria con inversion del sujeto pasivo (con OC, al lote),
+non-PO limpia con gobierno completo (al lote), non-PO sin datos internos
+(retenida con propuesta del agente). INV-014 pasa de bloqueo hard a
+"pendiente de datos internos" en la ruta non-PO gobernada.
+
 Los expected outputs se derivan de la INTENCION declarada de cada fila (no de
 correr el motor): el eval compara motor vs intencion, nunca motor vs si mismo.
 
@@ -54,7 +62,22 @@ VENDORS = [
     ("V016", "Gestoria Fuentes SL",         "B93456783", "ES7301281234700600000176", "Banco Fiduciario",      15, False, "Gestoria y nominas"),
     ("V017", "Impresiones Rapidas SL",      "B94567894", "ES5120481234710600000189", "Caja Grafica",          15, False, "Imprenta"),
     ("V018", "Mobiliario Norte SL",         "B95678905", "ES2900731234720600000192", "Banco del Norte",       30, False, "Mobiliario de oficina"),
+    # --- proveedores de los flujos reales (proforma, DD, tarjeta, intracom, non-PO) ---
+    ("V019", "Instituto Qualia Research SL", "B12890344", "ES3701821234730600000205", "Banco de Estudios",    30, False, "Investigacion de mercado"),
+    ("V020", "Nimbus Suscripciones SL",      "B66123456", "ES8500721234740600000218", "Banco Digital SA",     15, False, "Software por suscripcion"),
+    ("V021", "CloudSuite Tools SL",          "B77345211", "ES6301821234750600000221", "Banco Azul",           15, False, "Software por suscripcion"),
+    ("V022", "Panelbase Europe BV",          "NL823456789B01", "NL02ABNA0123456789",  "ABN AMRO (NL)",        30, False, "Investigacion de mercado"),
+    ("V023", "Notaria Ferran y Asociados SLP", "J40112233", "ES4101281234760600000234", "Banco Fiduciario",   15, False, "Notaria"),
+    ("V024", "Mensajeria Rayo SL",           "B09877655", "ES2000491234770600000247", "Caja Urbana",          15, False, "Mensajeria"),
 ]
+
+# Atributos extra del maestro que no entran en la tupla base
+VENDOR_EXTRAS = {
+    "V011": {"country": "GB"},
+    "V012": {"country": "MX"},
+    "V020": {"sepa_mandate_ref": "MANDATO-NB-4411"},
+    "V022": {"country": "NL"},
+}
 
 # IBAN falso que aparece en la factura del caso de fraude (V003 Nubia):
 FRAUD_IBAN = "ES1714651009120038466210"
@@ -123,6 +146,8 @@ POS = [
      [("fee-consultor-senior", "Fee seleccion consultor senior", "7500.00")]),
     ("PO-2026-095", "V017", "CO-020", "629000", "Marketing y ventas", "1500.00",
      [("material-propuestas", "Impresion material de propuestas", "312.60")]),
+    ("PO-2026-130", "V022", "CN-215", "623100", "Coste directo de proyecto", "12000.00",
+     [("panel-consumo", "Panel online estudio de consumo Espana", "4200.00")]),
 ]
 
 # ---------------------------------------------------------------- facturas
@@ -178,8 +203,10 @@ INVOICES = [
     # --- Bloqueadas semana del 8-12 jun ---
     ("INV-014", "V007", "KR-2026-041", "2026-06-09", "2026-06-10", "4850.00",
      "Rediseno identidad visual y plantillas", None, None, None, False,
-     "PLANTADA: email sin OC adjunta -> bloqueo por completitud",
-     "bloqueada", "C1_COMPLETITUD", [], None),
+     "PLANTADA: factura sin OC -> ruta non-PO gobernada; sin aprobador, centro de "
+     "coste ni contrato queda RETENIDA en 'pendiente de datos internos' (antes era "
+     "bloqueo hard); el agente propone Marketing/CO-020 por regla proveedor->area",
+     "pendiente_datos_internos", None, [], None),
     ("INV-015", "V010", "2026-31", "2026-06-07", "2026-06-12", "6400.00",
      "Diagnostico operaciones retail - fase 1", "PO-2026-061", "fase-1", None, True,
      "PLANTADA: casi-duplicada de INV-007 (mismo proveedor e importe, numero distinto, emision a 3 dias)",
@@ -267,7 +294,58 @@ INVOICES = [
      "Refacturacion gastos de grupo - Q2", "PO-2026-005", "refacturacion-gastos-q2", None, True,
      "limpia intercompany, programada para el primer jueves de julio",
      "proximo_ciclo", None, ["INTERCOMPANY"], None),
+
+    # --- Flujos reales (recibidas 22-25 jun) ---
+    ("INV-101", "V019", None, "2026-06-19", "2026-06-22", "4500.00",
+     "Anticipo 50% estudio cualitativo consumidor", None, None, None, True,
+     "PLANTADA: PROFORMA/anticipo (sin numero fiscal, sin IVA desglosado, menciona "
+     "factura final). Presupuesto aprobado y anticipo PAGADO sin factura final "
+     "posterior -> excepcion C8. Jamas entra a un lote de pago",
+     "anticipo_pagado_sin_factura_final", None, [], None),
+    ("INV-102", "V020", "NB-2026-0187", "2026-06-22", "2026-06-23", "217.80",
+     "Cuota JULIO 2026 - plan Business (10 usuarios)", None, None, None, True,
+     "PLANTADA: DOMICILIACION SEPA con mandato registrado, non-PO con gobierno "
+     "completo. No entra al lote: genera tarea de conciliacion post-debito. "
+     "Sin control de IBAN (aplica solo a transferencias)",
+     "domiciliacion_pendiente_conciliacion", None, [], None),
+    ("INV-103", "V021", "CS-2026-8812", "2026-06-22", "2026-06-23", "96.80",
+     "Suscripcion mensual herramientas de diseno", None, None, None, True,
+     "PLANTADA: pago con TARJETA, non-PO con gobierno completo. No entra al lote: "
+     "genera tarea de conciliacion contra extracto de tarjeta",
+     "tarjeta_pendiente_conciliacion", None, [], None),
+    ("INV-104", "V022", "PB-2026-0455", "2026-06-23", "2026-06-24", "4200.00",
+     "Panel online estudio de consumo Espana", "PO-2026-130", "panel-consumo", None, True,
+     "PLANTADA: INTRACOMUNITARIA con inversion del sujeto pasivo (proveedor NL), "
+     "con OC y match exacto; el asiento propone tratamiento intracomunitario",
+     "en_lote", None, [], "2026-06-25"),
+    ("INV-105", "V023", "NF-2026-0912", "2026-06-23", "2026-06-24", "380.50",
+     "Escritura de poderes y legitimaciones", None, None, None, True,
+     "PLANTADA: NON-PO LIMPIA con gobierno completo (aprobador + centro de coste + "
+     "acta soporte); imputacion propuesta por regla proveedor->area y entra al lote",
+     "en_lote", None, [], "2026-06-25"),
+    ("INV-106", "V024", "MR-2026-3301", "2026-06-24", "2026-06-25", "145.20",
+     "Mensajeria urgente propuestas cliente", None, None, None, True,
+     "PLANTADA: NON-PO SIN datos internos (ni aprobador, ni centro de coste, ni "
+     "soporte) -> RETENIDA en 'pendiente de datos internos' con la propuesta del "
+     "agente (Operaciones/CO-001) esperando confirmacion humana",
+     "pendiente_datos_internos", None, [], None),
 ]
+
+# Atributos de flujos reales por documento (se mezclan al construir el JSON)
+FLOWS_EXTRAS = {
+    "INV-101": {"tratamiento_iva": "no_desglosado", "menciona_factura_final": True,
+                "presupuesto_aprobado": True, "anticipo_pagado": True},
+    "INV-102": {"metodo_pago": "domiciliacion_direct_debit", "iban_on_invoice": None,
+                "internal_approver": "IT / R. Duarte", "cost_center": "CO-014",
+                "contract_ref": "CONTRATO-NB-2026"},
+    "INV-103": {"metodo_pago": "tarjeta", "iban_on_invoice": None,
+                "internal_approver": "IT / R. Duarte", "cost_center": "CO-014",
+                "contract_ref": "SUSCRIPCION-CS-889"},
+    "INV-104": {"tratamiento_iva": "intracomunitario_inversion_sujeto_pasivo"},
+    "INV-105": {"internal_approver": "Direccion Financiera / L. Ortega",
+                "cost_center": "CO-001", "contract_ref": "ACTA-2026-77"},
+    "INV-106": {},
+}
 
 
 def build_dataset() -> dict:
@@ -288,6 +366,7 @@ def build_dataset() -> dict:
                 "vendor_id": v[0], "name": v[1], "tax_id": v[2], "iban": v[3],
                 "bank_name": v[4], "payment_terms_days": v[5],
                 "intercompany": v[6], "category": v[7],
+                **VENDOR_EXTRAS.get(v[0], {}),
             }
             for v in VENDORS
         ],
@@ -317,6 +396,9 @@ def build_dataset() -> dict:
                 "project_code": po_project.get(r[7]) if r[7] else None,
                 "cashflow_amount_manual": CASHFLOW_MANUAL_OVERRIDES.get(r[0]),
                 "case_note": r[11],
+                # FLOWS_EXTRAS va al final: puede pisar iban_on_invoice con None
+                # (domiciliacion/tarjeta no piden cuenta destino)
+                **FLOWS_EXTRAS.get(r[0], {}),
             }
             for r in INVOICES
         ],
@@ -344,6 +426,13 @@ def build_expected() -> dict:
             blocked_amount += amount
 
     total_paid = sum((b["total"] for b in batches.values()), Decimal("0"))
+    retenidas = [r[0] for r in INVOICES
+                 if r[12] in ("pendiente_datos_internos", "retenido_alta_proveedor",
+                              "otro_documento_revisar", "anticipo_retenido_sin_aprobacion")]
+    tareas = [r[0] for r in INVOICES
+              if r[12] in ("domiciliacion_pendiente_conciliacion",
+                           "tarjeta_pendiente_conciliacion")]
+    anticipos_exc = [r[0] for r in INVOICES if r[12] == "anticipo_pagado_sin_factura_final"]
     return {
         "meta": {
             "source": "Derivado de la intencion declarada del dataset (no de correr el motor).",
@@ -366,10 +455,14 @@ def build_expected() -> dict:
             "in_batches_total": str(total_paid),
             "carryover_count": sum(1 for r in INVOICES if r[12] == "proximo_ciclo"),
             "soft_flagged_ids": sorted(r[0] for r in INVOICES if r[14]),
+            "retenciones_ids": sorted(retenidas),
+            "tareas_conciliacion_ids": sorted(tareas),
+            "anticipos_excepcion_ids": sorted(anticipos_exc),
         },
         "invariants": [
             "INVARIANTE-1: la factura con fraude bancario (INV-024) NUNCA aparece en un lote de pago.",
             "INVARIANTE-2: el estado 'liberada_al_banco' es inalcanzable sin aprobacion humana registrada.",
+            "INVARIANTE-3: una proforma JAMAS puede aparecer en un lote de pago.",
         ],
         "planted_cases": {
             r[0]: r[11] for r in INVOICES if r[11].startswith("PLANTADA")

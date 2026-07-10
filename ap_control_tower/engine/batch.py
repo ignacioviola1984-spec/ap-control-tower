@@ -50,9 +50,12 @@ from .controls import (
     check_conciliacion,
     check_datos_bancarios,
     check_duplicados,
+    check_gobierno_non_po,
     check_match,
+    check_vendor_master,
     checker_validate_imputacion,
     maker_propose_imputacion,
+    maker_propose_imputacion_non_po,
 )
 
 # Estados del lote
@@ -119,16 +122,24 @@ def _revalidation_context(inv: Invoice, batch_date, result: RunResult,
 
 def revalidate_invoice(inv: Invoice, batch_date, result: RunResult,
                        ctx: RunContext) -> list:
-    """Checker A por factura: re-ejecuta los 7 controles. Devuelve resultados."""
+    """Checker A por factura: re-ejecuta TODOS los controles que aplican al
+    documento segun su ruta (PO / non-PO) y metodo de pago."""
     sub = _revalidation_context(inv, batch_date, result, ctx)
     results = [check_completitud(inv, sub), check_duplicados(inv, sub),
-               check_autorizacion_oc(inv, sub)]
-    po = ctx.dataset.pos.get(inv.po_ref or "")
-    if po is not None:
-        proposal = maker_propose_imputacion(inv, po)
+               check_vendor_master(inv, sub)]
+    if inv.po_ref is not None:
+        results.append(check_autorizacion_oc(inv, sub))
+        po = ctx.dataset.pos.get(inv.po_ref)
+        if po is not None:
+            proposal = maker_propose_imputacion(inv, po)
+            results.append(checker_validate_imputacion(inv, proposal, sub))
+            results.append(check_match(inv, sub))
+    else:
+        results.append(check_gobierno_non_po(inv, sub))
+        proposal = maker_propose_imputacion_non_po(inv, sub)
         results.append(checker_validate_imputacion(inv, proposal, sub))
-        results.append(check_match(inv, sub))
-    results.append(check_datos_bancarios(inv, sub))
+    if inv.metodo_pago == "transferencia":
+        results.append(check_datos_bancarios(inv, sub))
     results.append(check_conciliacion(inv, sub))
     return results
 

@@ -48,10 +48,12 @@ def render() -> None:
     st.markdown(
         "<div class='apct-card'><b>“El sistema se auto-bloquea ante alertas. La "
         "aprobación para liberar dinero es siempre humana.”</b><br>"
-        "<span style='color:#5A6572;'>Cada lote llega acá con el "
+        "<span style='color:#5A6572;'>El humano interviene en dos lugares: confirma "
+        "datos en <b>Revisión humana</b>, libera dinero ACÁ. Cada lote llega con el "
         "doble sign-off agéntico ya firmado: el checker A revalidó cada factura contra "
-        "los 7 controles y el checker B validó el agregado. Nada se libera al banco "
-        "sin una aprobación humana con nombre, decisión y timestamp.</span></div>",
+        "todos los controles de su ruta y el checker B validó el agregado. Nada se "
+        "libera al banco sin una aprobación humana con nombre, decisión y timestamp. "
+        "El lote contiene únicamente <b>transferencias</b>.</span></div>",
         unsafe_allow_html=True,
     )
     if not run_is_ready():
@@ -63,6 +65,37 @@ def render() -> None:
     result = run["result"]
     workflows = run["workflows"]
     invoices = {i.invoice_id: i for i in ds.invoices}
+
+    # Que quedo FUERA del lote y por que (coherente con el motor v2)
+    dd = [o for o in result.outcomes.values() if o.status == "domiciliacion_pendiente_conciliacion"]
+    tj = [o for o in result.outcomes.values() if o.status == "tarjeta_pendiente_conciliacion"]
+    anticipos = [o for o in result.outcomes.values() if o.status.startswith("anticipo")]
+    fuera = []
+    if dd:
+        fuera.append(f"<b>{len(dd)} domiciliación(es)</b> ({', '.join(o.invoice_id for o in dd)}): "
+                     f"van por conciliación post-débito, no por el lote")
+    if tj:
+        fuera.append(f"<b>{len(tj)} pago(s) con tarjeta</b> ({', '.join(o.invoice_id for o in tj)}): "
+                     f"van por conciliación contra extracto")
+    if result.retenciones:
+        fuera.append(f"<b>{len(result.retenciones)} retenida(s)</b> "
+                     f"({', '.join(r.invoice_id for r in result.retenciones)}): "
+                     f"pendientes de confirmación humana en Revisión humana, no entran")
+    if anticipos:
+        fuera.append(f"<b>{len(anticipos)} anticipo(s)/proforma(s)</b> "
+                     f"({', '.join(o.invoice_id for o in anticipos)}): "
+                     f"flujo propio, jamás entran a un lote")
+    blocked_n = sum(1 for o in result.outcomes.values() if o.status == "bloqueada")
+    if blocked_n:
+        fuera.append(f"<b>{blocked_n} bloqueada(s) por control</b>: en la cola de excepciones")
+    if fuera:
+        st.markdown(
+            "<div class='apct-card' style='border-left:4px solid #B7791F;'>"
+            "<b>Fuera de los lotes de este mes (solo entran transferencias validadas):</b>"
+            "<ul style='margin:6px 0 0 0;padding-left:18px;color:#5A6572;'>"
+            + "".join(f"<li>{x}</li>" for x in fuera) + "</ul></div>",
+            unsafe_allow_html=True,
+        )
 
     dates = [b.batch_date.isoformat() for b in result.batches]
     chosen = st.radio("Lote del jueves", dates, horizontal=True,

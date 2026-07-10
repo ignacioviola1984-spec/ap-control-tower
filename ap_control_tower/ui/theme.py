@@ -155,6 +155,10 @@ def sidebar_footer(run_id: str | None, commit: str | None) -> None:
         "“El sistema se auto-bloquea ante alertas.<br>La aprobación para liberar "
         "dinero es siempre humana.”</div>"
         "<div style='font-size:11px;color:#9FB3C8 !important;margin-top:8px;'>"
+        "El humano interviene en dos lugares:<br>"
+        "confirma datos en <b>Revisión humana</b> ·<br>"
+        "libera dinero en <b>Aprobación de pagos</b></div>"
+        "<div style='font-size:11px;color:#9FB3C8 !important;margin-top:8px;'>"
         "Modo demo · datos 100% sintéticos<br>Sin API keys · sin red · local</div></div>",
         unsafe_allow_html=True,
     )

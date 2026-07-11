@@ -22,9 +22,16 @@ TEXT = "#1A2332"
 _CSS = f"""
 <style>
 /* ---- limpieza del look default ---- */
-#MainMenu, footer, header [data-testid="stToolbar"] {{ visibility: hidden; }}
+#MainMenu, footer {{ visibility: hidden; }}
+[data-testid="stToolbar"], [data-testid="stStatusWidget"],
 [data-testid="stDecoration"] {{ display: none; }}
-.block-container {{ padding-top: 1.4rem; padding-bottom: 3rem; max-width: 1260px; }}
+/* Colapsa la banda superior vacia del header de Streamlit (evita el hueco
+   que empujaba el titulo). No ocupa alto y es transparente. */
+[data-testid="stHeader"] {{ background: transparent; height: 0; min-height: 0; }}
+/* Aire suficiente arriba: el header ya no reserva espacio, asi que el
+   padding del contenido debe dar lugar completo al primer titulo. */
+.block-container {{ padding-top: 2.6rem; padding-bottom: 3rem; max-width: 1260px; }}
+h1, h2 {{ line-height: 1.3; }}
 html, body, [class*="css"] {{
   font-family: -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   color: {TEXT};

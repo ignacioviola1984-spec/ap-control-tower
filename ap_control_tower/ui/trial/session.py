@@ -31,7 +31,15 @@ class TrialSession:
 
 
 def new_session() -> TrialSession:
-    return TrialSession(audit=AuditTrail(commit="trial-session"))
+    audit = AuditTrail(commit="trial-session")
+    audit.add(agent="trial", action="sesion-iniciada")
+    return TrialSession(audit=audit)
+
+
+def record_intake(session: TrialSession, canal: str, cantidad: int) -> None:
+    """Registra una ingesta por canal (carga-manual | gmail) sin contenido."""
+    session.audit.add(agent="trial", action="ingesta", result=canal,
+                      evidence={"canal": canal, "documentos": cantidad})
 
 
 def add_results(session: TrialSession, results) -> None:
@@ -76,13 +84,29 @@ def reset_session() -> None:
             st.session_state.pop(key, None)
 
 
+def _clear_and_rerun() -> None:
+    import streamlit as st
+
+    reset_session()
+    st.rerun()
+
+
 def render_sidebar_actions() -> None:
     import streamlit as st
 
     session = get_session()
     st.sidebar.markdown("---")
     st.sidebar.caption(f"Sesión iniciada · {len(session.results)} documento(s) en memoria")
-    if st.sidebar.button("🗑  Finalizar y borrar esta sesión", use_container_width=True):
-        reset_session()
-        st.rerun()
+    if st.sidebar.button("🗑  Finalizar y borrar esta sesión", use_container_width=True,
+                         key="_trial_clear_sidebar"):
+        _clear_and_rerun()
     st.sidebar.caption("Nada se guarda: al cerrar la pestaña o borrar, todo desaparece.")
+
+
+def render_clear_action() -> None:
+    """Accion visible de borrado para el area principal (p. ej. Resultados)."""
+    import streamlit as st
+
+    if st.button("🗑  Finalizar y borrar esta sesión", use_container_width=True,
+                 key="_trial_clear_main"):
+        _clear_and_rerun()

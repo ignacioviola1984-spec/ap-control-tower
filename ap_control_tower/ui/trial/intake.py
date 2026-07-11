@@ -28,7 +28,9 @@ def _process_and_store(files) -> None:
     for name, detail in errors:
         st.error(f"No se pudo procesar **{name}**: {detail}")
     if results:
-        sess.add_results(sess.get_session(), results)
+        session = sess.get_session()
+        sess.add_results(session, results)
+        sess.record_intake(session, canal="carga-manual", cantidad=len(results))
         st.success(f"{len(results)} documento(s) procesado(s). "
                    "Abrí **Ver resultados con mis facturas**.")
 

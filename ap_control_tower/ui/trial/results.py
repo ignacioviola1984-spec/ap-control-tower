@@ -31,3 +31,6 @@ def render() -> None:
 
     st.markdown("#### Audit trail de la sesión (temporal)")
     ev.render_session_audit(session.audit)
+
+    st.markdown("---")
+    sess.render_clear_action()

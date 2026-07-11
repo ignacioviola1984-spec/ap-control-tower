@@ -1,7 +1,8 @@
-"""Opcion 3: abrir la Demo completa (URL por configuracion externa)."""
+"""Enlace externo a la Demo completa (no es una vista del trial)."""
 
 from __future__ import annotations
 
+from html import escape
 import os
 
 import streamlit as st
@@ -15,17 +16,20 @@ def demo_url() -> str | None:
     return url.strip() if url and url.strip() else None
 
 
-def render() -> None:
-    st.markdown("## Abrir la Demo completa")
-    st.html(
-        "<div class='apct-card'><b>AP Control Tower — Demo con datos sintéticos.</b><br>"
-        "<span style='color:#5A6572;'>La corrida del mes completa: controles maker-checker, "
-        "cola de excepciones, revisión humana, gate de aprobación, auditoría y caso de negocio."
-        "</span></div>",
-    )
+def render_sidebar() -> None:
+    """Muestra el acceso a la otra aplicacion, separado de la navegacion."""
+    st.sidebar.markdown("---")
+    st.sidebar.caption("Recorrido operativo con datos sintéticos")
     url = demo_url()
     if url:
-        st.link_button("Abrir AP Control Tower Demo ↗", url,
-                       use_container_width=True, type="primary")
+        safe_url = escape(url, quote=True)
+        st.sidebar.html(
+            "<a href='" + safe_url + "' target='_blank' rel='noopener noreferrer' "
+            "style='display:block;width:100%;box-sizing:border-box;padding:10px 12px;"
+            "border-radius:8px;background:#0F4C81;border:1px solid #2E6FA7;"
+            "color:#FFFFFF !important;text-decoration:none !important;text-align:center;"
+            "font-weight:700;font-size:14px;'>↗&nbsp; Abrir AP Control Tower Demo</a>"
+        )
     else:
-        st.info(f"La URL de la Demo no está configurada (variable de entorno `{DEMO_URL_ENV}`).")
+        st.sidebar.caption(
+            f"Demo no configurada (`{DEMO_URL_ENV}`).")

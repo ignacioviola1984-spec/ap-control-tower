@@ -1,4 +1,4 @@
-"""Navegacion de la app trial: EXACTAMENTE tres opciones."""
+"""Navegacion del trial: tres vistas internas y un enlace externo."""
 
 from __future__ import annotations
 
@@ -6,21 +6,22 @@ import streamlit as st
 
 INTAKE = "🧾  Probar con mis facturas"
 RESULTS = "📊  Ver resultados con mis facturas"
-DEMO = "↗  Abrir la Demo completa"
+BUSINESS_CASE = "📈  Consultar caso de negocio"
 
-# Contrato: la app trial tiene exactamente estas tres opciones (ver test_app_modes).
-TRIAL_OPTIONS = [INTAKE, RESULTS, DEMO]
+# El acceso a la Demo NO es una vista: se renderiza como enlace externo separado.
+TRIAL_OPTIONS = [INTAKE, RESULTS, BUSINESS_CASE]
 
 
 def render() -> None:
-    from . import demo_link, intake, results, session
+    from . import business_case, demo_link, intake, results, session
 
     session.render_sidebar_actions()
 
     choice = st.sidebar.radio("Navegación", TRIAL_OPTIONS, label_visibility="collapsed")
+    demo_link.render_sidebar()
     if choice == INTAKE:
         intake.render()
     elif choice == RESULTS:
         results.render()
     else:
-        demo_link.render()
+        business_case.render()

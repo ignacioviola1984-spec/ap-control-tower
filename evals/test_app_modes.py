@@ -1,7 +1,7 @@
 """Eval: contrato de los dos modos (demo y trial). exit 0 = verde.
 
 - La Demo conserva sus vistas y NO muestra "PoC documentos reales" (ahora Gmail).
-- La app trial tiene EXACTAMENTE tres opciones.
+- La app trial tiene tres vistas internas y un enlace externo separado.
 - El enlace a la Demo usa configuracion externa (AP_DEMO_URL).
 - Ambos modos ARRANCAN (streamlit sirve el health endpoint).
 
@@ -90,13 +90,15 @@ def main() -> int:
                      "Aprobación de pagos", "Registro de auditoría", "Caso de negocio"):
         check(any(esperado in k for k in labels), f"la Demo conserva '{esperado}'")
 
-    print("== Trial: exactamente tres opciones ==")
+    print("== Trial: tres vistas internas ==")
     from ap_control_tower.ui.trial import shell
     check(len(shell.TRIAL_OPTIONS) == 3, f"trial tiene 3 opciones ({len(shell.TRIAL_OPTIONS)})")
     joined = " | ".join(shell.TRIAL_OPTIONS)
     check("Probar con mis facturas" in joined, "opción 'Probar con mis facturas'")
     check("Ver resultados con mis facturas" in joined, "opción 'Ver resultados con mis facturas'")
-    check("Abrir la Demo completa" in joined, "opción 'Abrir la Demo completa'")
+    check("Consultar caso de negocio" in joined, "opción 'Consultar caso de negocio'")
+    check("Abrir" not in joined and "Demo completa" not in joined,
+          "el enlace a la Demo NO es una vista del selector")
 
     print("== Enlace a la Demo por configuración externa ==")
     from ap_control_tower.ui.trial import demo_link
@@ -130,7 +132,7 @@ def main() -> int:
     if failures:
         print(f"APP MODES ROJO: {len(failures)} fallas")
         return 1
-    print("APP MODES VERDE: demo sin PoC, trial 3 opciones, enlace externo, ambos arrancan (exit 0)")
+    print("APP MODES VERDE: demo sin PoC, trial 3 vistas, enlace externo, ambos arrancan (exit 0)")
     return 0
 
 

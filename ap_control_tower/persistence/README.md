@@ -13,8 +13,15 @@ viven unicamente aca.
 | `config.py` | Resuelve la URL de base SOLO desde entorno (`AP_DATABASE_URL`/`DATABASE_URL`). Nunca credenciales en repo. |
 | `models_sql.py` | Modelo relacional (documentos, facturas, proveedores + historial bancario, OC/lineas, controles, excepciones, revision humana, lotes, aprobaciones, pagos, auditoria encadenada). |
 | `session.py` | Fabrica de engine/sesion; fuerza FK en SQLite; `session_scope` transaccional. |
-| `repositories.py` | Round-trip motor→base (`persist_run`) idempotente + lecturas con datos bancarios enmascarados. |
+| `repositories.py` | Round-trip motor→base (`persist_run`) idempotente + auditoría encadenada (`append_chained_event`) + lecturas con datos bancarios enmascarados. |
 | `masking.py` | Enmascarado de IBAN / cuenta / tax_id para UI, logs y respuestas. |
+| `state_service.py` | Transiciones de fase del ciclo de vida sobre documentos persistidos (Fase 2): valida contra la matriz y audita el cambio encadenado. |
+
+El **ciclo de vida** del documento (fases canónicas + matriz de transiciones que
+rechaza saltos inseguros) vive en `ap_control_tower/engine/lifecycle.py` (puro,
+sin base). `persist_run` deriva `documentos.fase_ciclo_vida` desde el estado del
+motor; `state_service.transition_document` mueve la fase validando la transición
+y registrando un evento de auditoría encadenado.
 
 Migraciones versionadas en `migrations/` (Alembic). El modelo se hace cumplir
 con: id de documento unico, indice parcial de unicidad de factura fiscal entre
@@ -67,10 +74,18 @@ with session_scope(engine) as s:
 - **Integridad de auditoria:** `repositories.verify_persisted_chain(session, run_id)`
   revalida la cadena de hash desde la base.
 
+## Migraciones (workflow)
+
+`0001` es la linea base congelada (create_table explicito). Las siguientes son
+incrementales por autogenerado: `python -m alembic revision --autogenerate -m "..."`
+(con `AP_DATABASE_URL` apuntando a una base en el head anterior) y luego
+`alembic upgrade head`. `alembic check` no debe detectar drift modelo↔migracion.
+
 ## Verificacion
 
 ```bash
-python evals/test_persistence.py        # round-trip + migraciones + restricciones (exit 0/1)
+python evals/test_lifecycle.py          # matriz de transiciones (puro, sin base)
+python evals/test_persistence.py        # round-trip + migraciones + transiciones (exit 0/1)
 ```
 
 Corre sobre SQLite temporal por defecto; con `AP_TEST_DATABASE_URL` apunta a

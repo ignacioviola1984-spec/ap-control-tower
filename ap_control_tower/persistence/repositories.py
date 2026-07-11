@@ -17,6 +17,7 @@ from sqlalchemy.orm import Session
 
 from ..audit import AuditTrail
 from ..engine.controls import classify_document
+from ..engine.lifecycle import phase_for_status
 from ..models import (
     DOC_OTHER,
     DOC_PROFORMA,
@@ -115,6 +116,7 @@ def upsert_documento_factura(session: Session, inv: Invoice, proveedor_id: int,
     doc.origen = "synthetic"
     doc.fecha_recepcion = inv.received_date
     doc.estado_procesamiento = estado_operativo or "recibido"
+    doc.fase_ciclo_vida = phase_for_status(estado_operativo)
     doc.mime_type = "application/pdf"
     doc.cantidad_paginas = 1
     session.flush()
@@ -296,14 +298,73 @@ def masked_vendor_view(prov: Proveedor) -> dict:
 
 
 def verify_persisted_chain(session: Session, run_id: str) -> bool:
-    """Revalida la cadena de hash de una corrida persistida (integridad)."""
-    from ..audit import AuditTrail as _AT
+    """Revalida la cadena de hash persistida RECOMPUTANDO cada hash.
+
+    Reconstruye el AuditEvent del dominio desde cada fila y compara su hash
+    recalculado con el almacenado (detecta tampering, no solo rupturas de
+    enlace). Equivalente a AuditTrail.verify_chain sobre la base.
+    """
+    from ..audit import AuditEvent, AuditTrail as _AT
     rows: Iterable[AuditoriaEvento] = session.scalars(
         select(AuditoriaEvento).where(AuditoriaEvento.run_id == run_id)
         .order_by(AuditoriaEvento.seq)).all()
     prev = _AT.GENESIS
     for ev in rows:
-        if ev.prev_hash != prev:
+        rebuilt = AuditEvent(
+            seq=ev.seq, ts=ev.ts, run_id=ev.run_id, commit=ev.commit or "",
+            agent=ev.actor, action=ev.accion, invoice_id=ev.invoice_id,
+            control_id=ev.control_id, result=ev.resultado,
+            evidence=ev.evidencia or {}, prev_hash=ev.prev_hash)
+        if ev.prev_hash != prev or rebuilt.compute_hash() != ev.hash:
             return False
         prev = ev.hash
     return True
+
+
+def append_chained_event(
+    session: Session, run_id: str, actor: str, accion: str,
+    *, commit: str = "", invoice_id: str | None = None,
+    control_id: str | None = None, result: str | None = None,
+    evidencia: dict | None = None, entidad_tipo: str | None = None,
+    entidad_id: str | None = None, estado_anterior: str | None = None,
+    estado_posterior: str | None = None, correlation_id: str | None = None,
+) -> AuditoriaEvento:
+    """Anexa un evento a la cadena de auditoria de ``run_id`` (append-only).
+
+    Calcula seq y prev_hash desde el ultimo evento del run y computa el hash con
+    la misma logica del dominio, de modo que la cadena mixta (corrida + eventos
+    vivos) verifique con ``verify_persisted_chain``. Nunca actualiza/borra.
+    """
+    from datetime import datetime, timezone
+
+    from ..audit import AuditEvent, AuditTrail as _AT
+
+    last = session.scalar(
+        select(AuditoriaEvento).where(AuditoriaEvento.run_id == run_id)
+        .order_by(AuditoriaEvento.seq.desc()).limit(1))
+    seq = (last.seq + 1) if last else 1
+    prev_hash = last.hash if last else _AT.GENESIS
+    evidence = dict(evidencia or {})
+    # los estados entran al payload hasheado (cubre tampering de esas columnas)
+    if estado_anterior is not None:
+        evidence.setdefault("estado_anterior", estado_anterior)
+    if estado_posterior is not None:
+        evidence.setdefault("estado_posterior", estado_posterior)
+    ts = datetime.now(timezone.utc).isoformat(timespec="milliseconds")
+    dom_ev = AuditEvent(
+        seq=seq, ts=ts, run_id=run_id, commit=commit, agent=actor, action=accion,
+        invoice_id=invoice_id, control_id=control_id, result=result,
+        evidence=evidence, prev_hash=prev_hash)
+    dom_ev.hash = dom_ev.compute_hash()
+
+    row = AuditoriaEvento(
+        run_id=run_id, seq=seq, commit=commit, ts=dom_ev.ts, actor=actor,
+        accion=accion, entidad_tipo=entidad_tipo or ("factura" if invoice_id else None),
+        entidad_id=entidad_id or invoice_id, invoice_id=invoice_id,
+        control_id=control_id, resultado=result,
+        estado_anterior=estado_anterior, estado_posterior=estado_posterior,
+        correlation_id=correlation_id or invoice_id, evidencia=evidence,
+        prev_hash=prev_hash, hash=dom_ev.hash)
+    session.add(row)
+    session.flush()
+    return row

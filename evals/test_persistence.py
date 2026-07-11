@@ -57,10 +57,13 @@ def _check_migrations() -> None:
         con = sqlite3.connect(mig_tmp.name)
         tablas = {r[0] for r in con.execute(
             "select name from sqlite_master where type='table'")}
+        cols_doc = {r[1] for r in con.execute("PRAGMA table_info(documentos)")}
         con.close()
         check({"documentos", "facturas", "proveedores", "auditoria",
                "alembic_version"} <= tablas,
               f"upgrade head crea el esquema sobre base vacia ({len(tablas)} tablas)")
+        check("fase_ciclo_vida" in cols_doc,
+              "migracion 0002 agrega fase_ciclo_vida a documentos (ALTER incremental)")
         command.upgrade(cfg, "head")                       # base existente
         check(True, "re-aplicar migraciones sobre base existente no falla ni borra")
     finally:
@@ -220,6 +223,64 @@ def main() -> int:
             dup_bloqueado_ok = False
         check(dup_bloqueado_ok,
               "un duplicado BLOQUEADO por C2 coexiste (no rompe el indice parcial)")
+
+        # -- Fase 2: fase del ciclo de vida derivada y transiciones controladas
+        from ap_control_tower.engine.lifecycle import IllegalTransition, Phase
+        from ap_control_tower.persistence.state_service import (
+            apply_critical_data_change,
+            transition_document,
+        )
+
+        with session_scope(engine) as s:
+            d24 = s.scalar(select(Documento).where(Documento.id_interno == "INV-024"))
+            check(d24.fase_ciclo_vida == Phase.BLOQUEADO,
+                  "persist_run derivo fase_ciclo_vida: INV-024 -> bloqueado")
+            en_lote = s.scalar(select(Documento).where(
+                Documento.fase_ciclo_vida == Phase.PREPARADO_PARA_PAGO).limit(1))
+            check(en_lote is not None,
+                  "hay documentos en fase preparado_para_pago (en_lote)")
+
+        # transicion INVALIDA: bloqueado -> liberado debe ser rechazada y NO persistir
+        rechazada = False
+        try:
+            with session_scope(engine) as s:
+                transition_document(s, "INV-024", Phase.LIBERADO,
+                                    actor="test", run_id=result.run_id)
+        except IllegalTransition:
+            rechazada = True
+        check(rechazada, "transicion bloqueado -> liberado rechazada (no se libera un bloqueado)")
+        with session_scope(engine) as s:
+            d24 = s.scalar(select(Documento).where(Documento.id_interno == "INV-024"))
+            check(d24.fase_ciclo_vida == Phase.BLOQUEADO,
+                  "tras el rechazo, INV-024 sigue en bloqueado (no cambio)")
+
+        # transicion VALIDA: bloqueado -> controles_en_ejecucion (excepcion resuelta)
+        with session_scope(engine) as s:
+            nueva = transition_document(s, "INV-024", Phase.CONTROLES_EN_EJECUCION,
+                                        actor="Supervisora Demo", run_id=result.run_id,
+                                        evidencia={"motivo": "excepcion resuelta"})
+        check(nueva == Phase.CONTROLES_EN_EJECUCION,
+              "bloqueado -> controles_en_ejecucion aplicado (excepcion resuelta)")
+
+        # editar dato critico en un preparado_para_pago -> reinicia controles
+        with session_scope(engine) as s:
+            en_lote = s.scalar(select(Documento).where(
+                Documento.fase_ciclo_vida == Phase.PREPARADO_PARA_PAGO).limit(1))
+            objetivo = en_lote.id_interno
+            fase_post = apply_critical_data_change(
+                s, objetivo, actor="Analista Demo", run_id=result.run_id,
+                evidencia={"campo": "importe_total"})
+        check(fase_post == Phase.CONTROLES_EN_EJECUCION,
+              f"editar dato critico de {objetivo} (preparado_para_pago) -> controles")
+
+        # la cadena de auditoria sigue verificando tras los eventos vivos
+        with session_scope(engine) as s:
+            check(verify_persisted_chain(s, result.run_id),
+                  "cadena de auditoria verifica (recomputo) tras transiciones vivas")
+            n_trans = s.scalar(select(func.count()).select_from(AuditoriaEvento)
+                               .where(AuditoriaEvento.accion.in_(
+                                   ["transicion-estado", "edicion-dato-critico"])))
+            check(n_trans >= 2, f"eventos de transicion encadenados registrados ({n_trans})")
 
     finally:
         engine.dispose()

@@ -214,6 +214,10 @@ class Documento(Base):
     origen: Mapped[str] = mapped_column(String(32), default="synthetic")
     fecha_recepcion: Mapped[date | None] = mapped_column(Date)
     estado_procesamiento: Mapped[str] = mapped_column(String(40), default="recibido")
+    # Fase canonica del ciclo de vida (Fase 2). Derivada de estado_procesamiento
+    # via engine.lifecycle.phase_for_status; las transiciones las valida
+    # persistence.state_service contra la matriz del ciclo de vida.
+    fase_ciclo_vida: Mapped[str | None] = mapped_column(String(32), index=True)
     ubicacion_segura: Mapped[str | None] = mapped_column(String(512))
     cantidad_paginas: Mapped[int | None] = mapped_column(Integer)
     mime_type: Mapped[str | None] = mapped_column(String(64))

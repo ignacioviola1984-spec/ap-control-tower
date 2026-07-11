@@ -678,7 +678,16 @@ def extract_uploaded_document(filename: str, data: bytes) -> PocResult:
         return local_result
 
     try:
-        return process_invoice_bytes(filename, data, config)
+        managed_result = process_invoice_bytes(filename, data, config)
+        # El texto vectorial local suele preservar mejor etiquetas y guiones
+        # de referencias que el OCR administrado. Solo completamos ausencias;
+        # nunca reemplazamos una entidad que Document AI haya encontrado.
+        for field in ("po_reference", "project_reference"):
+            local_value = local_result.document.get(field)
+            if managed_result.document.get(field) in (None, "") and local_value:
+                managed_result.document[field] = local_value
+                managed_result.field_confidences[field] = Decimal("0.95")
+        return managed_result
     except NotInvoiceDocumentError:
         return local_result
     except Exception as exc:

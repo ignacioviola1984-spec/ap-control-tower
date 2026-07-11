@@ -630,7 +630,7 @@ def main() -> int:
     suite = unittest.defaultTestLoader.loadTestsFromName("evals.test_document_ai_adapter")
     adapter_result = unittest.TextTestRunner(verbosity=0).run(suite)
     check(adapter_result.wasSuccessful()
-          and adapter_result.testsRun >= 8,
+          and adapter_result.testsRun >= 11,
           f"adaptador Document AI: {adapter_result.testsRun} pruebas unitarias verdes")
 
     print()

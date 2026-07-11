@@ -21,9 +21,9 @@ Repositorio **privado**. El material de referencia del proceso real vive en `doc
 | Doble sign-off agentico + gate humano + cierre | Listo (Dia 2) |
 | UI Streamlit: tablero + PoC de documentos reales con Document AI | Listo |
 | Password gate server-side (env AP_DEMO_PASSWORD) | Listo |
-| Dockerfile + .dockerignore (puerto por CLI/PORT, sin hardcodeo) | Listo; build pendiente porque Docker no esta instalado en esta maquina |
+| Dockerfile + .dockerignore (puerto por CLI/PORT, sin hardcodeo) | Build y smoke test verdes en Docker dentro de WSL |
 | Evals con contrato de exit code (19 grupos, incl. app y adaptador Document AI) | Verdes (exit 0) |
-| Ensayo humano + fixes | En curso |
+| Ensayo humano + fixes | Listo |
 
 ## Como correr la UI
 
@@ -45,28 +45,41 @@ AP_DEMO_PASSWORD='eleg-un-password' streamlit run app.py --server.port 8501
 ## Docker (ensayo local y Cloud Run)
 
 ```bash
+# Dentro de WSL. El login ADC es interactivo y se hace una sola vez.
+gcloud auth application-default login
+
 # build (GIT_COMMIT queda en el audit trail de la imagen)
 docker build --build-arg GIT_COMMIT=$(git rev-parse --short HEAD) -t ap-control-tower .
 
-# ensayo local: requiere credenciales ADC de Google Cloud para procesar facturas
+# ensayo local: monta ADC de WSL como archivo de solo lectura
 docker run --rm -p 8080:8080 \
   -e PORT=8080 -e AP_DEMO_PASSWORD=ensayo-local \
-  -e GOOGLE_CLOUD_PROJECT=mi-proyecto \
-  -e DOCUMENT_AI_LOCATION=us \
-  -e DOCUMENT_AI_PROCESSOR_ID=mi-processor-id \
-  -e DOCUMENT_AI_ACCESS_TOKEN="$(gcloud auth print-access-token)" \
+  --env-file config/gcp-runtime.example \
+  -e GOOGLE_APPLICATION_CREDENTIALS=/var/secrets/google/adc.json \
+  -v "$HOME/.config/gcloud/application_default_credentials.json:/var/secrets/google/adc.json:ro" \
   ap-control-tower
 # abrir http://localhost:8080
 ```
+
+Configuracion no secreta validada:
+
+- Proyecto: `singular-backup-501617-r6`
+- Invoice Parser: `ap-control-tower-invoice-parser`
+- Location: `us`
+- Processor ID: `761304b2b69eba0`
+
+Los valores viven en `config/gcp-runtime.example`; el password y las
+credenciales nunca se escriben en el repo.
 
 `.dockerignore` excluye `docs/`, `*.docx`, `.env`, `.git`, `runs/` y `__pycache__`:
 el material confidencial jamas entra a la imagen. En Cloud Run, `--port` y las
 env vars se pasan en el deploy; la imagen no fija ninguno de los dos.
 
-La cuenta de servicio de Cloud Run necesita `roles/documentai.apiUser`. Las
-facturas se envian al Invoice Parser del proyecto Google Cloud; la app no
-persiste una copia local. Proformas y ordenes de compra conservan el flujo
-deterministico local.
+La cuenta de servicio de Cloud Run necesita `roles/documentai.apiUser`. En
+Cloud Run las credenciales vienen del metadata server: no se monta ADC ni se
+pasa `DOCUMENT_AI_ACCESS_TOKEN`. Las facturas se envian al Invoice Parser del
+proyecto Google Cloud; la app no persiste una copia local. Proformas y ordenes
+de compra conservan el flujo deterministico local.
 
 ## Extraccion de documentos (esquema v2)
 
@@ -101,6 +114,11 @@ y `Golden Records.xlsx` estan gitignoreados y un eval lo verifica).
 - **Evaluacion administrada**: `python evals/run_document_ai_poc.py docs/poc-real`
   procesa una carpeta ignorada y deja el CSV resultante bajo `runs/`, tambien
   ignorado por Git.
+- **Prueba real autorizada (2026-07-11)**: 11 documentos procesados; 8
+  facturas por Invoice Parser y 3 documentos no-factura por el extractor local.
+  Los PDFs y resultados detallados permanecen fuera de Git. Tambien se valido
+  el circuito Docker (WSL) -> Document AI con una factura real montada en modo
+  solo lectura.
 
 ## Como correr y verificar (Dia 1)
 

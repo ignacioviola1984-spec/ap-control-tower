@@ -41,7 +41,8 @@ VAT_PREFIX = (
     "NL|NO|PL|PT|RO|SE|SI|SK|CH"
 )
 TAX_ID_RE = re.compile(
-    rf"\b(?:(?:{VAT_PREFIX})[A-Z0-9]{{8,14}}|[ABCDEFGHJKLMNPQRSUVW]\d{{7}}[0-9A-J])\b",
+    rf"\b(?:(?:{VAT_PREFIX})(?=[A-Z0-9]{{8,14}}\b)(?=[A-Z0-9]*\d)[A-Z0-9]{{8,14}}|"
+    rf"[ABCDEFGHJKLMNPQRSUVW]\d{{7}}[0-9A-J])\b",
     re.IGNORECASE,
 )
 REGISTRY_RE = re.compile(r"\b(?:KVK|RCS|REG(?:ISTRO)?\.?)\s*[:#]?\s*([A-Z0-9 .-]{4,24})", re.IGNORECASE)
@@ -248,7 +249,11 @@ AMOUNT_RE = re.compile(
 
 
 def _amounts(line: str) -> list[Decimal]:
-    return [v for v in (_decimal(m.group(0)) for m in AMOUNT_RE.finditer(line)) if v is not None]
+    # Algunos PDFs separan visualmente el millar como ``1 .320,00``. Quitar
+    # solo el espacio entre un digito y el separador conserva la evidencia y
+    # evita degradar el importe a 320,00.
+    normalized = re.sub(r"(?<=\d)\s+(?=[.,]\d)", "", line)
+    return [v for v in (_decimal(m.group(0)) for m in AMOUNT_RE.finditer(normalized)) if v is not None]
 
 
 def _find_amount(lines: list[str], labels: tuple[str, ...], reject: tuple[str, ...] = ()) -> Decimal | None:
@@ -301,6 +306,14 @@ def _legal_entities(lines: list[str]) -> list[str]:
 
 
 def _extract_names(doc: dict, lines: list[str], text: str) -> None:
+    if doc["document_type"] == "other":
+        labelled_supplier = _first_regex((
+            r"(?im)^\s*Proveedor\s+Nombre\s*:\s*([^\n]+)$",
+            r"(?im)^\s*Proveedor\s*:\s*([^\n]+)$",
+        ), text)
+        if labelled_supplier:
+            doc["proveedor_nombre_comercial"] = labelled_supplier
+
     for i, line in enumerate(lines[:15]):
         if "client supplier" in _fold(line) and i + 1 < len(lines):
             client, supplier = _split_client_supplier(lines[i + 1])
@@ -587,7 +600,7 @@ def _extract_references(doc: dict, text: str) -> None:
         doc["po_reference"] = re.sub(r"\s+", " ", po).strip()
 
     project = _first_regex((
-        r"\b(?:Order ref|Referencia(?: de estudio)?|Project|Proyecto|Contrato)\s*[:#-]?\s*([A-Z]{2,}[- ]?\d{3,}[A-Z0-9-]*)",
+        r"\b(?:Order ref|Referencia(?: de estudio)?|Project|Proyecto|Contrato(?: del proyecto)?)\s*[:#-]?\s*([A-Z]{2,}[- ]?\d{3,}[A-Z0-9-]*)",
     ), text)
     if project and doc["po_reference"] != project:
         doc["project_reference"] = re.sub(r"\s+", " ", project).strip()

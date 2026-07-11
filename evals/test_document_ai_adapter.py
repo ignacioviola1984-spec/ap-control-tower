@@ -18,7 +18,7 @@ from ap_control_tower.extraction.document_ai import (
     extract_uploaded_document,
     map_document_ai_result,
 )
-from ap_control_tower.extraction.pdf_poc import PdfText, PocResult
+from ap_control_tower.extraction.pdf_poc import PdfText, PocResult, extract_document
 from ap_control_tower.extraction.schema import empty_document
 
 
@@ -239,6 +239,82 @@ SERVICIOS VERDES UNA TINTA S.L.U. N.I.F: B12345678
         self.assertEqual(result.engine, "fallback_local")
         self.assertLessEqual(result.confidence, Decimal("0.49"))
         self.assertIn("no configurado", result.warnings[0].casefold())
+
+    def test_local_oc_preserves_spaced_thousands_and_avoids_fake_tax_ids(self):
+        pdf = PdfText(
+            path=Path("Orden de Compra EURE 1583.pdf"),
+            pages=1,
+            text=(
+                "ORDEN DE COMPRA EURE 1583\nProveedor Nombre: GESMAR\n"
+                "Incentivos & Referentes 1 .320,00 EUR\n"
+                "Total 1 .320,00 EUR\nDesgrabaciones & Traducciones\n"
+                "En caso de varias imputaciones se deberan desagregar."
+            ),
+        )
+        doc = extract_document(pdf).document
+        self.assertEqual(doc["importe_total"], "1320.00")
+        self.assertEqual(doc["po_reference"], "EURE 1583")
+        self.assertEqual(doc["proveedor_nombre_comercial"], "GESMAR")
+        self.assertIsNone(doc["proveedor_tax_id"])
+        self.assertIsNone(doc["cliente_tax_id"])
+
+    def test_contract_project_reference_is_not_promoted_to_po(self):
+        pdf = PdfText(
+            path=Path("dynata.pdf"),
+            pages=1,
+            text=(
+                "Factura\nNumero de factura: ES01-ARIV-0010205\n"
+                "Contrato del proyecto: ORD-1796742-G6C4-ES01\n"
+                "Base imponible: 17.410,00 EUR\nIVA 21%: 3.656,10 EUR\n"
+                "Total general: 21.066,10 EUR"
+            ),
+        )
+        doc = extract_document(pdf).document
+        self.assertEqual(doc["project_reference"], "ORD-1796742-G6C4-ES01")
+        self.assertIsNone(doc["po_reference"])
+
+    def test_managed_invoice_keeps_visible_local_reference_when_ocr_omits_it(self):
+        local_doc = empty_document()
+        local_doc.update({
+            "document_type": "invoice",
+            "numero_factura": "ES01-ARIV-0010205",
+            "project_reference": "ORD-1796742-G6C4-ES01",
+        })
+        local = PocResult(
+            doc_id="dynata",
+            archivo="dynata.pdf",
+            pages=1,
+            text_chars=80,
+            confidence=Decimal("0.70"),
+            warnings=[],
+            document=local_doc,
+        )
+        managed_doc = empty_document()
+        managed_doc.update({
+            "document_type": "invoice",
+            "numero_factura": "ES01-ARIV-0010205",
+        })
+        managed = PocResult(
+            doc_id="dynata",
+            archivo="dynata.pdf",
+            pages=1,
+            text_chars=80,
+            confidence=Decimal("0.90"),
+            warnings=[],
+            document=managed_doc,
+            engine="google_document_ai_invoice_parser",
+        )
+        pdf = PdfText(path=Path("dynata.pdf"), pages=1, text="Factura")
+        with patch.dict(os.environ, {
+            "GOOGLE_CLOUD_PROJECT": "demo-project",
+            "DOCUMENT_AI_PROCESSOR_ID": "processor-1",
+        }, clear=True), \
+                patch("ap_control_tower.extraction.document_ai.read_pdf_bytes", return_value=pdf), \
+                patch("ap_control_tower.extraction.document_ai.extract_document", return_value=local), \
+                patch("ap_control_tower.extraction.document_ai.process_invoice_bytes", return_value=managed):
+            result = extract_uploaded_document("dynata.pdf", b"pdf")
+        self.assertEqual(result.document["project_reference"], "ORD-1796742-G6C4-ES01")
+        self.assertEqual(result.field_confidences["project_reference"], Decimal("0.95"))
 
 
 if __name__ == "__main__":

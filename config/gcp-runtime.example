@@ -1,0 +1,4 @@
+# Configuracion no secreta validada el 2026-07-11.
+GOOGLE_CLOUD_PROJECT=singular-backup-501617-r6
+DOCUMENT_AI_LOCATION=us
+DOCUMENT_AI_PROCESSOR_ID=761304b2b69eba0

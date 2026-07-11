@@ -119,7 +119,7 @@ def _render_detail(results) -> None:
         doc = r.document
         label, kind = TYPE_LABELS[doc["document_type"]]
         with st.expander(r.doc_id, expanded=False):
-            st.markdown(
+            st.html(
                 f"{badge(label, kind)} &nbsp; "
                 f"{badge('confianza ' + str(r.confidence), 'ok' if not r.warnings else 'flag')} &nbsp; "
                 f"{badge('Document AI' if r.engine == 'google_document_ai_invoice_parser' else 'motor local', 'info' if r.engine == 'google_document_ai_invoice_parser' else 'mut')}"
@@ -127,7 +127,6 @@ def _render_detail(results) -> None:
                 f"{r.pages} pagina(s) · {r.text_chars} caracteres extraidos"
                 f"{('<br><b>Revision:</b> ' + ' | '.join(r.warnings)) if r.warnings else ''}"
                 f"</div>",
-                unsafe_allow_html=True,
             )
             rows = []
             for field in DETAIL_FIELDS:
@@ -161,12 +160,11 @@ def _process_batch_cached(files: tuple[tuple[str, bytes], ...]):
 
 def render() -> None:
     st.markdown("## PoC documentos reales")
-    st.markdown(
+    st.html(
         "<div class='apct-card'><b>Carga viva de facturas y órdenes de compra.</b><br>"
         "<span style='color:#5A6572;'>Los PDFs se procesan en memoria durante la sesión. "
         "Las facturas se envían a Google Document AI dentro del proyecto cloud de la demo. "
         "La app no guarda una copia local ni modifica la corrida sintética.</span></div>",
-        unsafe_allow_html=True,
     )
 
     if not is_document_ai_configured():

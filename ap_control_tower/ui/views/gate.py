@@ -45,7 +45,7 @@ def _signoff_card(title: str, so) -> str:
 
 def render() -> None:
     st.markdown("## Aprobación de pagos · el único gate humano")
-    st.markdown(
+    st.html(
         "<div class='apct-card'><b>“El sistema se auto-bloquea ante alertas. La "
         "aprobación para liberar dinero es siempre humana.”</b><br>"
         "<span style='color:#5A6572;'>El humano interviene en dos lugares: confirma "
@@ -54,7 +54,6 @@ def render() -> None:
         "todos los controles de su ruta y el checker B validó el agregado. Nada se "
         "libera al banco sin una aprobación humana con nombre, decisión y timestamp. "
         "El lote contiene únicamente <b>transferencias</b>.</span></div>",
-        unsafe_allow_html=True,
     )
     if not run_is_ready():
         st.info("Corré el mes primero (vista **Corrida del mes**).")
@@ -89,12 +88,11 @@ def render() -> None:
     if blocked_n:
         fuera.append(f"<b>{blocked_n} bloqueada(s) por control</b>: en la cola de excepciones")
     if fuera:
-        st.markdown(
+        st.html(
             "<div class='apct-card' style='border-left:4px solid #B7791F;'>"
             "<b>Fuera de los lotes de este mes (solo entran transferencias validadas):</b>"
             "<ul style='margin:6px 0 0 0;padding-left:18px;color:#5A6572;'>"
             + "".join(f"<li>{x}</li>" for x in fuera) + "</ul></div>",
-            unsafe_allow_html=True,
         )
 
     dates = [b.batch_date.isoformat() for b in result.batches]
@@ -107,7 +105,7 @@ def render() -> None:
     label, kind = STATE_CHIP.get(wf.state, (wf.state, "mut"))
     if closing:
         label, kind = "Cerrado: pagos conciliados contra el pasivo", "ok"
-    st.markdown(
+    st.html(
         f"<div class='apct-card' style='display:flex;justify-content:space-between;"
         f"align-items:center;'><div><span style='font-size:19px;font-weight:800;'>"
         f"Lote del jueves {chosen}</span><br><span style='color:#5A6572;'>"
@@ -115,14 +113,13 @@ def render() -> None:
         f"proveedores</span></div>"
         f"<div style='text-align:right;'><div style='font-size:24px;font-weight:800;'>"
         f"{eur(batch.total)} €</div>{badge(label, kind)}</div></div>",
-        unsafe_allow_html=True,
     )
 
     ca, cb = st.columns(2)
-    ca.markdown(_signoff_card("Sign-off A · revalidación factura por factura",
-                              wf.sign_off_a), unsafe_allow_html=True)
-    cb.markdown(_signoff_card("Sign-off B · validación del agregado",
-                              wf.sign_off_b), unsafe_allow_html=True)
+    ca.html(_signoff_card("Sign-off A · revalidación factura por factura",
+                              wf.sign_off_a))
+    cb.html(_signoff_card("Sign-off B · validación del agregado",
+                              wf.sign_off_b))
 
     rows = []
     for inv_id in batch.invoice_ids:
@@ -133,9 +130,9 @@ def render() -> None:
                     f"<td>{inv.invoice_number}</td><td class='num'>"
                     f"{eur(inv.amount_total)} €</td><td>{flags}</td>"
                     f"<td><code>{inv.iban_on_invoice[:8]}…</code></td></tr>")
-    st.markdown("<table class='apct-table'><tr><th>Factura</th><th>Proveedor</th>"
+    st.html("<table class='apct-table'><tr><th>Factura</th><th>Proveedor</th>"
                 "<th>Número</th><th>Importe</th><th>Flags</th><th>Cuenta destino</th></tr>"
-                + "".join(rows) + "</table>", unsafe_allow_html=True)
+                + "".join(rows) + "</table>")
 
     st.markdown("")
 
@@ -171,13 +168,12 @@ def render() -> None:
 
     elif wf.state == ESTADO_LIBERADO:
         d = wf.human_decision
-        st.markdown(
+        st.html(
             f"<div class='apct-card' style='border-left:4px solid #1E8E5A;'>"
             f"<b>Liberado al banco</b> · aprobado por <b>{d.approver}</b> · "
             f"decisión: {d.decision} · <code>{d.ts}</code><br>"
             f"<span style='color:#5A6572;'>La decisión quedó en el registro de "
             f"auditoría con nombre, decisión y timestamp.</span></div>",
-            unsafe_allow_html=True,
         )
         if closing is None:
             if st.button("Ejecutar cierre contable (conciliar pago vs pasivo)",
@@ -188,18 +184,17 @@ def render() -> None:
 
     elif wf.state == ESTADO_RECHAZADO:
         d = wf.human_decision
-        st.markdown(
+        st.html(
             f"<div class='apct-card' style='border-left:4px solid #B7791F;'>"
             f"<b>Lote devuelto</b> por <b>{d.approver}</b> · <code>{d.ts}</code><br>"
             f"Motivo: <i>{d.reason}</i><br><span style='color:#5A6572;'>Las "
             f"{batch.count} facturas quedaron en estado <b>lote_devuelto</b>; el "
             f"estado se refleja en todo el sistema.</span></div>",
-            unsafe_allow_html=True,
         )
 
     if closing is not None:
         st.markdown("##### Cierre: conciliación pago vs pasivo")
-        st.markdown(
+        st.html(
             f"<div class='apct-card'>{badge('CONCILIADO', 'ok')} "
             f"{closing.liabilities_cancelled} pagos matcheados contra su pasivo y "
             f"cancelados · total {eur(closing.total_paid)} € · "
@@ -207,5 +202,4 @@ def render() -> None:
             f"<div style='color:#5A6572;margin-top:6px;'>El double-check del cierre "
             f"ya no es el mismo equipo revisándose a sí mismo: es conciliación "
             f"automática con reporte de excepciones.</div></div>",
-            unsafe_allow_html=True,
         )

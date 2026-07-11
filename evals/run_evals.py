@@ -370,6 +370,13 @@ def main() -> int:
             if assign_pat.search(line):
                 leaked.append(f"{py.name}: {line.strip()}")
     check(not leaked, f"ningun password asignado como literal en el codigo de la app {leaked or ''}")
+    legacy_html = [
+        str(py.relative_to(ROOT))
+        for py in sorted((ROOT / "ap_control_tower" / "ui").rglob("*.py"))
+        if "unsafe_allow_html=True" in py.read_text(encoding="utf-8", errors="ignore")
+    ]
+    check(not legacy_html,
+          f"HTML/CSS de UI usa st.html (no markdown inseguro que pueda verse crudo) {legacy_html}")
 
     if "--sin-app" in sys.argv:
         print("== 14. Arranque de la app: SALTEADO (--sin-app) ==")

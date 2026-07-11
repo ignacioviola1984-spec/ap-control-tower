@@ -88,7 +88,7 @@ h1, h2, h3 {{ font-weight: 750; letter-spacing: -0.01em; color: {TEXT}; }}
 
 
 def inject_css() -> None:
-    st.markdown(_CSS, unsafe_allow_html=True)
+    st.html(_CSS)
 
 
 def badge(text: str, kind: str) -> str:
@@ -131,14 +131,13 @@ def eur(amount) -> str:
 
 
 def sidebar_brand() -> None:
-    st.sidebar.markdown(
+    st.sidebar.html(
         "<div style='padding:6px 4px 2px 4px;'>"
         "<div style='font-size:21px;font-weight:800;letter-spacing:-.01em;'>"
         "AP <span style='color:#7FB3E3;'>Control Tower</span></div>"
         "<div style='font-size:12px;color:#9FB3C8 !important;margin-top:2px;'>"
         "Cuentas a Pagar · agentes maker-checker</div>"
         "</div>",
-        unsafe_allow_html=True,
     )
     st.sidebar.markdown("---")
 
@@ -149,7 +148,7 @@ def sidebar_footer(run_id: str | None, commit: str | None) -> None:
     if run_id:
         meta = (f"<div style='font-size:11px;color:#9FB3C8 !important;'>"
                 f"corrida <code>{run_id}</code> · commit <code>{commit}</code></div>")
-    st.sidebar.markdown(
+    st.sidebar.html(
         f"<div style='padding:0 4px;'>{meta}"
         "<div class='apct-motto' style='margin-top:8px;'>"
         "“El sistema se auto-bloquea ante alertas.<br>La aprobación para liberar "
@@ -161,5 +160,4 @@ def sidebar_footer(run_id: str | None, commit: str | None) -> None:
         "<div style='font-size:11px;color:#9FB3C8 !important;margin-top:8px;'>"
         "Modo demo · corrida AP con datos sintéticos<br>"
         "PoC documental: Google Document AI opcional</div></div>",
-        unsafe_allow_html=True,
     )

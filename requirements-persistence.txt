@@ -1,0 +1,8 @@
+# Dependencias de la capa de persistencia OPCIONAL (Fase 1).
+# NO se instalan en la imagen de la demo (Dockerfile usa solo requirements.txt):
+# la demo sigue corriendo sin base. Instalar aparte para trabajar con Postgres:
+#   pip install -r requirements-persistence.txt
+SQLAlchemy>=2.0,<3
+alembic>=1.13
+# Driver Postgres (psycopg 3). El extra [binary] evita compilar en local/WSL.
+psycopg[binary]>=3.1

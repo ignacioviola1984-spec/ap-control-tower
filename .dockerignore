@@ -28,3 +28,11 @@ Dockerfile
 .dockerignore
 Golden Records.xlsx
 Proceso actual de Accounts Payable de la Consultora.png
+
+# Persistencia (Fase 1): dev/infra fuera de la imagen de la demo (queda igual).
+migrations
+alembic.ini
+docker-compose.dev.yml
+requirements-persistence.txt
+config/persistence.env
+*.db

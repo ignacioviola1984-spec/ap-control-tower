@@ -1,0 +1,33 @@
+# Postgres SOLO para desarrollo de la persistencia (Fase 1), en WSL.
+# SEPARADO de la imagen de la demo: esto no se despliega. La demo sigue
+# corriendo sin base. No contiene secretos de produccion: la password de este
+# Postgres LOCAL se toma de config/persistence.env (gitignoreado) o del default
+# de desarrollo de abajo. NUNCA usar estas credenciales fuera de local.
+#
+# Uso (desde WSL, en la raiz del repo):
+#   docker compose -f docker-compose.dev.yml up -d
+#   export AP_DATABASE_URL="postgresql+psycopg://ap:ap_dev_local@localhost:5432/ap_control_tower"
+#   python -m alembic upgrade head
+#   docker compose -f docker-compose.dev.yml down       # (agregar -v para borrar datos)
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ap-control-tower-postgres-dev
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ap}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ap_dev_local}
+      POSTGRES_DB: ${POSTGRES_DB:-ap_control_tower}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - ap_pgdata_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ap} -d ${POSTGRES_DB:-ap_control_tower}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+volumes:
+  ap_pgdata_dev:

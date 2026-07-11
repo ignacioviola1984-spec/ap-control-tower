@@ -27,6 +27,9 @@ venv/
 .env
 .env.*
 .streamlit/secrets.toml
+# Persistencia (Fase 1): el .env real y bases locales nunca se commitean.
+config/persistence.env
+ap_local.db
 
 # Artefactos locales de corridas (se regeneran)
 runs/

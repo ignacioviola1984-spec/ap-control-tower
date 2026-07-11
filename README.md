@@ -130,6 +130,24 @@ y `Golden Records.xlsx` estan gitignoreados y un eval lo verifica).
   el circuito Docker (WSL) -> Document AI con una factura real montada en modo
   solo lectura.
 
+## Persistencia opcional (Fase 1 · industrializacion)
+
+Capa **aditiva** de PostgreSQL detras de repositorios, en `ap_control_tower/persistence/`
+(SQLAlchemy 2.0 + Alembic). **Sin `AP_DATABASE_URL` la demo corre exactamente
+igual que hoy**: no hay base, no cambia el motor ni la UI. Las dependencias
+viven en `requirements-persistence.txt` (no en la imagen de la demo).
+
+```bash
+pip install -r requirements-persistence.txt
+docker compose -f docker-compose.dev.yml up -d      # Postgres local aislado (WSL)
+export AP_DATABASE_URL="postgresql+psycopg://ap:ap_dev_local@localhost:5432/ap_control_tower"
+python -m alembic upgrade head                       # migraciones (base vacia o existente)
+python evals/test_persistence.py                     # round-trip motor->base (exit 0/1)
+```
+
+Detalle, modelo relacional y guia de operacion/rollback/recuperacion:
+`ap_control_tower/persistence/README.md`.
+
 ## Como correr y verificar (Dia 1)
 
 Requiere Python 3.11+. El motor y los evals usan solo la libreria estandar.

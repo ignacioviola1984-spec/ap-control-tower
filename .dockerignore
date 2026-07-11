@@ -39,3 +39,6 @@ config/persistence.env
 
 # API interna (Fase 4): dependencias fuera de la imagen de la demo.
 requirements-api.txt
+
+# Cola/worker (Fase 5): dependencias fuera de la imagen de la demo.
+requirements-worker.txt

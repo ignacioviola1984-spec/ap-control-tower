@@ -8,6 +8,7 @@ from pathlib import Path
 from fastapi import Query
 
 from ..models import Dataset, load_dataset
+from ..worker import JobService
 from .registry import RunRegistry
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -16,10 +17,17 @@ DATASET_PATH = ROOT / "data" / "synthetic_month.json"
 # Registro de corridas (process-local). En un futuro se respalda en Postgres.
 _registry = RunRegistry()
 _dataset: Dataset | None = None
+# Cola de tareas. Por defecto ejecuta inline (sin broker); con Celery/Redis
+# configurado, el procesamiento largo corre en workers separados (no bloquea).
+_jobs = JobService()
 
 
 def get_registry() -> RunRegistry:
     return _registry
+
+
+def get_job_service() -> JobService:
+    return _jobs
 
 
 def get_dataset() -> Dataset:

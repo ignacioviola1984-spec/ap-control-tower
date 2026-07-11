@@ -29,5 +29,39 @@ services:
       retries: 10
     restart: unless-stopped
 
+  # --- Cola de tareas (Fase 5) ---
+  redis:
+    image: redis:7-alpine
+    container_name: ap-control-tower-redis-dev
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  # Worker Celery de DEV: instala deps al arrancar y monta el codigo. Las
+  # imagenes de produccion se construyen aparte (Fase 10); esto es conveniencia
+  # local. Document AI usa ADC/entorno; nunca credenciales en el compose.
+  worker:
+    image: python:3.12-slim
+    container_name: ap-control-tower-worker-dev
+    working_dir: /app
+    volumes:
+      - ./:/app
+    environment:
+      AP_BROKER_URL: redis://redis:6379/0
+      AP_RESULT_BACKEND: redis://redis:6379/0
+      PYTHONUNBUFFERED: "1"
+    command: >
+      sh -c "pip install -q -r requirements.txt -r requirements-worker.txt -r requirements-persistence.txt &&
+             celery -A ap_control_tower.worker.celery_app:celery_app worker --loglevel=info --concurrency=2"
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
 volumes:
   ap_pgdata_dev:

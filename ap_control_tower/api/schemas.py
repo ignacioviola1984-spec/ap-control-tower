@@ -116,6 +116,16 @@ class AuditPage(Page[AuditView]):
     cadena_verificada: bool
 
 
+class TaskView(BaseModel):
+    id: str
+    name: str
+    status: str
+    attempts: int
+    max_attempts: int
+    error: str | None = None
+    result: dict | None = None
+
+
 class MetricsView(BaseModel):
     documentos: int
     en_lote: int

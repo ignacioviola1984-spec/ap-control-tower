@@ -1,0 +1,8 @@
+# Dependencias de la cola/worker OPCIONAL (Fase 5).
+# NO se instalan en la imagen de la demo. El nucleo de la cola (worker/jobs,
+# runner, service) es puro y no las necesita; celery/redis son el transporte
+# distribuido. Instalar para levantar workers:
+#   pip install -r requirements-worker.txt
+#   celery -A ap_control_tower.worker.celery_app:celery_app worker --loglevel=info
+celery>=5.3
+redis>=5.0

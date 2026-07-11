@@ -11,13 +11,13 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Header, Request, UploadFile
+from fastapi import APIRouter, Body, Depends, Header, Request, Response, UploadFile
 
 from .. import app as appsvc
 from ..models import Dataset
-from ..persistence.masking import mask_account, mask_iban
+from ..worker import JobRecord, JobService
 from . import views
-from .deps import Pagination, get_dataset, get_registry, pagination
+from .deps import Pagination, get_dataset, get_job_service, get_registry, pagination
 from .errors import NotFound
 from .registry import RunRegistry
 from .schemas import (
@@ -34,6 +34,7 @@ from .schemas import (
     ResolveExceptionRequest,
     ReviewRequest,
     RunSummary,
+    TaskView,
 )
 
 router = APIRouter(prefix="/v1")
@@ -41,6 +42,14 @@ router = APIRouter(prefix="/v1")
 Reg = Annotated[RunRegistry, Depends(get_registry)]
 Ds = Annotated[Dataset, Depends(get_dataset)]
 Pg = Annotated[Pagination, Depends(pagination)]
+Jobs = Annotated[JobService, Depends(get_job_service)]
+
+
+def _task_view(rec: JobRecord) -> TaskView:
+    return TaskView(id=rec.id, name=rec.name, status=rec.status,
+                    attempts=rec.attempts, max_attempts=rec.max_attempts,
+                    error=rec.error,
+                    result=rec.result if isinstance(rec.result, dict) else None)
 
 
 def _run_or_404(reg: RunRegistry, run_id: str) -> dict:
@@ -218,18 +227,39 @@ def get_audit(run_id: str, reg: Reg, pg: Pg) -> AuditPage:
                      total=len(items), cadena_verificada=audit.verify_chain())
 
 
-# ------------------------------------------------------------------ carga documental real
-@router.post("/documents", summary="Cargar y procesar un documento real (extraccion)")
-async def upload_document(file: UploadFile) -> dict:
+# ------------------------------------------------------------------ carga documental (async)
+@router.post("/documents", response_model=TaskView, status_code=202,
+             summary="Cargar un documento real: encola su procesamiento (async)")
+async def upload_document(file: UploadFile, jobs: Jobs, response: Response) -> TaskView:
+    """Encola la extraccion en la cola de tareas y devuelve 202 + task_id. El
+    resultado se consulta en GET /v1/tasks/{id}. Sin broker corre inline; con
+    Celery/Redis corre en un worker (no bloquea). Idempotente por contenido."""
     data = await file.read()
-    result = appsvc.process_uploaded_document(file.filename or "documento.pdf", data)
-    doc = dict(result.document)
-    # datos bancarios SIEMPRE enmascarados en la respuesta
-    if doc.get("iban"):
-        doc["iban"] = mask_iban(doc["iban"])
-    if doc.get("proveedor_cuenta_bancaria"):
-        doc["proveedor_cuenta_bancaria"] = mask_account(doc["proveedor_cuenta_bancaria"])
-    return {"archivo": result.doc_id, "motor": result.engine,
-            "document_type": doc.get("document_type"),
-            "confidence": str(result.confidence), "pages": result.pages,
-            "warnings": result.warnings, "document": doc}
+    rec = jobs.submit_document(file.filename or "documento.pdf", data)
+    response.headers["Location"] = f"/v1/tasks/{rec.id}"
+    return _task_view(rec)
+
+
+# ------------------------------------------------------------------ tareas de la cola
+@router.get("/tasks/{task_id}", response_model=TaskView,
+            summary="Estado y resultado de una tarea de la cola")
+def get_task(task_id: str, jobs: Jobs) -> TaskView:
+    rec = jobs.get(task_id)
+    if rec is None:
+        raise NotFound(f"tarea inexistente: {task_id}")
+    return _task_view(rec)
+
+
+@router.get("/tasks", summary="Listar tareas en dead-letter (fallos)")
+def list_dead_letters(jobs: Jobs) -> dict:
+    return {"dead_letter": [_task_view(r) for r in jobs.dead_letters()]}
+
+
+@router.post("/tasks/{task_id}/reprocess", response_model=TaskView,
+             summary="Reprocesar manualmente una tarea en dead-letter (autorizado)")
+def reprocess_task(task_id: str, jobs: Jobs,
+                   solicitado_por: str = Body(embed=True, min_length=1)) -> TaskView:
+    rec = jobs.reprocess(task_id, requested_by=solicitado_por)
+    if rec is None:
+        raise NotFound(f"tarea inexistente: {task_id}")
+    return _task_view(rec)

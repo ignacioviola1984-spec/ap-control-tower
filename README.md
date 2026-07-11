@@ -164,6 +164,23 @@ python evals/test_api.py                            # verificacion (exit 0/1)
 
 Detalle y endpoints: `ap_control_tower/api/README.md`.
 
+## Cola de tareas opcional (Fase 5 · industrializacion)
+
+Procesamiento **asincrono** (extraccion / Document AI / controles) con Celery +
+Redis, para no bloquear la request. El nucleo de la cola (reintentos con backoff,
+timeout, dead-letter, idempotencia, reproceso manual) es puro y se testea sin
+infra; Celery/Redis son el transporte. `POST /v1/documents` encola y devuelve
+`202 + task_id`; el resultado se consulta en `GET /v1/tasks/{id}`.
+
+```bash
+pip install -r requirements-worker.txt
+docker compose -f docker-compose.dev.yml up -d redis worker
+export AP_BROKER_URL=redis://localhost:6379/0
+python evals/test_worker.py && python evals/test_worker_celery.py
+```
+
+Justificacion Cloud Run (workers vs escala-a-0) y endpoints: `ap_control_tower/worker/README.md`.
+
 ## Como correr y verificar (Dia 1)
 
 Requiere Python 3.11+. El motor y los evals usan solo la libreria estandar.

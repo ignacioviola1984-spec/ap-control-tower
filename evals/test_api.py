@@ -131,7 +131,7 @@ def main() -> int:
     check(client.get(f"/v1/runs/{rid}/documents/INV-999").status_code == 404,
           "documento inexistente -> 404")
 
-    print("== 11. Carga y procesamiento de documento real (extraccion) ==")
+    print("== 11. Carga documental ASINCRONA (cola de tareas) ==")
     try:
         from io import BytesIO
 
@@ -145,13 +145,25 @@ def main() -> int:
         pdf_bytes = buf.getvalue()
         r = client.post("/v1/documents",
                         files={"file": ("factura.pdf", pdf_bytes, "application/pdf")})
-        check(r.status_code == 200 and "document" in r.json(),
-              f"upload procesa el PDF (motor: {r.json().get('motor')})")
-        doc = r.json()["document"]
+        check(r.status_code == 202 and r.json().get("id"),
+              "POST /v1/documents -> 202 con task_id (encolado)")
+        check(r.headers.get("Location", "").startswith("/v1/tasks/"),
+              "la respuesta trae Location al endpoint de estado de la tarea")
+        task_id = r.json()["id"]
+        t = client.get(f"/v1/tasks/{task_id}")
+        tj = t.json()
+        check(t.status_code == 200 and tj["status"] == "success" and tj["result"],
+              f"GET /v1/tasks/{{id}} -> resultado de la extraccion (motor: {tj['result'].get('motor')})")
+        doc = tj["result"]["document"]
         check(doc.get("iban") is None or "*" in str(doc.get("iban")),
-              "el IBAN (si aparece) viaja enmascarado en la respuesta de upload")
+              "el IBAN (si aparece) viaja enmascarado en el resultado de la tarea")
+        # idempotencia por contenido: re-subir el mismo PDF reusa la tarea
+        r2 = client.post("/v1/documents",
+                         files={"file": ("factura.pdf", pdf_bytes, "application/pdf")})
+        check(r2.json()["id"] == task_id,
+              "re-subir el mismo contenido reusa la tarea (idempotente, sin doble proceso)")
     except Exception as exc:  # pragma: no cover
-        check(False, f"upload de PDF fallo: {exc}")
+        check(False, f"flujo async de upload fallo: {exc}")
 
     print()
     if failures:

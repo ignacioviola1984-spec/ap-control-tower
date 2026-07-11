@@ -12,7 +12,7 @@ from decimal import Decimal
 
 import streamlit as st
 
-from ...engine.pipeline import MonthRunner
+from ...app import new_month_runner
 from ...models import STATUS_BLOQUEADA, STATUS_EN_LOTE
 from ..state import get_dataset, get_run, reset_run, run_is_ready, store_run
 from ..theme import badge, eur, kpi, status_badge
@@ -41,7 +41,7 @@ def _feed_row(inv, outcome) -> str:
 
 def _run_live(delay: float) -> None:
     ds = get_dataset()
-    runner = MonthRunner(ds)
+    runner = new_month_runner(ds)
     progress = st.progress(0.0, text="Iniciando corrida...")
     stage = st.empty()
     feed = st.empty()

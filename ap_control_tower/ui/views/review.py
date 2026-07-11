@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import streamlit as st
 
+from ...app import ReviewError
 from ...catalogs import PROJECT_CODES
-from ...engine.review import ReviewError
 from ...models import (
     STATUS_ANTICIPO_EXCEPCION,
     STATUS_ANTICIPO_PENDIENTE,

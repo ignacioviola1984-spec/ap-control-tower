@@ -15,8 +15,7 @@ from io import StringIO
 import pandas as pd
 import streamlit as st
 
-from ...extraction.document_ai import extract_uploaded_document, is_document_ai_configured
-from ...extraction.schema import FIELD_ORDER
+from ...app import FIELD_ORDER, document_ai_configured, process_uploaded_document
 from ..theme import badge
 
 
@@ -146,7 +145,7 @@ def _process_batch_cached(files: tuple[tuple[str, bytes], ...]):
     workers = min(4, max(1, len(files)))
     with ThreadPoolExecutor(max_workers=workers) as pool:
         futures = {
-            pool.submit(extract_uploaded_document, name, data): (index, name)
+            pool.submit(process_uploaded_document, name, data): (index, name)
             for index, (name, data) in enumerate(files)
         }
         for future in as_completed(futures):
@@ -167,7 +166,7 @@ def render() -> None:
         "La app no guarda una copia local ni modifica la corrida sintética.</span></div>",
     )
 
-    if not is_document_ai_configured():
+    if not document_ai_configured():
         st.warning("Document AI no está configurado. Las facturas quedarán marcadas para revisión.")
 
     uploaded = st.file_uploader(

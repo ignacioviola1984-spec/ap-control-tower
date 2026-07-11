@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import streamlit as st
 
-from ...engine.batch import (
+from ...app import (
     ESTADO_APROBADO,
     ESTADO_DETENIDO,
     ESTADO_LIBERADO,
@@ -19,8 +19,14 @@ from ...engine.batch import (
     ESTADO_RECHAZADO,
     GateViolation,
 )
-from ...engine.closing import close_batch
-from ..state import get_dataset, get_run, run_is_ready
+from ..state import (
+    approve_and_release_action,
+    close_batch_action,
+    get_dataset,
+    get_run,
+    reject_batch_action,
+    run_is_ready,
+)
 from ..theme import badge, eur
 
 STATE_CHIP = {
@@ -146,8 +152,7 @@ def render() -> None:
             if st.button(f"Aprobar y liberar {eur(batch.total)} €", type="primary",
                          key=f"ap_btn_{chosen}", use_container_width=True):
                 try:
-                    decision = wf.approve(name)
-                    wf.release_to_bank()
+                    decision = approve_and_release_action(chosen, name)
                     st.success(f"Lote liberado al banco. Aprobado por "
                                f"**{decision.approver}** · {decision.ts}")
                     st.rerun()
@@ -161,7 +166,7 @@ def render() -> None:
             if st.button("Rechazar lote", key=f"re_btn_{chosen}",
                          use_container_width=True):
                 try:
-                    wf.reject(rname, reason)
+                    reject_batch_action(chosen, rname, reason)
                     st.rerun()
                 except GateViolation as e:
                     st.error(f"Gate: {e}")
@@ -178,8 +183,7 @@ def render() -> None:
         if closing is None:
             if st.button("Ejecutar cierre contable (conciliar pago vs pasivo)",
                          key=f"close_{chosen}", type="primary"):
-                report = close_batch(wf, run["ctx"], run["audit"])
-                run["closing_reports"][chosen] = report
+                close_batch_action(chosen)
                 st.rerun()
 
     elif wf.state == ESTADO_RECHAZADO:

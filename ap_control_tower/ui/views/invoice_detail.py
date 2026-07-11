@@ -77,7 +77,7 @@ def render() -> None:
         st.markdown("##### Lo que el agente extrajo y decidió")
 
         # --- motor v2: clasificacion, ruta, metodo y tratamiento ---
-        from ...engine.controls import classify_document
+        from ...app import classify_document
 
         kind, _ = classify_document(inv)
         kind_label = {"invoice": ("Factura fiscal", "info"),

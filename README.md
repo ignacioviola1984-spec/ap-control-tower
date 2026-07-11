@@ -148,6 +148,22 @@ python evals/test_persistence.py                     # round-trip motor->base (e
 Detalle, modelo relacional y guia de operacion/rollback/recuperacion:
 `ap_control_tower/persistence/README.md`.
 
+## API interna opcional (Fase 4 · industrializacion)
+
+API HTTP **separada de la UI** (FastAPI) sobre la capa `app/`, para que ERP/
+portales consuman las operaciones controladas (corrida, gate, revisión,
+excepciones, auditoría, métricas, carga de documentos). Versionada en `/v1`,
+con OpenAPI en `/docs`, idempotencia, paginación, correlación y datos bancarios
+enmascarados. Dependencias en `requirements-api.txt` (fuera de la imagen de la demo).
+
+```bash
+pip install -r requirements-api.txt
+uvicorn ap_control_tower.api.main:app --port 8000   # http://localhost:8000/docs
+python evals/test_api.py                            # verificacion (exit 0/1)
+```
+
+Detalle y endpoints: `ap_control_tower/api/README.md`.
+
 ## Como correr y verificar (Dia 1)
 
 Requiere Python 3.11+. El motor y los evals usan solo la libreria estandar.

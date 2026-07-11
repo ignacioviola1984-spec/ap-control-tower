@@ -36,3 +36,6 @@ docker-compose.dev.yml
 requirements-persistence.txt
 config/persistence.env
 *.db
+
+# API interna (Fase 4): dependencias fuera de la imagen de la demo.
+requirements-api.txt

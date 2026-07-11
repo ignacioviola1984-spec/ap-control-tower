@@ -45,6 +45,8 @@ FIELD_ORDER = [
     "importe_total",
     "tratamiento_iva",
     "metodo_pago",
+    "proveedor_banco",
+    "proveedor_cuenta_bancaria",
     "iban",
     "iban_enmascarado",
     "bic",
@@ -76,6 +78,8 @@ FIELD_KINDS = {
     "importe_total": "amount",
     "tratamiento_iva": "enum",
     "metodo_pago": "enum",
+    "proveedor_banco": "str",
+    "proveedor_cuenta_bancaria": "id",
     "iban": "id",
     "iban_enmascarado": "bool",
     "bic": "id",
@@ -137,6 +141,11 @@ FIELD_NOTES = {
         "'transferencia' | 'domiciliacion_direct_debit' (SEPA direct debit, "
         "cargo en cuenta, mandato) | 'tarjeta' | 'no_indicado'. Solo por "
         "menciones explicitas del documento."),
+    "proveedor_banco": (
+        "Nombre del banco de cobro del proveedor tal como aparece. null si no figura."),
+    "proveedor_cuenta_bancaria": (
+        "Cuenta bancaria local / CCC del proveedor tal como aparece. No copiar aqui "
+        "un IBAN; usar el campo iban para cuentas IBAN."),
     "iban": (
         "IBAN de cobro COMPLETO si esta visible. Si viene enmascarado "
         "(asteriscos/puntos), capturar exactamente los digitos visibles con "

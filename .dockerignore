@@ -1,27 +1,30 @@
-# Confidencial: JAMAS dentro de la imagen
-docs/
-*.docx
-*.doc
-*.png
-
-# Entorno y secretos
+.git
+.github
+.gitignore
 .env
 .env.*
 .streamlit/secrets.toml
-
-# Repo y artefactos locales
-.git
-.gitignore
 .venv
 venv
 __pycache__
 **/__pycache__
-*.pyc
-runs/
+*.py[cod]
 .pytest_cache
 .ruff_cache
 .mypy_cache
-.idea
+*.pdf
+*.xlsx
+*.doc
+*.docx
+*.png
+docs
+invoices & OC
+runs
+tmp
+.claude
 .vscode
+.idea
 Dockerfile
 .dockerignore
+Golden Records.xlsx
+Proceso actual de Accounts Payable de la Consultora.png

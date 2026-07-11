@@ -145,7 +145,7 @@ FIXTURES: dict[str, dict] = {
         importe_total="6534.00",
         tratamiento_iva="nacional",
         metodo_pago="transferencia",
-        iban="ES4321000418450200051332",
+        iban="ES9121000418450200051332",
         bic="CAIXESBBXXX",
         condiciones_pago="45 days end of month",
     ),
@@ -233,7 +233,7 @@ IVA (21%): 1.134,00 EUR
 TOTAL: 6.534,00 EUR
 
 Payment terms: 45 days end of month
-Transferencia: IBAN ES43 2100 0418 4502 0005 1332 - BIC CAIXESBBXXX""",
+Transferencia: IBAN ES91 2100 0418 4502 0005 1332 - BIC CAIXESBBXXX""",
 }
 
 _HTML_SHELL = """<!-- Documento sintetico de extraccion (demo). Ningun dato real. -->

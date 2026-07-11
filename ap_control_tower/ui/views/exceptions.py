@@ -106,8 +106,9 @@ def render() -> None:
     invoices = {i.invoice_id: i for i in ds.invoices}
 
     st.markdown(
-        f"<div class='apct-card'>El sistema bloqueó <b>{len(result.exceptions)} facturas "
-        f"sin intervención humana</b>, agrupadas acá por severidad. Cada una tiene "
+        f"<div class='apct-card'>El sistema retuvo o derivó a excepción <b>"
+        f"{len(result.exceptions)} documentos sin intervención humana</b>, agrupados "
+        f"acá por severidad. Cada uno tiene "
         f"control, evidencia y dueño sugerido: el equipo revisa excepciones, no el "
         f"100% de las facturas.</div>",
         unsafe_allow_html=True,
@@ -126,7 +127,7 @@ def render() -> None:
             f"<div style='margin:18px 0 8px 0;padding:8px 14px;border-left:5px solid "
             f"{SEVERITY_COLOR[sev]};background:#fff;border-radius:6px;"
             f"font-size:16px;font-weight:800;'>"
-            f"{SEVERITY_LABELS[sev]}: {n} factura{'s' if n != 1 else ''}</div>",
+            f"{SEVERITY_LABELS[sev]}: {n} documento{'s' if n != 1 else ''}</div>",
             unsafe_allow_html=True,
         )
         for exc in items:

@@ -1,33 +1,47 @@
 """Vista PoC: carga viva de PDFs reales, sin persistencia.
 
 La demo permite al cliente subir facturas/OC despues del meeting y ver como el
-contrato de extraccion v2 clasifica y estructura cada documento. Los bytes se
-procesan en memoria: no se guardan en disco, no se agregan al dataset sintetico
-y no se envian a servicios externos.
+contrato de extraccion v2 clasifica y estructura cada documento. Las facturas
+se procesan con Google Document AI dentro del proyecto cloud de la demo. La app
+no conserva una copia local ni agrega los documentos al dataset sintetico.
 """
 
 from __future__ import annotations
 
 import csv
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from io import StringIO
 
 import pandas as pd
 import streamlit as st
 
-from ...extraction.pdf_poc import extract_document, read_pdf_bytes
+from ...extraction.document_ai import extract_uploaded_document, is_document_ai_configured
 from ...extraction.schema import FIELD_ORDER
 from ..theme import badge
 
 
-SUMMARY_FIELDS = [
+DETAIL_FIELDS = [
     "document_type",
     "numero_factura",
+    "fecha_emision",
     "po_reference",
     "proveedor_nombre_comercial",
+    "proveedor_razon_social_legal",
+    "proveedor_tax_id",
+    "cliente_nombre",
+    "cliente_tax_id",
+    "importe_neto",
+    "tipo_iva",
+    "importe_iva",
     "importe_total",
     "moneda",
     "metodo_pago",
     "tratamiento_iva",
+    "proveedor_banco",
+    "proveedor_cuenta_bancaria",
+    "iban",
+    "bic",
+    "condiciones_pago",
 ]
 
 
@@ -51,10 +65,11 @@ def _csv_cell(value) -> str:
 def _results_csv(results) -> str:
     out = StringIO()
     writer = csv.writer(out)
-    writer.writerow(["archivo", "confidence", "pages", "text_chars", *FIELD_ORDER, "warnings"])
+    writer.writerow(["archivo", "motor", "confidence", "pages", "text_chars", *FIELD_ORDER, "warnings"])
     for r in results:
         writer.writerow([
             r.doc_id,
+            r.engine,
             str(r.confidence),
             r.pages,
             r.text_chars,
@@ -72,14 +87,16 @@ def _summary_rows(results) -> list[dict]:
             "archivo": r.doc_id,
             "tipo": doc["document_type"],
             "confianza": float(r.confidence),
+            "fecha": doc["fecha_emision"],
             "numero": doc["numero_factura"],
-            "po": doc["po_reference"],
             "proveedor": doc["proveedor_nombre_comercial"],
-            "importe": doc["importe_total"],
+            "cliente": doc["cliente_nombre"],
+            "base": doc["importe_neto"],
+            "IVA %": doc["tipo_iva"],
+            "IVA importe": doc["importe_iva"],
+            "total": doc["importe_total"],
             "moneda": doc["moneda"],
-            "pago": doc["metodo_pago"],
-            "iva": doc["tratamiento_iva"],
-            "revision": " | ".join(r.warnings),
+            "estado": "Revisar" if r.warnings else "OK",
         })
     return rows
 
@@ -89,7 +106,7 @@ def _render_kpis(results) -> None:
     invoices = sum(1 for r in results if r.document["document_type"] == "invoice")
     advances = sum(1 for r in results if r.document["document_type"] == "proforma_or_advance_request")
     others = sum(1 for r in results if r.document["document_type"] == "other")
-    review = sum(1 for r in results if r.warnings or r.confidence < 1)
+    review = sum(1 for r in results if r.warnings)
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Documentos", total)
     c2.metric("Facturas", invoices)
@@ -103,7 +120,9 @@ def _render_detail(results) -> None:
         label, kind = TYPE_LABELS[doc["document_type"]]
         with st.expander(r.doc_id, expanded=False):
             st.markdown(
-                f"{badge(label, kind)} &nbsp; {badge('confianza ' + str(r.confidence), 'ok' if r.confidence >= 1 else 'flag')}"
+                f"{badge(label, kind)} &nbsp; "
+                f"{badge('confianza ' + str(r.confidence), 'ok' if not r.warnings else 'flag')} &nbsp; "
+                f"{badge('Document AI' if r.engine == 'google_document_ai_invoice_parser' else 'motor local', 'info' if r.engine == 'google_document_ai_invoice_parser' else 'mut')}"
                 f"<div style='margin-top:8px;color:#5A6572;font-size:13px;'>"
                 f"{r.pages} pagina(s) · {r.text_chars} caracteres extraidos"
                 f"{('<br><b>Revision:</b> ' + ' | '.join(r.warnings)) if r.warnings else ''}"
@@ -111,9 +130,33 @@ def _render_detail(results) -> None:
                 unsafe_allow_html=True,
             )
             rows = []
-            for field in SUMMARY_FIELDS:
-                rows.append({"campo": field, "valor": _csv_cell(doc[field])})
+            for field in DETAIL_FIELDS:
+                field_confidence = r.field_confidences.get(field)
+                rows.append({
+                    "campo": field,
+                    "valor": _csv_cell(doc[field]),
+                    "confianza": "" if field_confidence is None else str(field_confidence),
+                })
             st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+
+
+@st.cache_data(show_spinner=False, ttl=1800)
+def _process_batch_cached(files: tuple[tuple[str, bytes], ...]):
+    results = [None] * len(files)
+    errors: list[tuple[str, str]] = []
+    workers = min(4, max(1, len(files)))
+    with ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = {
+            pool.submit(extract_uploaded_document, name, data): (index, name)
+            for index, (name, data) in enumerate(files)
+        }
+        for future in as_completed(futures):
+            index, name = futures[future]
+            try:
+                results[index] = future.result()
+            except Exception as exc:  # pragma: no cover - proteccion de red/API
+                errors.append((name, str(exc)))
+    return [result for result in results if result is not None], errors
 
 
 def render() -> None:
@@ -121,9 +164,13 @@ def render() -> None:
     st.markdown(
         "<div class='apct-card'><b>Carga viva de facturas y órdenes de compra.</b><br>"
         "<span style='color:#5A6572;'>Los PDFs se procesan en memoria durante la sesión. "
-        "No se guardan en disco, no modifican la corrida sintética y no salen de la app.</span></div>",
+        "Las facturas se envían a Google Document AI dentro del proyecto cloud de la demo. "
+        "La app no guarda una copia local ni modifica la corrida sintética.</span></div>",
         unsafe_allow_html=True,
     )
+
+    if not is_document_ai_configured():
+        st.warning("Document AI no está configurado. Las facturas quedarán marcadas para revisión.")
 
     uploaded = st.file_uploader(
         "PDFs de factura / OC",
@@ -135,15 +182,9 @@ def render() -> None:
         st.info("Cargá uno o más PDFs para ver la clasificación y los campos extraídos.")
         return
 
-    results = []
-    errors = []
-    with st.spinner("Procesando PDFs..."):
-        for file in uploaded:
-            try:
-                pdf = read_pdf_bytes(file.name, file.getvalue())
-                results.append(extract_document(pdf))
-            except Exception as exc:  # pragma: no cover - proteccion UI
-                errors.append((file.name, str(exc)))
+    files = tuple((file.name, file.getvalue()) for file in uploaded)
+    with st.spinner("Procesando PDFs con validación documental..."):
+        results, errors = _process_batch_cached(files)
 
     if errors:
         for name, detail in errors:

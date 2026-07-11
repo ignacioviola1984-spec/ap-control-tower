@@ -159,6 +159,7 @@ def sidebar_footer(run_id: str | None, commit: str | None) -> None:
         "confirma datos en <b>Revisión humana</b> ·<br>"
         "libera dinero en <b>Aprobación de pagos</b></div>"
         "<div style='font-size:11px;color:#9FB3C8 !important;margin-top:8px;'>"
-        "Modo demo · datos 100% sintéticos<br>Sin API keys · sin red · local</div></div>",
+        "Modo demo · corrida AP con datos sintéticos<br>"
+        "PoC documental: Google Document AI opcional</div></div>",
         unsafe_allow_html=True,
     )

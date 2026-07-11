@@ -15,12 +15,13 @@ import json
 import re
 import unicodedata
 from io import BytesIO
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
+from .banking import bank_evidence_present, extract_bank_details
 from .comparator import labels_template_row
 from .schema import FIELD_ORDER, compute_due_date, empty_document, validate_document
 
@@ -44,12 +45,6 @@ TAX_ID_RE = re.compile(
     re.IGNORECASE,
 )
 REGISTRY_RE = re.compile(r"\b(?:KVK|RCS|REG(?:ISTRO)?\.?)\s*[:#]?\s*([A-Z0-9 .-]{4,24})", re.IGNORECASE)
-IBAN_RE = re.compile(
-    r"\b[A-Z]{2}\d{2}(?=[ A-Z0-9*.-]{11,40})(?:[ A-Z0-9*.-]{2,44})",
-    re.IGNORECASE,
-)
-BIC_RE = re.compile(r"\b(?:BIC|SWIFT)\s*[:#-]?\s*([A-Z0-9]{8}(?:[A-Z0-9]{3})?)\b", re.IGNORECASE)
-
 MONTHS = {
     "jan": 1, "january": 1, "enero": 1, "janvier": 1,
     "feb": 2, "february": 2, "febrero": 2, "fevrier": 2, "fevrier": 2,
@@ -82,6 +77,8 @@ class PocResult:
     confidence: Decimal
     warnings: list[str]
     document: dict[str, Any]
+    engine: str = "local"
+    field_confidences: dict[str, Decimal] = field(default_factory=dict)
 
 
 def _fold(s: str) -> str:
@@ -443,10 +440,24 @@ def _extract_dates(doc: dict, lines: list[str], text: str) -> None:
                 doc["fecha_vencimiento_calculada"] = dates[2].isoformat()
                 return
 
-    issued = _find_date_after(lines, ("invoice date", "fecha de emision", "fecha emision", "date facture", "fecha:", "factura fecha"))
+    issued = _find_date_after(lines, (
+        "invoice date", "fecha de emision", "fecha emision", "fecha de la factura",
+        "date facture", "date of issue", "fecha:", "factura fecha",
+    ))
     due = _find_date_after(lines, ("payment due date", "due date", "vencimiento", "fecha de vencimiento", "echeance"))
     if issued:
         doc["fecha_emision"] = issued.isoformat()
+    elif doc["document_type"] == "invoice" and doc["numero_factura"]:
+        # Algunos PDFs vectoriales conservan los valores pero pierden las etiquetas.
+        # La fecha inmediatamente posterior al numero fiscal sigue siendo evidencia visible.
+        invoice_position = next(
+            (i for i, line in enumerate(lines) if doc["numero_factura"] in line),
+            None,
+        )
+        if invoice_position is not None:
+            nearby = _all_dates(" ".join(lines[invoice_position:invoice_position + 3]))
+            if nearby:
+                doc["fecha_emision"] = nearby[0].isoformat()
     if due:
         doc["fecha_vencimiento_texto"] = due.isoformat()
         doc["fecha_vencimiento_calculada"] = due.isoformat()
@@ -495,8 +506,8 @@ def _extract_amounts(doc: dict, lines: list[str], text: str) -> None:
         doc["moneda"] = "GBP"
 
     for i, line in enumerate(lines):
-        folded = _fold(line)
-        if all(label in folded for label in ("base imponible", "impuesto", "total")) and i + 1 < len(lines):
+        line_folded = _fold(line)
+        if all(label in line_folded for label in ("base imponible", "impuesto", "total")) and i + 1 < len(lines):
             vals = _amounts(lines[i + 1])
             if len(vals) >= 3:
                 doc["importe_neto"] = _format_decimal(vals[-3])
@@ -509,7 +520,11 @@ def _extract_amounts(doc: dict, lines: list[str], text: str) -> None:
         ("total excl", "net amount", "base imponible", "subtotal", "total ht", "importe neto"),
         reject=("invoice total", "importe total", "total ttc"),
     ))
-    doc["importe_iva"] = doc["importe_iva"] or _format_decimal(_find_amount(lines, ("vat amount", "iva", "tva", "importe iva", "impuesto")))
+    doc["importe_iva"] = doc["importe_iva"] or _format_decimal(_find_amount(
+        lines,
+        ("vat amount", "vat", "iva", "tva", "importe iva", "impuesto"),
+        reject=("total including vat", "total incluido", "total general", "invoice total"),
+    ))
     total = _find_amount(
         lines,
         ("invoice total", "total", "importe total", "total ttc", "total including vat", "total factura", "amount due", "a pagar", "total general", "importe adeudado"),
@@ -523,9 +538,12 @@ def _extract_amounts(doc: dict, lines: list[str], text: str) -> None:
             doc["importe_iva"] = doc["importe_iva"] or _format_decimal(vals[-2])
             doc["importe_total"] = _format_decimal(vals[-1])
 
-    rate = re.search(r"(?i)\b(?:vat|iva|tva)\s*\(?\s*(\d{1,2}(?:[,.]\d+)?)\s*%|\b(\d{1,2}(?:[,.]\d+)?)\s*%\s*(?:vat|iva|tva)", text)
+    rate = re.search(
+        r"(?i)\b(?:vat|iva|tva)(?:\s+rate)?\s*[:(]?\s*(\d{1,2}(?:[,.]\d+)?)\s*%",
+        text,
+    )
     if rate:
-        doc["tipo_iva"] = (rate.group(1) or rate.group(2)).replace(",", ".")
+        doc["tipo_iva"] = rate.group(1).replace(",", ".")
 
     if any(term in folded for term in ("reverse charge", "inversion del sujeto pasivo", "inversión del sujeto pasivo", "article 196")):
         doc["tratamiento_iva"] = "intracomunitario_inversion_sujeto_pasivo"
@@ -542,29 +560,22 @@ def _extract_payment(doc: dict, text: str) -> None:
         doc["metodo_pago"] = "no_indicado"
         return
     folded = _fold(text)
-    if re.search(r"\b(direct debit|domiciliacion|domiciliacion bancaria|sepa|cargo en cuenta)\b", folded):
+    bank = extract_bank_details(text)
+    if re.search(r"\b(direct debit|domiciliacion|domiciliacion bancaria|domiciliado|sepa|cargo en cuenta)\b", folded):
         doc["metodo_pago"] = "domiciliacion_direct_debit"
     elif re.search(r"\b(tarjeta|card payment|credit card|visa|mastercard)\b", folded):
         doc["metodo_pago"] = "tarjeta"
-    elif re.search(r"\b(transferencia|bank transfer|wire transfer|bank account|iban|swift)\b", folded):
+    elif re.search(r"\b(transferencia|bank transfer|wire transfer|bank account|iban|swift)\b", folded) \
+            or any((bank.iban, bank.bic, bank.banco, bank.cuenta)):
         doc["metodo_pago"] = "transferencia"
     else:
         doc["metodo_pago"] = "no_indicado"
 
-    iban = None
-    for match in IBAN_RE.finditer(text):
-        candidate = re.sub(r"\s{2,}", " ", match.group(0)).strip(" .,;:-")
-        compact = re.sub(r"[\s.-]", "", candidate)
-        if len(compact) >= 15:
-            iban = candidate
-            break
-    if iban:
-        doc["iban"] = iban
-        doc["iban_enmascarado"] = "*" in iban or "x" in iban.casefold()
-
-    bic = BIC_RE.search(text)
-    if bic:
-        doc["bic"] = bic.group(1).upper()
+    doc["iban"] = bank.iban
+    doc["iban_enmascarado"] = bank.iban_enmascarado
+    doc["bic"] = bank.bic
+    doc["proveedor_banco"] = bank.banco
+    doc["proveedor_cuenta_bancaria"] = bank.cuenta
 
 
 def _extract_references(doc: dict, text: str) -> None:
@@ -584,8 +595,12 @@ def _extract_references(doc: dict, text: str) -> None:
 
 def _confidence(doc: dict) -> Decimal:
     if doc["document_type"] == "invoice":
-        keys = ("document_type", "numero_factura", "fecha_emision", "proveedor_nombre_comercial",
-                "importe_total", "moneda", "tratamiento_iva", "metodo_pago")
+        keys = (
+            "document_type", "numero_factura", "fecha_emision",
+            "proveedor_nombre_comercial", "cliente_nombre", "importe_neto",
+            "tipo_iva", "importe_iva", "importe_total", "moneda",
+            "tratamiento_iva", "metodo_pago",
+        )
     elif doc["document_type"] == "proforma_or_advance_request":
         keys = ("document_type", "fecha_emision", "proveedor_nombre_comercial",
                 "importe_total", "moneda", "tratamiento_iva", "metodo_pago")
@@ -614,6 +629,19 @@ def extract_document(pdf: PdfText) -> PocResult:
         warnings.append("texto extraido muy bajo; probablemente requiere OCR")
     if doc["document_type"] == "invoice" and not doc["numero_factura"]:
         warnings.append("clasificada como invoice pero no se encontro numero_factura")
+    if doc["document_type"] == "invoice":
+        critical = (
+            "fecha_emision", "proveedor_nombre_comercial", "cliente_nombre",
+            "importe_neto", "tipo_iva", "importe_iva", "importe_total", "moneda",
+        )
+        missing = [name for name in critical if doc.get(name) in (None, "")]
+        if missing:
+            warnings.append("campos criticos ausentes: " + ", ".join(missing))
+        if bank_evidence_present(text) and not any((
+            doc.get("iban"), doc.get("bic"), doc.get("proveedor_banco"),
+            doc.get("proveedor_cuenta_bancaria"),
+        )):
+            warnings.append("hay datos bancarios visibles pero no se pudieron estructurar")
     if doc["document_type"] == "other" and not doc["po_reference"]:
         warnings.append("clasificada como other; revisar si es OC u otro soporte")
     warnings.extend(validate_document(doc))

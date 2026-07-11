@@ -35,7 +35,7 @@ def _feed_row(inv, outcome) -> str:
     else:
         b = badge("VALIDADA", "ok")
     return (f"<tr><td><b>{inv.invoice_id}</b></td><td>{inv.vendor_name}</td>"
-            f"<td>{inv.invoice_number}</td><td>{inv.received_date.isoformat()}</td>"
+            f"<td>{inv.invoice_number or '—'}</td><td>{inv.received_date.isoformat()}</td>"
             f"<td class='num'>{eur(inv.amount_total)} €</td><td>{b}</td></tr>")
 
 
@@ -165,10 +165,11 @@ def _dashboard() -> None:
 def render() -> None:
     st.markdown("## Corrida del mes")
     st.markdown(
-        "<div class='apct-card'>El motor procesa el <b>inbox de junio 2026</b> "
-        "(36 facturas recibidas por email con su OC) por el pipeline maker-checker "
-        "C1–C7. Los controles hard bloquean solos; el único gate humano es la "
-        "liberación del lote de pago.</div>",
+        "<div class='apct-card'>El motor procesa el <b>inbox de junio 2026</b>: "
+        "42 documentos (36 facturas base + 6 casos de flujos reales), con rutas "
+        "PO, non-PO, anticipos, domiciliaciones y tarjeta. Los controles bloqueantes "
+        "actúan solos; el único gate humano de dinero es la liberación del lote de "
+        "pago.</div>",
         unsafe_allow_html=True,
     )
     col_btn, col_speed, col_reset = st.columns([1.2, 1.2, 1])

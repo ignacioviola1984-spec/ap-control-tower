@@ -1,8 +1,9 @@
 # El motor y los evals usan solo la libreria estandar (Python 3.11+).
-# La UI usa streamlit + pandas; reportlab genera el PDF de auditoria 100%
-# local (sin red).
+# La UI usa streamlit + pandas; reportlab genera el PDF de auditoria local.
+# Google Document AI procesa las facturas reales cuando esta configurado.
 streamlit>=1.36
 pandas>=2.0
 reportlab>=4.0
 pdfplumber>=0.11
 pypdf>=4.0
+google-cloud-documentai>=3.6,<4

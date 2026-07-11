@@ -75,13 +75,17 @@ def get_session() -> TrialSession:
     return st.session_state[_KEY]
 
 
+def session_keys_to_clear(all_keys) -> list:
+    """Claves de session_state que borra 'Finalizar y borrar' (logica pura)."""
+    return [k for k in all_keys if str(k) == _KEY or str(k).startswith("_trial_")]
+
+
 def reset_session() -> None:
     """Elimina resultados, documentos y audit trail de la sesion."""
     import streamlit as st
 
-    for key in list(st.session_state.keys()):
-        if str(key) == _KEY or str(key).startswith("_trial_"):
-            st.session_state.pop(key, None)
+    for key in session_keys_to_clear(list(st.session_state.keys())):
+        st.session_state.pop(key, None)
 
 
 def _clear_and_rerun() -> None:

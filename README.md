@@ -81,6 +81,16 @@ pasa `DOCUMENT_AI_ACCESS_TOKEN`. Las facturas se envian al Invoice Parser del
 proyecto Google Cloud; la app no persiste una copia local. Proformas y ordenes
 de compra conservan el flujo deterministico local.
 
+### Despliegue activo
+
+- Servicio: `ap-control-tower`
+- Region: `us-central1`
+- Escalado: 0 a 1 instancia (control de costo)
+- Identidad: `ap-control-tower-runner@singular-backup-501617-r6.iam.gserviceaccount.com`
+- Password: Secret Manager `ap-demo-password` (nunca en imagen o repo)
+- Job de diagnostico: `ap-document-ai-smoke`, factura sintetica generada en
+  memoria para verificar identidad de servicio -> Document AI.
+
 ## Extraccion de documentos (esquema v2)
 
 Modulo `ap_control_tower/extraction/`, ajustado con el analisis de facturas

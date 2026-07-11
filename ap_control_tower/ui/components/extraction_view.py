@@ -63,6 +63,55 @@ def process_files(files, on_progress=None):
     return results, errors
 
 
+def process_one(name, data):
+    """Procesa UN PDF inline y mide su tiempo. -> (result|None, error|None, segundos)."""
+    from time import perf_counter
+
+    from ...app import process_uploaded_document
+    t0 = perf_counter()
+    try:
+        result = process_uploaded_document(name, data)
+        return result, None, perf_counter() - t0
+    except Exception as exc:  # red/API: mensaje claro, no crash
+        return None, str(exc), perf_counter() - t0
+
+
+# Advertencias que son NOTAS DE MODO (no problemas de campo): no disparan
+# "Revisar campos". La ausencia de OC NO genera advertencias -> ruta non-PO normal.
+_MODE_NOTES = ("Document AI no configurado", "Document AI no disponible")
+
+# Estados permitidos del documento en la sesion.
+STATUS_PROCESADO = "Procesado"
+STATUS_REVISAR = "Revisar campos"
+STATUS_NO_RECONOCIDO = "Documento no reconocido"
+STATUS_ERROR = "Error de procesamiento"
+
+_STATUS_KIND = {
+    STATUS_PROCESADO: "ok",
+    STATUS_REVISAR: "flag",
+    STATUS_NO_RECONOCIDO: "mut",
+    STATUS_ERROR: "block",
+}
+
+
+def field_warnings(result) -> list:
+    """Advertencias de CAMPO (excluye notas de modo del extractor)."""
+    return [w for w in result.warnings if not any(n in w for n in _MODE_NOTES)]
+
+
+def status_label(result) -> str:
+    """Estado del documento. La ausencia de OC NO produce 'Revisar campos'
+    (no genera advertencias): es ruta non-PO normal."""
+    if result.document.get("document_type") == "other":
+        return STATUS_NO_RECONOCIDO
+    return STATUS_REVISAR if field_warnings(result) else STATUS_PROCESADO
+
+
+def route_label(doc: dict) -> str:
+    """Ruta operativa: con OC referenciada = PO; sin OC = non-PO (normal)."""
+    return "PO" if doc.get("po_reference") else "non-PO"
+
+
 def _is_present(value) -> bool:
     return value not in (None, "", [], {})
 
@@ -113,21 +162,55 @@ def results_csv(results) -> str:
 
 
 # ------------------------------------------------------------------ render
-def render_metrics(results) -> None:
+def _informed_confidences(results) -> list:
+    """Todas las confianzas POR CAMPO informadas (para el promedio honesto)."""
+    vals: list = []
+    for r in results:
+        vals.extend(float(v) for v in r.field_confidences.values())
+    return vals
+
+
+def aggregate_metrics(results, errors=None) -> dict:
+    """Metricas descriptivas de extraccion; no implican exactitud validada."""
     total = len(results)
-    cov = sum(coverage(r) for r in results) / total if total else 0.0
-    conf = sum(float(r.confidence) for r in results) / total if total else 0.0
-    with_warn = sum(1 for r in results if r.warnings)
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Documentos procesados", total)
-    c2.metric("Cobertura de extracción", f"{cov*100:.0f}%", help="Campos encontrados sobre el total del esquema (no es una medida de exactitud).")
-    c3.metric("Confianza media", f"{conf*100:.0f}%", help="Confianza del extractor. No implica exactitud verificada.")
-    c4.metric("Documentos con advertencias", with_warn)
-    st.caption("No se afirma exactitud sin validación humana: estas métricas son "
-               "cobertura, confianza y advertencias del extractor.")
+    found = sum(len(present_fields(r)) for r in results)
+    missing = sum(len(missing_fields(r)) for r in results)
+    informed = _informed_confidences(results)
+    return {
+        "documents": total + len(errors or []),   # procesados = intentados
+        "ok": total,
+        "invoices": sum(1 for r in results
+                        if r.document.get("document_type") == "invoice"),
+        "fields_found": found,
+        "fields_missing": missing,
+        "coverage": found / (found + missing) if found + missing else 0.0,
+        # Confianza PROMEDIO solo sobre campos con confianza informada.
+        "confidence": (sum(informed) / len(informed)) if informed else None,
+        "with_warnings": sum(1 for r in results if r.warnings),
+        "errors": len(errors or []),
+    }
 
 
-def _summary_rows(results) -> list[dict]:
+def render_metrics(results, processing_seconds=None, errors=None) -> None:
+    m = aggregate_metrics(results, errors)
+    r1 = st.columns(3)
+    r1[0].metric("Documentos procesados", m["documents"])
+    r1[1].metric("Facturas reconocidas", m["invoices"])
+    r1[2].metric("Campos encontrados", m["fields_found"],
+                 help="Cobertura: campos hallados sobre el esquema. Mide cobertura, no exactitud.")
+    r2 = st.columns(3)
+    r2[0].metric("Documentos con advertencias", m["with_warnings"])
+    r2[1].metric("Confianza promedio",
+                 "—" if m["confidence"] is None else f"{m['confidence']*100:.0f}%",
+                 help="Promedio SOLO sobre campos con confianza informada. No implica exactitud validada.")
+    r2[2].metric("Tiempo de procesamiento",
+                 "—" if processing_seconds is None else f"{processing_seconds:.1f} s",
+                 help="Tiempo acumulado de procesamiento en esta sesión.")
+    st.caption("No se afirma exactitud sin validación humana: son cobertura, "
+               "confianza y advertencias del extractor.")
+
+
+def _summary_rows(results, errors=None) -> list[dict]:
     rows = []
     for r in results:
         doc = r.document
@@ -135,26 +218,26 @@ def _summary_rows(results) -> list[dict]:
             "archivo": r.doc_id,
             "tipo": doc.get("document_type"),
             "proveedor": doc.get("proveedor_nombre_comercial"),
-            "cliente": doc.get("cliente_nombre"),
-            "tax_id proveedor": doc.get("proveedor_tax_id"),
             "número": doc.get("numero_factura"),
             "fecha": doc.get("fecha_emision"),
             "vencimiento": _vencimiento(doc),
             "moneda": doc.get("moneda"),
-            "neto": doc.get("importe_neto"),
-            "impuestos": doc.get("importe_iva"),
             "total": doc.get("importe_total"),
-            "método pago": doc.get("metodo_pago"),
-            "referencias": _referencias(doc),
+            "ruta PO/non-PO": route_label(doc),
             "confianza": f"{float(r.confidence)*100:.0f}%",
-            "ausentes": len(missing_fields(r)),
-            "advertencias": len(r.warnings),
+            "estado": status_label(r),
+        })
+    for name, _detail in (errors or []):
+        rows.append({
+            "archivo": name, "tipo": "—", "proveedor": "—", "número": "—",
+            "fecha": "—", "vencimiento": "—", "moneda": "—", "total": "—",
+            "ruta PO/non-PO": "—", "confianza": "—", "estado": STATUS_ERROR,
         })
     return rows
 
 
-def render_summary_table(results) -> None:
-    st.dataframe(pd.DataFrame(_summary_rows(results)),
+def render_summary_table(results, errors=None) -> None:
+    st.dataframe(pd.DataFrame(_summary_rows(results, errors)),
                  use_container_width=True, hide_index=True)
 
 
@@ -168,29 +251,33 @@ def render_download(results) -> None:
     )
 
 
-def render_detail(results) -> None:
+def render_detail(results, audit=None, proc_seconds=None) -> None:
     for r in results:
         doc = r.document
         label, kind = TYPE_LABELS.get(doc.get("document_type"), ("Documento", "mut"))
         engine_label = ("Document AI"
                         if r.engine == "google_document_ai_invoice_parser" else "motor local")
-        with st.expander(r.doc_id, expanded=False):
+        estado = status_label(r)
+        secs = None if proc_seconds is None else proc_seconds.get(r.doc_id)
+        with st.expander(f"{r.doc_id}  ·  {estado}", expanded=False):
             st.html(
                 f"{badge(label, kind)} &nbsp; "
+                f"{badge(estado, _STATUS_KIND.get(estado, 'mut'))} &nbsp; "
+                f"{badge('ruta ' + route_label(doc), 'info')} &nbsp; "
                 f"{badge('confianza ' + str(r.confidence), 'ok' if not r.warnings else 'flag')} &nbsp; "
                 f"{badge(engine_label, 'info' if r.engine == 'google_document_ai_invoice_parser' else 'mut')}"
                 f"<div style='margin-top:8px;color:#5A6572;font-size:13px;'>"
-                f"{r.pages} página(s) · {r.text_chars} caracteres extraídos"
-                f"{('<br><b>Advertencias:</b> ' + ' | '.join(r.warnings)) if r.warnings else ''}"
+                f"{r.pages} página(s) · {r.text_chars} caracteres"
+                f"{f' · procesado en {secs:.1f}s' if secs is not None else ''}"
                 f"</div>",
             )
+            # Todos los datos extraidos + confianza por campo + estado del campo.
             rows = []
-            for field in DETAIL_FIELDS:
+            for field in BUSINESS_FIELDS:
                 fc = r.field_confidences.get(field)
-                value = _cell(doc.get(field))
                 rows.append({
                     "campo": field,
-                    "valor": value,
+                    "valor": _cell(doc.get(field)),
                     "confianza": "" if fc is None else str(fc),
                     "estado": "encontrado" if _is_present(doc.get(field)) else "ausente",
                 })
@@ -198,6 +285,18 @@ def render_detail(results) -> None:
             miss = missing_fields(r)
             if miss:
                 st.caption("Campos ausentes: " + ", ".join(miss))
+            if r.warnings:
+                st.caption("Advertencias: " + " | ".join(r.warnings))
+            st.caption(f"Motor: {engine_label}"
+                       + (f" · Tiempo de procesamiento: {secs:.1f}s" if secs is not None else ""))
+            if audit is not None:
+                doc_events = [e for e in audit.events if e.invoice_id == r.doc_id]
+                if doc_events:
+                    st.caption("Audit trail del documento (sesión):")
+                    st.dataframe(pd.DataFrame([{
+                        "#": e.seq, "hora (UTC)": e.ts, "acción": e.action,
+                        "resultado": e.result or "",
+                    } for e in doc_events]), use_container_width=True, hide_index=True)
 
 
 def render_session_audit(audit) -> None:

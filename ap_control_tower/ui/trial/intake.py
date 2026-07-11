@@ -17,24 +17,28 @@ from . import session as sess
 
 
 def _process_and_store(files, canal: str) -> None:
-    """Procesa [(nombre, bytes)] con progreso y guarda en la sesion."""
+    """Procesa [(nombre, bytes)] documento por documento (tiempo individual) y
+    guarda TODO en la sesion: exitosos y errores."""
     if not files:
         return
+    session = sess.get_session()
     bar = st.progress(0.0, text="Procesando documentos...")
-
-    def _on_progress(index: int, total: int, name: str) -> None:
+    total = len(files)
+    ok = 0
+    for index, (name, data) in enumerate(files, 1):
+        result, error, seconds = ev.process_one(name, data)
+        if error is not None:
+            sess.add_error(session, name, error, seconds)
+            st.error(f"No se pudo procesar **{name}**: {error}")
+        else:
+            sess.add_document(session, result, seconds)
+            ok += 1
         bar.progress(index / total, text=f"Procesado {index}/{total}: {name}")
-
-    results, errors = ev.process_files(files, on_progress=_on_progress)
     bar.empty()
 
-    for name, detail in errors:
-        st.error(f"No se pudo procesar **{name}**: {detail}")
-    if results:
-        session = sess.get_session()
-        sess.add_results(session, results)
-        sess.record_intake(session, canal=canal, cantidad=len(results))
-        st.success(f"{len(results)} documento(s) procesado(s) desde {canal}. "
+    if ok:
+        sess.record_intake(session, canal=canal, cantidad=ok)
+        st.success(f"{ok} documento(s) procesado(s) desde {canal}. "
                    "Abrí **Ver resultados con mis facturas**.")
 
 

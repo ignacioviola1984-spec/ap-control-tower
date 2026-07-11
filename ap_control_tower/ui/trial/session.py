@@ -26,7 +26,10 @@ def _now() -> str:
 @dataclass
 class TrialSession:
     audit: AuditTrail
-    results: list = field(default_factory=list)   # list[PocResult]
+    results: list = field(default_factory=list)          # list[PocResult]
+    errors: list = field(default_factory=list)           # list[(filename, detalle)]
+    proc_seconds: dict = field(default_factory=dict)     # doc_id -> segundos
+    processing_seconds: float = 0.0
     created_at: str = field(default_factory=_now)
 
 
@@ -60,6 +63,48 @@ def add_results(session: TrialSession, results) -> None:
                 "paginas": r.pages,
             },
         )
+
+
+def add_document(session: TrialSession, result, seconds: float = 0.0) -> None:
+    """Agrega UN documento procesado con su tiempo y un evento de auditoria
+    (solo metadatos: nunca valores de campos ni contenido del PDF)."""
+    session.results.append(result)
+    session.proc_seconds[result.doc_id] = round(max(0.0, float(seconds)), 3)
+    session.processing_seconds += max(0.0, float(seconds))
+    session.audit.add(
+        agent="trial",
+        action="documento-procesado",
+        invoice_id=result.doc_id,
+        result=("con-advertencias" if result.warnings else "ok"),
+        evidence={
+            "tipo": result.document.get("document_type"),
+            "motor": result.engine,
+            "confianza": str(result.confidence),
+            "advertencias": len(result.warnings),
+            "paginas": result.pages,
+            "segundos": round(max(0.0, float(seconds)), 2),
+        },
+    )
+
+
+def add_error(session: TrialSession, filename: str, detalle: str,
+              seconds: float = 0.0) -> None:
+    """Registra un documento que fallo el procesamiento (estado 'Error de
+    procesamiento'). El detalle se trunca; no se guarda contenido del PDF."""
+    session.errors.append((filename, detalle))
+    session.processing_seconds += max(0.0, float(seconds))
+    session.audit.add(
+        agent="trial",
+        action="error-procesamiento",
+        invoice_id=filename,
+        result="error",
+        evidence={"detalle": (detalle or "")[:160]},
+    )
+
+
+def add_processing_time(session: TrialSession, seconds: float) -> None:
+    """Acumula el tiempo real de procesamiento medido dentro de esta sesion."""
+    session.processing_seconds += max(0.0, float(seconds))
 
 
 def record_event(session: TrialSession, action: str, evidence: dict | None = None) -> None:

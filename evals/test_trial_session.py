@@ -103,6 +103,51 @@ def main() -> int:
     check(len(s2.results) == 0 and s2 is not s,
           "sesion nueva vacia e independiente de la anterior")
 
+    print("== Estados, ruta PO/non-PO y confianza informada ==")
+    r_ok = _fake_result("OK-1", "F-9", "100.00", warn=False)
+    r_rev = _fake_result("REV-1", "F-10", "100.00", warn=True)
+    check(ev.status_label(r_ok) == "Procesado", "sin advertencias -> 'Procesado'")
+    check(ev.status_label(r_rev) == "Revisar campos", "advertencia de campo -> 'Revisar campos'")
+    r_mode = _fake_result("MODE-1", "F-11", "100.00", warn=False)
+    r_mode.warnings = ["Document AI no configurado; requiere revision"]
+    check(ev.status_label(r_mode) == "Procesado",
+          "nota de modo (Document AI) NO marca 'Revisar campos'")
+    r_other = _fake_result("OTH-1", "", "0", warn=False)
+    r_other.document["document_type"] = "other"
+    check(ev.status_label(r_other) == "Documento no reconocido",
+          "document_type 'other' -> 'Documento no reconocido'")
+    check(ev.route_label(r_ok.document) == "non-PO" and ev.status_label(r_ok) == "Procesado",
+          "sin OC -> ruta non-PO normal, NO 'Revisar campos'")
+    r_po = _fake_result("PO-1", "F-12", "100.00", warn=False)
+    r_po.document["po_reference"] = "PO-XYZ"
+    check(ev.route_label(r_po.document) == "PO", "con OC referenciada -> ruta PO")
+    r_conf = _fake_result("C-1", "F-13", "100.00", warn=False)
+    r_conf.field_confidences = {"numero_factura": Decimal("0.8"), "importe_total": Decimal("0.6")}
+    mconf = ev.aggregate_metrics([r_conf])
+    check(mconf["confidence"] is not None and abs(mconf["confidence"] - 0.7) < 1e-9,
+          "confianza promedio = media de confianzas informadas (0.7)")
+    r_noconf = _fake_result("NC-1", "F-14", "100.00", warn=False)
+    r_noconf.field_confidences = {}
+    check(ev.aggregate_metrics([r_noconf])["confidence"] is None,
+          "sin confianzas informadas -> confianza promedio None (no se inventa)")
+
+    print("== add_document / add_error: tiempos por documento y estado de error ==")
+    s3 = se.new_session()
+    se.add_document(s3, r_ok, 0.5)
+    se.add_error(s3, "roto.pdf", "boom", 0.2)
+    check(len(s3.results) == 1 and len(s3.errors) == 1, "un ok y un error en la sesion")
+    check(s3.proc_seconds.get("OK-1") == 0.5 and abs(s3.processing_seconds - 0.7) < 1e-9,
+          "tiempo por documento y total acumulado")
+    rows = ev._summary_rows(s3.results, s3.errors)
+    need = {"archivo", "tipo", "proveedor", "número", "fecha", "vencimiento",
+            "moneda", "total", "ruta PO/non-PO", "confianza", "estado"}
+    check(need <= set(rows[0]), "la tabla tiene las columnas pedidas")
+    check(rows[-1]["estado"] == "Error de procesamiento",
+          "el archivo con error aparece con estado 'Error de procesamiento'")
+    m3 = ev.aggregate_metrics(s3.results, s3.errors)
+    check(m3["documents"] == 2 and m3["errors"] == 1,
+          "'Documentos procesados' cuenta ok + errores")
+
     print()
     if failures:
         print(f"TRIAL SESSION ROJO: {len(failures)} fallas")

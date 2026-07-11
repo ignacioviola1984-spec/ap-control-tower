@@ -1,8 +1,8 @@
 """Prompt de extraccion v2: generado desde el esquema (nunca driftea).
 
-La demo corre sin API keys: este prompt es el artefacto que usara el
-extractor (LLM) cuando el sistema procese documentos reales. La regla
-anti-alucinacion es EXPLICITA y no negociable.
+Este prompt mantiene el contrato de extraccion independiente del motor y sirve
+como especificacion evaluable de los campos. La regla anti-alucinacion es
+EXPLICITA y no negociable.
 """
 
 from __future__ import annotations

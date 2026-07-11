@@ -111,14 +111,13 @@ def render() -> None:
     audit = run["audit"]
 
     chain_ok = audit.verify_chain()
-    st.markdown(
+    st.html(
         f"<div class='apct-card'>Cada evento registra agente, acción, factura, "
         f"control, resultado, evidencia, timestamp, run_id y commit; el hash de "
         f"cada evento encadena al anterior. &nbsp;"
         f"{badge('CADENA VERIFICADA', 'ok') if chain_ok else badge('CADENA ROTA', 'block')} "
         f"&nbsp; {len(audit.events)} eventos · corrida <code>{audit.run_id}</code> · "
         f"commit <code>{audit.commit}</code></div>",
-        unsafe_allow_html=True,
     )
 
     df = pd.DataFrame([{

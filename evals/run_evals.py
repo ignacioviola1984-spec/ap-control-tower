@@ -39,11 +39,13 @@ la intencion declarada del dataset, NUNCA de correr el motor). Verifica:
       el audit trail; guards de ReviewError; aprobacion de anticipo.
   18. Confidencialidad: el material real del cliente (docs/, invoices & OC/,
       Golden Records.xlsx, *.pdf) esta git-ignoreado.
+  19. Adaptador Document AI: mapeo, validadores bancarios, configuracion y
+      degradacion segura al extractor local sin credenciales.
 
 Invariantes ademas de los originales: INVARIANTE-3, una proforma JAMAS puede
 aparecer en un lote de pago (grupo 4).
 
-Uso: python evals/run_evals.py            (18 grupos)
+Uso: python evals/run_evals.py            (19 grupos)
      python evals/run_evals.py --sin-app  (salta el grupo 14, p. ej. en CI sin GUI)
 """
 
@@ -368,6 +370,13 @@ def main() -> int:
             if assign_pat.search(line):
                 leaked.append(f"{py.name}: {line.strip()}")
     check(not leaked, f"ningun password asignado como literal en el codigo de la app {leaked or ''}")
+    legacy_html = [
+        str(py.relative_to(ROOT))
+        for py in sorted((ROOT / "ap_control_tower" / "ui").rglob("*.py"))
+        if "unsafe_allow_html=True" in py.read_text(encoding="utf-8", errors="ignore")
+    ]
+    check(not legacy_html,
+          f"HTML/CSS de UI usa st.html (no markdown inseguro que pueda verse crudo) {legacy_html}")
 
     if "--sin-app" in sys.argv:
         print("== 14. Arranque de la app: SALTEADO (--sin-app) ==")
@@ -622,6 +631,14 @@ def main() -> int:
               "docs/, invoices & OC/, Golden Records.xlsx y *.pdf estan ignorados")
     except (OSError, subprocess.TimeoutExpired):
         print("  SKIP  git no disponible en este entorno")
+
+    print("== 19. Adaptador Document AI y degradacion segura ==")
+    import unittest
+    suite = unittest.defaultTestLoader.loadTestsFromName("evals.test_document_ai_adapter")
+    adapter_result = unittest.TextTestRunner(verbosity=0).run(suite)
+    check(adapter_result.wasSuccessful()
+          and adapter_result.testsRun >= 11,
+          f"adaptador Document AI: {adapter_result.testsRun} pruebas unitarias verdes")
 
     print()
     if failures:

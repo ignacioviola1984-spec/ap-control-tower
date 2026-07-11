@@ -1,8 +1,9 @@
-"""AP Control Tower: tablero de trabajo diario, en modo demo con datos sinteticos.
+"""AP Control Tower: tablero de trabajo diario y PoC documental.
 
 Ejecutar:  streamlit run app.py  (el puerto se pasa por CLI: --server.port)
 Requiere la env var AP_DEMO_PASSWORD; sin ella la app no renderiza nada.
-Corre 100% local: sin API keys, sin integraciones externas, sin red.
+El tablero sintetico corre localmente. La vista opcional de documentos reales
+usa Google Document AI cuando sus credenciales estan configuradas.
 """
 
 from __future__ import annotations
@@ -30,6 +31,7 @@ from ap_control_tower.ui.views import (  # noqa: E402
     gate,
     inbox,
     invoice_detail,
+    pdf_upload,
     review,
 )
 
@@ -41,6 +43,7 @@ VIEWS = {
     "🧾  Detalle de factura": invoice_detail.render,
     "🚨  Cola de excepciones": exceptions.render,
     "📋  Revisión humana": review.render,
+    "📄  PoC documentos reales": pdf_upload.render,
     "✅  Aprobación de pagos (gate)": gate.render,
     "📜  Registro de auditoría": audit_view.render,
     "📊  Caso de negocio": business_case.render,

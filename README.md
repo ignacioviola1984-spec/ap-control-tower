@@ -1,7 +1,9 @@
 # AP Control Tower
 
 Sistema de agentes maker-checker para el proceso de Cuentas a Pagar (AP/P2P) de una consultora.
-Demo comercial que corre 100% local: **sin API keys, sin integraciones externas, sin acceso a red**. Todo con datos sinteticos.
+Demo comercial cuyo tablero AP corre localmente y sin credenciales, con datos
+sinteticos. La vista opcional de documentos reales usa Google Document AI y,
+cuando esta configurada, envia los PDFs cargados al proyecto cloud de la demo.
 
 > **El sistema se auto-bloquea ante alertas. La aprobación para liberar dinero es siempre humana.**
 
@@ -9,19 +11,19 @@ Cada etapa tiene un agente *maker* que produce y un agente *checker* independien
 
 Repositorio **privado**. El material de referencia del proceso real vive en `docs/` (gitignoreado, confidencial, nunca se commitea).
 
-## Estado (Dia 3 de 4)
+## Estado (cierre tecnico / pre-despliegue)
 
 | Entregable | Estado |
 |---|---|
 | Repo privado + docs/ blindado | Listo |
-| Dataset sintetico (junio 2026, 36 facturas, 10 casos plantados) | Auditado y aprobado (Dia 1) |
+| Dataset sintetico (junio 2026, 42 documentos: 36 base + 6 flujos reales) | Auditado y aprobado |
 | Motor de controles C1-C7 + audit trail hash-chained | Listo (Dia 2) |
 | Doble sign-off agentico + gate humano + cierre | Listo (Dia 2) |
-| UI Streamlit: 6 vistas + theming corporativo + gate vivo | Listo |
+| UI Streamlit: tablero + PoC de documentos reales con Document AI | Listo |
 | Password gate server-side (env AP_DEMO_PASSWORD) | Listo |
-| Dockerfile + .dockerignore (puerto por CLI/PORT, sin hardcodeo) | Listo (build no ejecutado localmente: sin Docker en esta maquina) |
-| Evals con contrato de exit code (14 grupos, incl. arranque de la app) | Verdes (exit 0) |
-| Ensayo humano + fixes | Dia 4 |
+| Dockerfile + .dockerignore (puerto por CLI/PORT, sin hardcodeo) | Build y smoke test verdes en Docker dentro de WSL |
+| Evals con contrato de exit code (19 grupos, incl. app y adaptador Document AI) | Verdes (exit 0) |
+| Ensayo humano + fixes | Listo |
 
 ## Como correr la UI
 
@@ -43,17 +45,51 @@ AP_DEMO_PASSWORD='eleg-un-password' streamlit run app.py --server.port 8501
 ## Docker (ensayo local y Cloud Run)
 
 ```bash
+# Dentro de WSL. El login ADC es interactivo y se hace una sola vez.
+gcloud auth application-default login
+
 # build (GIT_COMMIT queda en el audit trail de la imagen)
 docker build --build-arg GIT_COMMIT=$(git rev-parse --short HEAD) -t ap-control-tower .
 
-# ensayo local: mismo contrato que Cloud Run (PORT + AP_DEMO_PASSWORD por env)
-docker run --rm -p 8080:8080 -e PORT=8080 -e AP_DEMO_PASSWORD=ensayo-local ap-control-tower
+# ensayo local: monta ADC de WSL como archivo de solo lectura
+docker run --rm -p 8080:8080 \
+  -e PORT=8080 -e AP_DEMO_PASSWORD=ensayo-local \
+  --env-file config/gcp-runtime.example \
+  -e GOOGLE_APPLICATION_CREDENTIALS=/var/secrets/google/adc.json \
+  -v "$HOME/.config/gcloud/application_default_credentials.json:/var/secrets/google/adc.json:ro" \
+  ap-control-tower
 # abrir http://localhost:8080
 ```
+
+Configuracion no secreta validada:
+
+- Proyecto: `singular-backup-501617-r6`
+- Invoice Parser: `ap-control-tower-invoice-parser`
+- Location: `us`
+- Processor ID: `761304b2b69eba0`
+
+Los valores viven en `config/gcp-runtime.example`; el password y las
+credenciales nunca se escriben en el repo.
 
 `.dockerignore` excluye `docs/`, `*.docx`, `.env`, `.git`, `runs/` y `__pycache__`:
 el material confidencial jamas entra a la imagen. En Cloud Run, `--port` y las
 env vars se pasan en el deploy; la imagen no fija ninguno de los dos.
+
+La cuenta de servicio de Cloud Run necesita `roles/documentai.apiUser`. En
+Cloud Run las credenciales vienen del metadata server: no se monta ADC ni se
+pasa `DOCUMENT_AI_ACCESS_TOKEN`. Las facturas se envian al Invoice Parser del
+proyecto Google Cloud; la app no persiste una copia local. Proformas y ordenes
+de compra conservan el flujo deterministico local.
+
+### Despliegue activo
+
+- Servicio: `ap-control-tower`
+- Region: `us-central1`
+- Escalado: 0 a 1 instancia (control de costo)
+- Identidad: `ap-control-tower-runner@singular-backup-501617-r6.iam.gserviceaccount.com`
+- Password: Secret Manager `ap-demo-password` (nunca en imagen o repo)
+- Job de diagnostico: `ap-document-ai-smoke`, factura sintetica generada en
+  memoria para verificar identidad de servicio -> Document AI.
 
 ## Extraccion de documentos (esquema v2)
 
@@ -61,12 +97,16 @@ Modulo `ap_control_tower/extraction/`, ajustado con el analisis de facturas
 reales del cliente (las facturas reales viven fuera del repo: `invoices & OC/`
 y `Golden Records.xlsx` estan gitignoreados y un eval lo verifica).
 
+- **Invoice Parser** (`document_ai.py`): OCR y extraccion visual administrada
+  para facturas. Mapea entidades normalizadas, reconcilia proveedor/cliente,
+  valida base + IVA = total y deriva revision cuando falta evidencia critica.
 - **Esquema** (`schema.py`): `document_type` PRIMERO ("invoice" |
   "proforma_or_advance_request" | "other"; la clasificacion es parte del
-  output evaluado) + 26 campos: identidad fiscal del proveedor (razon social
+  output evaluado) + 29 campos: identidad fiscal del proveedor (razon social
   NUNCA inventada), fechas (vencimiento texto crudo + calculado), periodo de
-  servicio estructurado, IVA con `tratamiento_iva`, metodo de pago, IBAN con
-  soporte de enmascarado, y separacion estricta `po_reference` (solo si esta
+  servicio estructurado, IVA con `tratamiento_iva`, metodo de pago, banco,
+  cuenta local/CCC, IBAN validado por checksum, BIC validado, y separacion
+  estricta `po_reference` (solo si esta
   etiquetado como PO/OC/pedido) vs `project_reference` (ORD-xxx y similares).
 - **Prompt** (`prompt.py`): generado desde el esquema, con la regla
   anti-alucinacion explicita: campo no visible = null, nunca inferido;
@@ -81,12 +121,14 @@ y `Golden Records.xlsx` estan gitignoreados y un eval lo verifica).
   Regenerar con `python -m ap_control_tower.extraction.synthetic_fixtures`.
 - **Etiquetado**: `data/extraction/labels_template.csv` (columnas
   sincronizadas al esquema por eval) para etiquetar documentos nuevos.
-
-## TODO (post-validacion)
-
-- La leyenda del sidebar "Modo demo · datos 100% sinteticos · Sin API keys ·
-  sin red · local" se actualizara cuando el sistema este validado con
-  documentos reales y deployado en cloud.
+- **Evaluacion administrada**: `python evals/run_document_ai_poc.py docs/poc-real`
+  procesa una carpeta ignorada y deja el CSV resultante bajo `runs/`, tambien
+  ignorado por Git.
+- **Prueba real autorizada (2026-07-11)**: 11 documentos procesados; 8
+  facturas por Invoice Parser y 3 documentos no-factura por el extractor local.
+  Los PDFs y resultados detallados permanecen fuera de Git. Tambien se valido
+  el circuito Docker (WSL) -> Document AI con una factura real montada en modo
+  solo lectura.
 
 ## Como correr y verificar (Dia 1)
 
@@ -100,7 +142,7 @@ python -m ap_control_tower.dataset_builder
 python -m ap_control_tower.run_month
 
 # 3. Evals: exit 0 = verde, distinto de 0 = contrato roto
-python evals/run_evals.py            # 14 grupos (incluye arranque real de la app)
+python evals/run_evals.py            # 19 grupos (incluye app + adaptador Document AI)
 python evals/run_evals.py --sin-app  # salta el grupo de arranque (CI sin GUI)
 
 # 4. (opcional) Regenerar las facturas visuales
@@ -229,7 +271,7 @@ ap_control_tower/
     state.py           # corrida y workflows en session_state
     views/             # inbox, detalle, excepciones, gate, auditoria, caso de negocio
 data/                  # dataset + expected + doc_previews (committeados)
-evals/run_evals.py     # exit 0/1 como contrato (14 grupos)
+evals/run_evals.py     # exit 0/1 como contrato (19 grupos)
 runs/                  # audit trails por corrida (gitignoreado)
 docs/                  # confidencial, gitignoreado, NUNCA commitear
 ```

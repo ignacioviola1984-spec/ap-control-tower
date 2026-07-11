@@ -68,10 +68,10 @@ def render() -> None:
         if html:
             components.html(html, height=760, scrolling=True)
         else:
-            st.markdown(
+            st.html(
                 "<div class='apct-card' style='color:#5A6572;'>Sin render visual para "
                 "esta factura (los 6 casos clave del guión tienen documento). Los datos "
-                "estructurados están a la derecha.</div>", unsafe_allow_html=True)
+                "estructurados están a la derecha.</div>")
 
     with right:
         st.markdown("##### Lo que el agente extrajo y decidió")
@@ -101,7 +101,7 @@ def render() -> None:
             causa = f"lote del jueves {o.batch_date.isoformat()}"
         elif o.status.startswith("anticipo"):
             causa = "flujo de anticipos (jamás entra a un lote)"
-        st.markdown(
+        st.html(
             f"<div class='apct-card'>"
             f"{badge(kind_label[0], kind_label[1])} &nbsp;"
             f"{badge(ruta[0], ruta[1])} &nbsp;"
@@ -111,9 +111,8 @@ def render() -> None:
             f"<b>Estado y causa:</b> {o.status} · {causa}"
             f"{('<br><b>Gobierno non-PO:</b> aprobador ' + (inv.internal_approver or '—') + ' · CC ' + (inv.cost_center or '—') + ' · soporte ' + (inv.contract_ref or '—')) if not inv.po_ref and kind == 'invoice' else ''}"
             f"</div></div>",
-            unsafe_allow_html=True,
         )
-        st.markdown(
+        st.html(
             f"<div class='apct-card'>"
             f"<div style='display:flex;justify-content:space-between;align-items:center;'>"
             f"<div style='font-size:17px;font-weight:750;'>{inv.invoice_id} · "
@@ -130,20 +129,17 @@ def render() -> None:
             f"{('<code>' + inv.iban_on_invoice + '</code>') if inv.iban_on_invoice else '— (no aplica: ' + inv.metodo_pago.replace('_', ' ') + ')'}</td></tr>"
             f"<tr><td>IBAN en maestro</td><td colspan='3'><code>{vendor.iban}</code></td></tr>"
             f"</table></div>",
-            unsafe_allow_html=True,
         )
         if o.status == STATUS_BLOQUEADA:
             exc = next(e for e in run["result"].exceptions if e.invoice_id == chosen)
-            st.markdown(
+            st.html(
                 f"<div class='apct-card' style='border-left:4px solid #C0392B;'>"
                 f"<b>Bloqueada por {exc.control_id}</b> · dueño sugerido: {exc.owner}"
                 f"<br><span style='color:#5A6572;'>{exc.detail}</span></div>",
-                unsafe_allow_html=True,
             )
         st.markdown("##### Controles aplicados, en orden")
         rows = "".join(_control_row(r) for r in o.control_results)
-        st.markdown(
+        st.html(
             "<table class='apct-table'><tr><th>Control</th><th>Tipo</th>"
             "<th>Resultado</th><th>Detalle</th><th>Checker</th></tr>" + rows + "</table>",
-            unsafe_allow_html=True,
         )

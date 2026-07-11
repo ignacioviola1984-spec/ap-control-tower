@@ -30,7 +30,7 @@ AMBAR = "#B7791F"
 
 
 def _doctrina() -> None:
-    st.markdown(
+    st.html(
         "<div class='apct-card'><b>El humano interviene en dos lugares.</b> "
         "Acá <b>confirma datos</b> (centros de coste, aprobadores, presupuestos de "
         "anticipos); en <b>Aprobación de pagos</b> libera dinero. Confirmar datos "
@@ -39,37 +39,33 @@ def _doctrina() -> None:
         "<br><span style='color:#5A6572;'>Lo <b style='color:#B7791F;'>ámbar</b> espera "
         "una confirmación humana; lo <b style='color:#C0392B;'>rojo</b> está bloqueado "
         "por un control y vive en la cola de excepciones.</span></div>",
-        unsafe_allow_html=True,
     )
 
 
 def _pendientes_datos_internos(run, invoices) -> None:
     result = run["result"]
     pend = [r for r in result.retenciones if r.reason == "datos_internos"]
-    st.markdown(f"#### (a) Pendientes de datos internos "
-                f"{badge(f'{len(pend)} non-PO retenidas', 'flag')}",
-                unsafe_allow_html=True)
+    st.html(f"#### (a) Pendientes de datos internos "
+                f"{badge(f'{len(pend)} non-PO retenidas', 'flag')}")
     if not pend:
-        st.markdown("<div class='apct-card' style='color:#5A6572;'>No hay facturas "
-                    "esperando datos internos.</div>", unsafe_allow_html=True)
+        st.html("<div class='apct-card' style='color:#5A6572;'>No hay facturas "
+                    "esperando datos internos.</div>")
         return
     for r in pend:
         inv = invoices[r.invoice_id]
         with st.container(border=True):
-            st.markdown(
+            st.html(
                 f"<div style='border-left:4px solid {AMBAR};padding-left:12px;'>"
                 f"<b>{r.invoice_id} · {inv.vendor_name}</b> · {eur(inv.amount_total)} € · "
                 f"{inv.description}<br>{badge('PENDIENTE DE CONFIRMACIÓN HUMANA', 'flag')} "
                 f"&nbsp;falta: {', '.join(r.missing)}</div>",
-                unsafe_allow_html=True,
             )
-            st.markdown(
+            st.html(
                 f"<div style='margin:8px 0;color:#5A6572;font-size:13px;'>"
                 f"<b>Propuesta del agente</b> · centro de coste "
                 f"<code>{r.propuesta.get('cost_center_propuesto')}</code> · aprobador "
                 f"<code>{r.propuesta.get('aprobador_propuesto')}</code> · justificación: "
                 f"regla {r.propuesta.get('regla')}</div>",
-                unsafe_allow_html=True,
             )
             c1, c2, c3 = st.columns(3)
             cc_options = list(PROJECT_CODES)
@@ -104,21 +100,19 @@ def _pendientes_datos_internos(run, invoices) -> None:
 def _anticipos(run, invoices) -> None:
     result = run["result"]
     anticipos = [o for o in result.outcomes.values() if o.status.startswith("anticipo")]
-    st.markdown(f"#### (b) Anticipos / proformas "
-                f"{badge(f'{len(anticipos)} en flujo propio', 'info')}",
-                unsafe_allow_html=True)
+    st.html(f"#### (b) Anticipos / proformas "
+                f"{badge(f'{len(anticipos)} en flujo propio', 'info')}")
     if not anticipos:
-        st.markdown("<div class='apct-card' style='color:#5A6572;'>No hay proformas "
-                    "este mes.</div>", unsafe_allow_html=True)
+        st.html("<div class='apct-card' style='color:#5A6572;'>No hay proformas "
+                    "este mes.</div>")
         return
     for o in anticipos:
         inv = invoices[o.invoice_id]
         with st.container(border=True):
-            st.markdown(
+            st.html(
                 f"<b>{o.invoice_id} · {inv.vendor_name}</b> · {eur(inv.amount_total)} € · "
                 f"{inv.description}<br>{status_badge(o.status)} &nbsp;"
                 f"{badge('JAMÁS ENTRA A UN LOTE DE PAGO', 'mut')}",
-                unsafe_allow_html=True,
             )
             if o.status == STATUS_ANTICIPO_RETENIDO:
                 c1, c2 = st.columns([1.4, 1])
@@ -133,19 +127,17 @@ def _anticipos(run, invoices) -> None:
                     except ReviewError as e:
                         st.error(f"Revisión: {e}")
             elif o.status == STATUS_ANTICIPO_PENDIENTE:
-                st.markdown(
+                st.html(
                     "<span style='color:#5A6572;'>Presupuesto aprobado. "
                     "<b>Pendiente de factura final</b>: cuando llegue la factura "
-                    "fiscal, se clasifica como factura y sigue el flujo normal.</span>",
-                    unsafe_allow_html=True)
+                    "fiscal, se clasifica como factura y sigue el flujo normal.</span>")
             elif o.status == STATUS_ANTICIPO_EXCEPCION:
-                st.markdown(
+                st.html(
                     "<div style='border-left:4px solid #C0392B;padding-left:12px;"
                     "color:#5A6572;'><b style='color:#C0392B;'>Excepción C8 (bloqueada "
                     "por control):</b> el anticipo se pagó y no hay factura final "
                     "posterior vinculada. Dinero salido sin documento fiscal: vive "
-                    "también en la cola de excepciones con su dueño sugerido.</div>",
-                    unsafe_allow_html=True)
+                    "también en la cola de excepciones con su dueño sugerido.</div>")
 
 
 def _vendor_master(run) -> None:
@@ -154,16 +146,14 @@ def _vendor_master(run) -> None:
     incompletos = [v for v in ds.vendors.values()
                    if not (v.tax_id or "").strip() or not v.razon_social_confirmada]
     retenidas = [r for r in result.retenciones if r.reason == "alta_proveedor"]
-    st.markdown(f"#### (c) Vendor master incompleto "
-                f"{badge(f'{len(incompletos)} proveedores', 'flag' if incompletos else 'ok')}",
-                unsafe_allow_html=True)
+    st.html(f"#### (c) Vendor master incompleto "
+                f"{badge(f'{len(incompletos)} proveedores', 'flag' if incompletos else 'ok')}")
     if not incompletos:
-        st.markdown(
+        st.html(
             "<div class='apct-card' style='color:#5A6572;'>Maestro de proveedores "
             "completo: todos tienen tax_id y razón social confirmada. Si un alta "
             "quedara incompleta, sus facturas se retienen acá hasta completarla "
-            "(los datos bancarios siempre con doble aprobación humana).</div>",
-            unsafe_allow_html=True)
+            "(los datos bancarios siempre con doble aprobación humana).</div>")
         return
     for v in incompletos:
         faltas = []
@@ -175,13 +165,12 @@ def _vendor_master(run) -> None:
                      if get_dataset().invoices and any(
                          i.vendor_id == v.vendor_id and i.invoice_id == r.invoice_id
                          for i in get_dataset().invoices)]
-        st.markdown(
+        st.html(
             f"<div class='apct-card' style='border-left:4px solid {AMBAR};'>"
             f"<b>{v.name}</b> ({v.vendor_id}) · falta: {', '.join(faltas)}"
             f"<br><span style='color:#5A6572;'>Retiene sus facturas hasta completar "
             f"el alta{(': ' + ', '.join(afectadas)) if afectadas else ''}. El alta o "
-            f"cambio de datos bancarios exige doble aprobación humana.</span></div>",
-            unsafe_allow_html=True)
+            f"cambio de datos bancarios exige doble aprobación humana.</span></div>")
 
 
 def render() -> None:

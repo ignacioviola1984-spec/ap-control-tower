@@ -1,7 +1,8 @@
 """Helper de env vars (patron portado del repo de demos CFO).
 
-La demo corre entera sin API keys ni red: este modulo solo resuelve
-metadatos de la corrida (commit hash) y lecturas opcionales de entorno.
+El tablero sintetico corre sin API keys. La vista de documentos reales usa
+credenciales ADC de la cuenta de servicio para Document AI; este modulo solo
+resuelve metadatos de la corrida y lecturas opcionales de entorno.
 """
 
 from __future__ import annotations

@@ -32,14 +32,13 @@ def require_password() -> None:
 
     expected = os.environ.get(PASSWORD_ENV_VAR)
     if not expected:
-        st.markdown(
+        st.html(
             "<div style='max-width:520px;margin:12vh auto;text-align:center;"
             "font-family:system-ui;color:#1A2332;'>"
             "<h2 style='margin-bottom:8px;'>Demo no configurada</h2>"
             "<p style='color:#5A6572;'>Falta la variable de entorno "
             "<code>AP_DEMO_PASSWORD</code>. La demo no se renderiza sin ella.</p>"
             "</div>",
-            unsafe_allow_html=True,
         )
         st.stop()
 
@@ -48,11 +47,10 @@ def require_password() -> None:
 
     _, mid, _ = st.columns([1, 1.2, 1])
     with mid:
-        st.markdown(
+        st.html(
             "<div style='text-align:center;margin-top:10vh;margin-bottom:12px;'>"
             "<div style='font-size:30px;font-weight:800;color:#0F4C81;'>AP Control Tower</div>"
             "<div style='color:#5A6572;margin-top:4px;'>Acceso a la demo</div></div>",
-            unsafe_allow_html=True,
         )
         with st.form("login", border=True):
             pwd = st.text_input("Password", type="password",

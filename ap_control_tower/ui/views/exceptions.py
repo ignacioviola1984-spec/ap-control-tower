@@ -57,16 +57,15 @@ def exception_severity(exc) -> str:
 
 
 def _fraud_card(exc, inv, vendor) -> None:
-    st.markdown(
+    st.html(
         f"<div class='apct-fraud'>"
         f"<h3>⚠ ALERTA DE POSIBLE FRAUDE</h3>"
         f"<div style='font-size:14px;'>La cuenta destino de la factura "
         f"<b>{inv.invoice_id}</b> ({inv.vendor_name}, {eur(inv.amount_total)} €) "
         f"<b>no es la del maestro de proveedores</b>. Patrón compatible con "
         f"suplantación de proveedor (cambio de IBAN por email falso).</div></div>",
-        unsafe_allow_html=True,
     )
-    st.markdown(
+    st.html(
         f"<div class='apct-card'><b>Diff contra el maestro de proveedores</b>"
         f"<table class='apct-table' style='margin-top:10px;'>"
         f"<tr><th></th><th>Maestro (fuente de verdad)</th><th>Factura recibida</th></tr>"
@@ -82,7 +81,6 @@ def _fraud_card(exc, inv, vendor) -> None:
         f"{exc.evidence.get('accion_recomendada')}</div>"
         f"<div style='margin-top:6px;color:#5A6572;'>Dueño sugerido: <b>{exc.owner}</b> · "
         f"El pago está retenido: esta factura no puede entrar a ningún lote.</div></div>",
-        unsafe_allow_html=True,
     )
 
 
@@ -105,12 +103,12 @@ def render() -> None:
     result = run["result"]
     invoices = {i.invoice_id: i for i in ds.invoices}
 
-    st.markdown(
-        f"<div class='apct-card'>El sistema bloqueó <b>{len(result.exceptions)} facturas "
-        f"sin intervención humana</b>, agrupadas acá por severidad. Cada una tiene "
+    st.html(
+        f"<div class='apct-card'>El sistema retuvo o derivó a excepción <b>"
+        f"{len(result.exceptions)} documentos sin intervención humana</b>, agrupados "
+        f"acá por severidad. Cada uno tiene "
         f"control, evidencia y dueño sugerido: el equipo revisa excepciones, no el "
         f"100% de las facturas.</div>",
-        unsafe_allow_html=True,
     )
 
     groups: dict[str, list] = {s: [] for s in SEVERITY_ORDER}
@@ -122,12 +120,11 @@ def render() -> None:
         if not items:
             continue
         n = len(items)
-        st.markdown(
+        st.html(
             f"<div style='margin:18px 0 8px 0;padding:8px 14px;border-left:5px solid "
             f"{SEVERITY_COLOR[sev]};background:#fff;border-radius:6px;"
             f"font-size:16px;font-weight:800;'>"
-            f"{SEVERITY_LABELS[sev]}: {n} factura{'s' if n != 1 else ''}</div>",
-            unsafe_allow_html=True,
+            f"{SEVERITY_LABELS[sev]}: {n} documento{'s' if n != 1 else ''}</div>",
         )
         for exc in items:
             inv = invoices[exc.invoice_id]
@@ -137,12 +134,11 @@ def render() -> None:
             title = (f"{exc.invoice_id} · {inv.vendor_name} · {eur(inv.amount_total)} € "
                      f"· {exc.control_id}")
             with st.expander(title):
-                st.markdown(
+                st.html(
                     f"{badge(exc.control_id, SEVERITY_BADGE_KIND[sev])} &nbsp; "
                     f"{badge(SEVERITY_LABELS[sev].upper(), SEVERITY_BADGE_KIND[sev])} "
                     f"&nbsp; dueño sugerido: <b>{exc.owner}</b>"
                     f"<div style='margin:8px 0;color:#1A2332;'>{exc.detail}</div>",
-                    unsafe_allow_html=True,
                 )
                 st.markdown("**Evidencia (esperado vs recibido)**")
-                st.markdown(_evidence_table(exc.evidence), unsafe_allow_html=True)
+                st.html(_evidence_table(exc.evidence))

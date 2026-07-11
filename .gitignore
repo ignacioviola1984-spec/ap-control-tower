@@ -30,6 +30,7 @@ venv/
 
 # Artefactos locales de corridas (se regeneran)
 runs/
+tmp/
 *.db
 *.duckdb
 

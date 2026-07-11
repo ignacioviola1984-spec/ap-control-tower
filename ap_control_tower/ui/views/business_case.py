@@ -38,7 +38,7 @@ def render() -> None:
     left, right = st.columns(2, gap="large")
     with left:
         st.markdown("#### Lo que el proceso actual declara")
-        st.markdown(
+        st.html(
             "<div class='apct-card'>"
             "<ul style='margin:0;padding-left:18px;line-height:2;'>"
             "<li>Proceso <b>100% manual</b>, ~35 facturas/mes</li>"
@@ -51,24 +51,21 @@ def render() -> None:
             "<li>Excel de cashflow y ERP contable <b>nunca conciliados</b> antes de pagar</li>"
             "<li>Datos bancarios del proveedor <b>sin validación</b> en ningún paso</li>"
             "</ul></div>",
-            unsafe_allow_html=True,
         )
     with right:
         st.markdown("#### Lo medido en esta corrida")
         c1, c2 = st.columns(2)
-        c1.markdown(kpi("Controles automáticos", f"{controls_run}",
-                        "ejecutados este mes · hoy: cero"), unsafe_allow_html=True)
-        c2.markdown(kpi("Sign-offs agénticos", f"{signoffs}",
-                        "doble validación por lote"), unsafe_allow_html=True)
+        c1.html(kpi("Controles automáticos", f"{controls_run}",
+                        "ejecutados este mes · hoy: cero"))
+        c2.html(kpi("Sign-offs agénticos", f"{signoffs}",
+                        "doble validación por lote"))
         c3, c4 = st.columns(2)
-        c3.markdown(kpi("Retenido por bloqueos", f"{eur(blocked_amount)} €",
-                        f"{len(blocked)} facturas frenadas sin humano"),
-                    unsafe_allow_html=True)
-        c4.markdown(kpi("Posible fraude retenido", f"{eur(fraud_amount)} €",
-                        "IBAN distinto del maestro"), unsafe_allow_html=True)
+        c3.html(kpi("Retenido por bloqueos", f"{eur(blocked_amount)} €",
+                        f"{len(blocked)} facturas frenadas sin humano"))
+        c4.html(kpi("Posible fraude retenido", f"{eur(fraud_amount)} €",
+                        "IBAN distinto del maestro"))
         c5, c6 = st.columns(2)
-        c5.markdown(kpi("Lotes propuestos", f"{len(result.batches)}",
-                        f"{eur(batch_total)} € · trazables de punta a punta"),
-                    unsafe_allow_html=True)
-        c6.markdown(kpi("Aprobaciones trazables", "100%",
-                        "nombre + decisión + timestamp"), unsafe_allow_html=True)
+        c5.html(kpi("Lotes propuestos", f"{len(result.batches)}",
+                        f"{eur(batch_total)} € · trazables de punta a punta"))
+        c6.html(kpi("Aprobaciones trazables", "100%",
+                        "nombre + decisión + timestamp"))

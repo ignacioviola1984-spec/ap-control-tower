@@ -35,7 +35,7 @@ def _feed_row(inv, outcome) -> str:
     else:
         b = badge("VALIDADA", "ok")
     return (f"<tr><td><b>{inv.invoice_id}</b></td><td>{inv.vendor_name}</td>"
-            f"<td>{inv.invoice_number}</td><td>{inv.received_date.isoformat()}</td>"
+            f"<td>{inv.invoice_number or '—'}</td><td>{inv.received_date.isoformat()}</td>"
             f"<td class='num'>{eur(inv.amount_total)} €</td><td>{b}</td></tr>")
 
 
@@ -62,18 +62,16 @@ def _run_live(delay: float) -> None:
             text=(f"Procesando {inv.invoice_id} · {inv.vendor_name} · "
                   f"{eur(inv.amount_total)} € · {n_controls} controles ejecutados"),
         )
-        stage.markdown(
+        stage.html(
             f"<div class='apct-card'>Validadas: <b>{ok}</b> &nbsp;·&nbsp; "
             f"con flag: <b>{flagged}</b> &nbsp;·&nbsp; "
             f"bloqueadas: <b style='color:#C0392B;'>{blocked}</b></div>",
-            unsafe_allow_html=True,
         )
         rows.insert(0, _feed_row(inv, outcome))
-        feed.markdown(
+        feed.html(
             "<table class='apct-table'><tr><th>Factura</th><th>Proveedor</th>"
             "<th>Número</th><th>Recibida</th><th>Importe</th><th>Resultado</th></tr>"
             + "".join(rows[:10]) + "</table>",
-            unsafe_allow_html=True,
         )
         if delay:
             time.sleep(delay)
@@ -96,29 +94,26 @@ def _dashboard() -> None:
     flagged = [o for o in result.outcomes.values() if o.flags]
 
     c1, c2, c3, c4, c5 = st.columns(5)
-    c1.markdown(kpi("Documentos del mes", str(len(result.outcomes)),
-                    "junio 2026 · 4 jueves de pago"), unsafe_allow_html=True)
-    c2.markdown(kpi("En lotes de pago", f"{in_batches}",
-                    f"{eur(batch_total)} € propuestos"), unsafe_allow_html=True)
-    c3.markdown(kpi("Bloqueadas (sin humano)", str(len(blocked)),
-                    f"{eur(blocked_amount)} € retenidos"), unsafe_allow_html=True)
-    c4.markdown(kpi("Con flag soft", str(len(flagged)),
-                    "avanzan, marcadas para revisión"), unsafe_allow_html=True)
-    c5.markdown(kpi("Próximo ciclo", str(len(result.carryover_ids)),
-                    "sin jueves restante en el mes"), unsafe_allow_html=True)
+    c1.html(kpi("Documentos del mes", str(len(result.outcomes)),
+                    "junio 2026 · 4 jueves de pago"))
+    c2.html(kpi("En lotes de pago", f"{in_batches}",
+                    f"{eur(batch_total)} € propuestos"))
+    c3.html(kpi("Bloqueadas (sin humano)", str(len(blocked)),
+                    f"{eur(blocked_amount)} € retenidos"))
+    c4.html(kpi("Con flag soft", str(len(flagged)),
+                    "avanzan, marcadas para revisión"))
+    c5.html(kpi("Próximo ciclo", str(len(result.carryover_ids)),
+                    "sin jueves restante en el mes"))
 
     if result.retenciones or result.tareas:
         anticipos = [o for o in result.outcomes.values() if o.status.startswith("anticipo")]
         d1, d2, d3 = st.columns(3)
-        d1.markdown(kpi("Pendientes de datos internos", str(len(result.retenciones)),
-                        "retenidas con propuesta del agente (no bloqueadas)"),
-                    unsafe_allow_html=True)
-        d2.markdown(kpi("Tareas de conciliación", str(len(result.tareas)),
-                        "domiciliaciones y tarjetas (fuera del lote)"),
-                    unsafe_allow_html=True)
-        d3.markdown(kpi("Anticipos (proformas)", str(len(anticipos)),
-                        "flujo propio · jamás entran a un lote"),
-                    unsafe_allow_html=True)
+        d1.html(kpi("Pendientes de datos internos", str(len(result.retenciones)),
+                        "retenidas con propuesta del agente (no bloqueadas)"))
+        d2.html(kpi("Tareas de conciliación", str(len(result.tareas)),
+                        "domiciliaciones y tarjetas (fuera del lote)"))
+        d3.html(kpi("Anticipos (proformas)", str(len(anticipos)),
+                        "flujo propio · jamás entran a un lote"))
 
     st.markdown("#### Lotes del jueves")
     rows = []
@@ -137,9 +132,8 @@ def _dashboard() -> None:
         rows.append(f"<tr><td><b>jueves {b.batch_date.isoformat()}</b></td>"
                     f"<td class='num'>{b.count}</td>"
                     f"<td class='num'>{eur(b.total)} €</td><td>{chip}</td></tr>")
-    st.markdown("<table class='apct-table'><tr><th>Lote</th><th>Facturas</th>"
-                "<th>Total</th><th>Estado</th></tr>" + "".join(rows) + "</table>",
-                unsafe_allow_html=True)
+    st.html("<table class='apct-table'><tr><th>Lote</th><th>Facturas</th>"
+                "<th>Total</th><th>Estado</th></tr>" + "".join(rows) + "</table>")
 
     st.markdown("#### Todas las facturas")
     frows = []
@@ -154,22 +148,21 @@ def _dashboard() -> None:
             f"<td class='num'>{eur(inv.amount_total)} €</td>"
             f"<td>{status_badge(o.status)}</td><td>{ctrl}</td><td>{flags or '—'}</td>"
             f"<td>{lote}</td></tr>")
-    st.markdown(
+    st.html(
         "<table class='apct-table'><tr><th>Factura</th><th>Proveedor</th><th>Número</th>"
         "<th>Recibida</th><th>Importe</th><th>Estado</th><th>Control</th><th>Flags</th>"
         "<th>Lote</th></tr>" + "".join(frows) + "</table>",
-        unsafe_allow_html=True,
     )
 
 
 def render() -> None:
     st.markdown("## Corrida del mes")
-    st.markdown(
-        "<div class='apct-card'>El motor procesa el <b>inbox de junio 2026</b> "
-        "(36 facturas recibidas por email con su OC) por el pipeline maker-checker "
-        "C1–C7. Los controles hard bloquean solos; el único gate humano es la "
-        "liberación del lote de pago.</div>",
-        unsafe_allow_html=True,
+    st.html(
+        "<div class='apct-card'>El motor procesa el <b>inbox de junio 2026</b>: "
+        "42 documentos (36 facturas base + 6 casos de flujos reales), con rutas "
+        "PO, non-PO, anticipos, domiciliaciones y tarjeta. Los controles bloqueantes "
+        "actúan solos; el único gate humano de dinero es la liberación del lote de "
+        "pago.</div>",
     )
     col_btn, col_speed, col_reset = st.columns([1.2, 1.2, 1])
     speed = col_speed.selectbox("Velocidad del replay", list(SPEEDS), index=0,

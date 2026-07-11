@@ -101,6 +101,19 @@ class JobStore:
                     return rec
             return None
 
+    def find_by_dedup(self, dedup_key: str) -> JobRecord | None:
+        """Idempotencia distribuida: reusa un job con esa clave que NO haya ido a
+        dead-letter (exitoso o aun en curso). Prefiere el exitoso; si no, el mas
+        reciente. Evita re-despachar el mismo contenido mientras se procesa."""
+        with self._lock:
+            cands = [r for r in self._jobs.values()
+                     if r.dedup_key == dedup_key and r.status != JobStatus.DEAD_LETTER]
+            if not cands:
+                return None
+            exitosos = [r for r in cands if r.status == JobStatus.SUCCESS]
+            pool = exitosos or cands
+            return max(pool, key=lambda r: r.created_ts)
+
     def dead_letters(self) -> list[JobRecord]:
         with self._lock:
             return [r for r in self._jobs.values() if r.status == JobStatus.DEAD_LETTER]

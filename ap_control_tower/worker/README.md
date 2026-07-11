@@ -28,6 +28,16 @@ API  →  JobService  →  runner (política)  →  núcleo (extracción/control
 - **No bloquear la interfaz**: la API responde `202 + task_id`; con Celery el
   trabajo corre en un worker separado.
 
+## Despacho asincrono real (Fase 5.1)
+
+Con `AP_BROKER_URL` configurado, `POST /v1/documents` **encola** en Celery
+(`CeleryJobService`) y devuelve `202 + task_id` de inmediato, en estado
+`queued`: la extraccion pesada la corre el worker, **no** la request web. Sin
+broker (o `AP_CELERY_EAGER=1`) se usa el `JobService` inline (demo/tests, sin
+infra). La seleccion vive en `api/deps.py`; la **idempotencia por contenido**
+(hash) se preserva antes de despachar. Verificado en vivo contra Redis real
+(worker separado ejecuta la tarea) y en `evals/test_worker_dispatch.py`.
+
 ## Puesta en marcha (dev, WSL)
 
 ```bash

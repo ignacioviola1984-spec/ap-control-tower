@@ -1,0 +1,6 @@
+# Integracion Gmail READ-ONLY (etiqueta AP-DEMO). Se incluye en la imagen.
+# Credenciales OAuth (client id/secret + refresh token) por entorno/Secret
+# Manager, NUNCA en Git ni en la imagen. Scope unico: gmail.readonly.
+google-api-python-client>=2.100
+google-auth>=2.30
+google-auth-oauthlib>=1.2

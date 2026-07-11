@@ -12,11 +12,14 @@ import streamlit as st
 
 from ...app import document_ai_configured
 from ..components import extraction_view as ev
+from ..components import gmail_panel
 from . import session as sess
 
 
-def _process_and_store(files) -> None:
+def _process_and_store(files, canal: str) -> None:
     """Procesa [(nombre, bytes)] con progreso y guarda en la sesion."""
+    if not files:
+        return
     bar = st.progress(0.0, text="Procesando documentos...")
 
     def _on_progress(index: int, total: int, name: str) -> None:
@@ -30,8 +33,8 @@ def _process_and_store(files) -> None:
     if results:
         session = sess.get_session()
         sess.add_results(session, results)
-        sess.record_intake(session, canal="carga-manual", cantidad=len(results))
-        st.success(f"{len(results)} documento(s) procesado(s). "
+        sess.record_intake(session, canal=canal, cantidad=len(results))
+        st.success(f"{len(results)} documento(s) procesado(s) desde {canal}. "
                    "Abrí **Ver resultados con mis facturas**.")
 
 
@@ -46,12 +49,13 @@ def _render_manual() -> None:
         return
     if st.button("Procesar PDFs cargados", type="primary", use_container_width=True):
         files = [(f.name, f.getvalue()) for f in uploaded]
-        _process_and_store(files)
+        _process_and_store(files, canal="carga-manual")
 
 
 def _render_gmail() -> None:
-    st.markdown("#### Importar desde Gmail (etiqueta AP-DEMO)")
-    st.caption("Disponible cuando Gmail esté configurado (solo lectura).")
+    st.markdown("#### Importar desde Gmail (etiqueta AP-DEMO, solo lectura)")
+    gmail_panel.render_gmail_panel(
+        on_import=lambda files: _process_and_store(files, canal="gmail"))
 
 
 def render() -> None:

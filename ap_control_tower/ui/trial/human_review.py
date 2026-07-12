@@ -28,6 +28,15 @@ def _value(document: dict, field: str) -> str:
     return "" if value is None else str(value)
 
 
+def _render_next_step() -> None:
+    if st.button("Aprobación - propuesta de pago", type="primary",
+                 use_container_width=True, key="trial_review_next_payment"):
+        from .shell import PAYMENT_APPROVAL
+
+        st.session_state["_trial_navigation"] = PAYMENT_APPROVAL
+        st.rerun()
+
+
 def render() -> None:
     st.markdown("## Revisión humana")
     st.caption("El agente deriva únicamente los documentos que necesitan juicio humano. "
@@ -49,6 +58,7 @@ def render() -> None:
 
     if not queue:
         st.success("No hay documentos que requieran revisión humana.")
+        _render_next_step()
         return
 
     rows = []
@@ -116,3 +126,5 @@ def render() -> None:
 
     st.markdown("### Audit trail de la corrida")
     ev.render_session_audit(session.audit, persisted=sess.persistence_available())
+    st.markdown("---")
+    _render_next_step()

@@ -63,6 +63,11 @@ h1, h2, h3 {{ font-weight: 750; letter-spacing: -0.01em; color: {TEXT}; }}
   padding: 18px 20px; box-shadow: 0 1px 2px rgba(16,24,40,.04);
   margin-bottom: 12px;
 }}
+.apct-trial-hero {{
+  font-size: clamp(21px, 2vw, 27px); line-height: 1.2; font-weight: 780;
+  letter-spacing: -.015em; color: {TEXT}; white-space: nowrap;
+  margin: 0 0 16px 0;
+}}
 .apct-kpi-label {{ font-size: 12px; color: {MUTED}; text-transform: uppercase;
   letter-spacing: .06em; font-weight: 600; }}
 .apct-kpi-value {{ font-size: 26px; font-weight: 800; color: {TEXT}; margin-top: 2px; }}
@@ -147,13 +152,23 @@ def eur(amount) -> str:
     return s.replace(",", "X").replace(".", ",").replace("X", ".")
 
 
-def sidebar_brand() -> None:
+def sidebar_brand(mode: str = "demo") -> None:
+    if mode == "trial":
+        subtitle = (
+            "<div style='font-size:12px;font-weight:700;color:#E8EEF5 !important;"
+            "margin-top:4px;'>Prueba de concepto con facturas reales</div>"
+            "<div style='font-size:10.5px;line-height:1.35;color:#9FB3C8 !important;"
+            "margin-top:3px;'>Extracción, revisión y propuesta de pago en un circuito "
+            "completo.</div>")
+    else:
+        subtitle = (
+            "<div style='font-size:12px;color:#9FB3C8 !important;margin-top:2px;'>"
+            "Cuentas a Pagar · agentes maker-checker</div>")
     st.sidebar.html(
         "<div style='padding:6px 4px 2px 4px;'>"
         "<div style='font-size:21px;font-weight:800;letter-spacing:-.01em;'>"
         "AP <span style='color:#7FB3E3;'>Control Tower</span></div>"
-        "<div style='font-size:12px;color:#9FB3C8 !important;margin-top:2px;'>"
-        "Cuentas a Pagar · agentes maker-checker</div>"
+        + subtitle +
         "</div>",
     )
     st.sidebar.markdown("---")

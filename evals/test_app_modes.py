@@ -10,6 +10,7 @@ SKIP con exit 0 si Streamlit no esta instalado (dependencia de UI).
 
 from __future__ import annotations
 
+import inspect
 import os
 import socket
 import subprocess
@@ -105,11 +106,11 @@ def main() -> int:
     ).read_text(encoding="utf-8")
     check("Corridas anteriores" not in trial_results_source,
           "Resultados muestra solo la sesión actual, sin corridas anteriores")
-    check("Abrir" not in joined and "Demo completa" not in joined,
-          "el enlace a la Demo NO es una vista del selector")
+    shell_source = inspect.getsource(shell.render)
+    check("demo_link" not in shell_source and "render_sidebar_end_session" in shell_source,
+          "Trial reemplaza el enlace a la Demo por Finalizar sesión")
 
     print("== Copy comercial y limpieza de metadatos técnicos ==")
-    import inspect
     from ap_control_tower.ui import theme
     from ap_control_tower.ui.trial import intake
     from ap_control_tower.ui.trial import payment_approval
@@ -117,8 +118,25 @@ def main() -> int:
     footer_source = inspect.getsource(theme.sidebar_footer)
     check("Cargá tus facturas reales y verás cómo el agente las procesa en tiempo real"
           in intake_source, "Trial usa el mensaje comercial acordado")
+    check("apct-trial-hero" in intake_source and "container(border=True)" in intake_source,
+          "Trial usa título compacto y cards para las dos vías de carga")
     check("Importar desde el correo AP (" not in intake_source,
           "el título de Gmail no repite carpeta/modo")
+    from ap_control_tower.ui.components import gmail_panel
+    gmail_source = inspect.getsource(gmail_panel)
+    check("Adjuntos PDF a importar (carpeta AP-DEMO)" not in gmail_source
+          and "**Adjuntos PDF a importar**" in gmail_source,
+          "selector Gmail usa wording limpio y en negrita")
+    check("Consultar carpeta AP-DEMO" not in gmail_source
+          and "Consultar correo AP" in gmail_source,
+          "correo AP no expone el nombre técnico de la etiqueta")
+    from ap_control_tower.ui.trial import human_review
+    review_source = inspect.getsource(human_review)
+    check("Aprobación - propuesta de pago" in review_source,
+          "Revisión humana ofrece navegación al siguiente paso")
+    brand_source = inspect.getsource(theme.sidebar_brand)
+    check("Prueba de concepto con facturas reales" in brand_source,
+          "lateral identifica la experiencia como prueba de concepto real")
     check("corrida <code>" not in footer_source and "commit <code>" not in footer_source,
           "la Demo no expone run/commit en el pie")
     check("PoC documental" not in footer_source,

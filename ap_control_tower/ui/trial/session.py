@@ -392,15 +392,22 @@ def render_sidebar_actions() -> None:
     st.sidebar.caption(
         f"Sesión iniciada · {len(session.results)} documento(s)"
         + (" · historial activo" if stored else " · solo memoria"))
-    if st.sidebar.button("🗑  Finalizar sesión actual", use_container_width=True,
-                         key="_trial_clear_sidebar"):
-        _clear_and_rerun()
     if session.persistence_error:
         st.sidebar.warning("No se pudo actualizar el historial. La sesión actual sigue activa.")
     elif stored:
         st.sidebar.caption("Se guardan extracción, métricas y auditoría. El PDF se descarta.")
     else:
         st.sidebar.caption("Sin base configurada: al cerrar, los resultados desaparecen.")
+
+
+def render_sidebar_end_session() -> None:
+    """Acción final del lateral; reemplaza el antiguo enlace a la Demo."""
+    import streamlit as st
+
+    st.sidebar.markdown("---")
+    if st.sidebar.button("🗑  Finalizar sesión actual", use_container_width=True,
+                         key="_trial_clear_sidebar"):
+        _clear_and_rerun()
 
 
 def render_clear_action() -> None:

@@ -17,6 +17,8 @@ from ..components import extraction_view as ev
 from ..components import gmail_panel
 from . import session as sess
 
+HERO_TEXT = "Cargá tus facturas reales y verás cómo el agente las procesa en tiempo real"
+
 
 def _process_and_store(files, canal: str) -> None:
     """Procesa [(nombre, bytes)] documento por documento (tiempo individual) y
@@ -66,28 +68,30 @@ def _process_and_store(files, canal: str) -> None:
 
 
 def _render_manual() -> None:
-    st.markdown("#### Carga manual de PDF")
-    uploaded = st.file_uploader(
-        "PDFs de factura / OC (uno o varios)", type=["pdf"],
-        accept_multiple_files=True, key="_trial_uploader",
-    )
-    if not uploaded:
-        st.caption("Seleccioná uno o más PDF y presioná **Procesar**.")
-        return
-    if st.button("Procesar PDFs cargados", type="primary", use_container_width=True):
-        files = [(f.name, f.getvalue()) for f in uploaded]
-        _process_and_store(files, canal="carga-manual")
+    with st.container(border=True):
+        st.markdown("#### Carga manual de PDF")
+        uploaded = st.file_uploader(
+            "PDFs de factura / OC (uno o varios)", type=["pdf"],
+            accept_multiple_files=True, key="_trial_uploader",
+        )
+        if not uploaded:
+            st.caption("Seleccioná uno o más PDF y presioná **Procesar**.")
+            return
+        if st.button("Procesar PDFs cargados", type="primary", use_container_width=True):
+            files = [(f.name, f.getvalue()) for f in uploaded]
+            _process_and_store(files, canal="carga-manual")
 
 
 def _render_gmail() -> None:
-    st.markdown("#### Importar desde el correo AP")
-    gmail_panel.render_gmail_panel(
-        on_import=lambda files: _process_and_store(files, canal="correo-ap"),
-        require_open=True)
+    with st.container(border=True):
+        st.markdown("#### Importar desde el correo AP")
+        gmail_panel.render_gmail_panel(
+            on_import=lambda files: _process_and_store(files, canal="correo-ap"),
+            require_open=True)
 
 
 def render() -> None:
-    st.markdown("## Cargá tus facturas reales y verás cómo el agente las procesa en tiempo real")
+    st.html(f"<div class='apct-trial-hero'>{HERO_TEXT}</div>")
     if not document_ai_configured():
         st.warning("Document AI no está configurado: los PDF se procesan con el motor "
                    "local y quedan marcados para revisión.")

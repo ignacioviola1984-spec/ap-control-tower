@@ -29,7 +29,7 @@ def _visible_attachments(message) -> list:
 def render_gmail_panel(on_import, client=None, *, require_open: bool = False) -> None:
     if require_open and not st.session_state.get("_trial_gmail_browse"):
         st.caption("La carpeta se consulta únicamente cuando lo solicites.")
-        if st.button("Consultar carpeta AP-DEMO", use_container_width=True,
+        if st.button("Consultar correo AP", use_container_width=True,
                      key="_trial_gmail_open"):
             st.session_state["_trial_gmail_browse"] = True
             st.rerun()
@@ -49,7 +49,7 @@ def render_gmail_panel(on_import, client=None, *, require_open: bool = False) ->
         st.error(f"No se pudo leer el correo AP (solo lectura): {exc}")
         return
 
-    st.caption(f"Conexión: {mailbox_provider() or 'correo'} · carpeta AP-DEMO · solo lectura")
+    st.caption(f"Conexión: {mailbox_provider() or 'correo'} · solo lectura")
 
     if not messages:
         st.caption("No hay mensajes con la etiqueta configurada.")
@@ -86,7 +86,7 @@ def render_gmail_panel(on_import, client=None, *, require_open: bool = False) ->
         st.caption("Los mensajes con esa etiqueta no traen adjuntos PDF.")
         return
 
-    picked = st.multiselect("Adjuntos PDF a importar (carpeta AP-DEMO)", list(options))
+    picked = st.multiselect("**Adjuntos PDF a importar**", list(options))
     if picked and st.button("Importar y procesar seleccionados", type="primary",
                             use_container_width=True):
         files = []

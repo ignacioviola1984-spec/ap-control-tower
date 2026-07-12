@@ -1,4 +1,4 @@
-"""Navegacion del trial: tres vistas internas y un enlace externo."""
+"""Navegación del Trial: cinco vistas internas del circuito real."""
 
 from __future__ import annotations
 
@@ -12,18 +12,19 @@ HUMAN_REVIEW = "📋  Revisión humana"
 PAYMENT_APPROVAL = "✅  Aprobación para propuesta de pago"
 BUSINESS_CASE = "📈  Consultar caso de negocio"
 
-# El acceso a la Demo NO es una vista: se renderiza como enlace externo separado.
 TRIAL_OPTIONS = [INTAKE, RESULTS, HUMAN_REVIEW, PAYMENT_APPROVAL, BUSINESS_CASE]
 
 
 def render() -> None:
-    from . import (business_case, demo_link, human_review, intake,
-                   payment_approval, results, session)
+    from . import (business_case, human_review, intake, payment_approval,
+                   results, session)
 
     session.render_sidebar_actions()
 
-    choice = st.sidebar.radio("Navegación", TRIAL_OPTIONS, label_visibility="collapsed")
-    demo_link.render_sidebar()
+    choice = st.sidebar.radio(
+        "Navegación", TRIAL_OPTIONS, label_visibility="collapsed",
+        key="_trial_navigation")
+    session.render_sidebar_end_session()
     if choice == INTAKE:
         intake.render()
     elif choice == RESULTS:

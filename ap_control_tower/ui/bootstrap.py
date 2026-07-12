@@ -33,7 +33,7 @@ def run(mode: str | None = "demo") -> None:
 
     from .theme import inject_css, sidebar_brand
     inject_css()
-    sidebar_brand()
+    sidebar_brand(mode=mode)
 
     if mode == "trial":
         from .trial.shell import render as render_trial

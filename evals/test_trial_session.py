@@ -91,6 +91,18 @@ def main() -> int:
           "CSV con encabezado esperado")
     check(len(csv.splitlines()) == 3, "CSV con una fila por documento")
 
+    print("== Descargas: claves unicas para sesion e historial ==")
+    download_keys: list[str] = []
+    original_download_button = ev.st.download_button
+    try:
+        ev.st.download_button = lambda *args, **kwargs: download_keys.append(kwargs["key"])
+        ev.render_download([r1], key="trial_download_current_run-1")
+        ev.render_download([r1], key="trial_download_history_run-2")
+    finally:
+        ev.st.download_button = original_download_button
+    check(download_keys == ["trial_download_current_run-1", "trial_download_history_run-2"],
+          "sesion actual e historial usan IDs distintos en sus botones de descarga")
+
     print("== 'Finalizar y borrar' limpia la sesion ==")
     to_clear = se.session_keys_to_clear(
         ["_trial_session", "_trial_uploader", "_gmail_demo_results", "otra_clave"])

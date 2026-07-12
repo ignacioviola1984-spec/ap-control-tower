@@ -241,13 +241,14 @@ def render_summary_table(results, errors=None) -> None:
                  use_container_width=True, hide_index=True)
 
 
-def render_download(results) -> None:
+def render_download(results, *, key: str) -> None:
     st.download_button(
         "Descargar extracción CSV",
         data=results_csv(results).encode("utf-8-sig"),
         file_name="ap-control-tower-extraccion.csv",
         mime="text/csv",
         use_container_width=True,
+        key=key,
     )
 
 

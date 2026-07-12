@@ -9,13 +9,14 @@ from . import session as sess
 
 
 def _render_result_set(title: str, results, errors, processing_seconds,
-                       proc_seconds, audit, *, persisted: bool) -> None:
+                       proc_seconds, audit, *, persisted: bool,
+                       download_key: str) -> None:
     st.markdown(f"#### {title}")
     ev.render_metrics(results, processing_seconds=processing_seconds, errors=errors)
     st.markdown("##### Documentos")
     ev.render_summary_table(results, errors=errors)
     if results:
-        ev.render_download(results)
+        ev.render_download(results, key=download_key)
         st.markdown("##### Detalle por documento")
         ev.render_detail(results, audit=audit, proc_seconds=proc_seconds)
     st.markdown("##### Audit trail")
@@ -62,7 +63,7 @@ def _render_history(current_run_id: str) -> None:
     _render_result_set(
         "Resultado guardado", stored.results, stored.errors,
         stored.processing_seconds, stored.proc_seconds, stored.audit,
-        persisted=True)
+        persisted=True, download_key=f"trial_download_history_{stored.run_id}")
 
     confirm = st.checkbox(
         "Confirmo que quiero borrar esta corrida y su audit trail",
@@ -90,7 +91,8 @@ def render() -> None:
         _render_result_set(
             "Sesión actual", results, errors, session.processing_seconds,
             session.proc_seconds, session.audit,
-            persisted=sess.persistence_available() and not session.persistence_error)
+            persisted=sess.persistence_available() and not session.persistence_error,
+            download_key=f"trial_download_current_{session.audit.run_id}")
         st.markdown("---")
         sess.render_clear_action()
     else:

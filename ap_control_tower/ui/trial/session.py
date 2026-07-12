@@ -36,6 +36,8 @@ class TrialSession:
     created_at: str = field(default_factory=_now)
     file_hashes: dict = field(default_factory=dict)      # doc_id -> sha256
     sources: dict = field(default_factory=dict)          # doc_id -> canal
+    review_decisions: dict = field(default_factory=dict) # doc_id -> decisión humana
+    approval_decisions: dict = field(default_factory=dict) # doc_id -> propuesta pago
     persistence_error: str | None = None
 
 
@@ -122,6 +124,104 @@ def record_event(session: TrialSession, action: str, evidence: dict | None = Non
     session.audit.add(agent="trial", action=action, evidence=evidence or {})
 
 
+def _result_by_id(session: TrialSession, doc_id: str):
+    for result in session.results:
+        if result.doc_id == doc_id:
+            return result
+    raise ValueError("El documento ya no está disponible en esta corrida.")
+
+
+def confirm_review(session: TrialSession, doc_id: str, reviewer: str,
+                   updates: dict, note: str = "") -> dict:
+    from . import workflow
+
+    reviewer = (reviewer or "").strip()
+    if not reviewer:
+        raise ValueError("Ingresá el nombre de quien realiza la revisión.")
+    result = _result_by_id(session, doc_id)
+    clean = workflow.normalized_updates(updates)
+    changed = [field for field, value in clean.items()
+               if str(result.document.get(field) or "") != str(value or "")]
+    candidate = {**result.document, **clean}
+    if candidate.get("document_type") == "invoice":
+        missing = workflow.missing_critical_fields(candidate)
+        if missing:
+            raise ValueError("Todavía faltan campos críticos: " + ", ".join(missing))
+    result.document.update(clean)
+    decision = {"status": "confirmed", "actor": reviewer,
+                "note": (note or "").strip()[:500], "fields_changed": changed,
+                "timestamp": workflow.now_iso()}
+    session.review_decisions[doc_id] = decision
+    session.audit.add(
+        agent=reviewer, action="revision-humana-confirmada", invoice_id=doc_id,
+        result="confirmed", evidence={"campos_corregidos": changed,
+                                      "motivo_informado": bool(decision["note"])},
+    )
+    return decision
+
+
+def retain_review(session: TrialSession, doc_id: str, reviewer: str, note: str) -> dict:
+    from . import workflow
+
+    reviewer = (reviewer or "").strip()
+    note = (note or "").strip()
+    if not reviewer:
+        raise ValueError("Ingresá el nombre de quien realiza la revisión.")
+    if not note:
+        raise ValueError("Indicá el motivo de la retención.")
+    _result_by_id(session, doc_id)
+    decision = {"status": "retained", "actor": reviewer, "note": note[:500],
+                "fields_changed": [], "timestamp": workflow.now_iso()}
+    session.review_decisions[doc_id] = decision
+    session.audit.add(agent=reviewer, action="documento-retenido-en-revision",
+                      invoice_id=doc_id, result="retained",
+                      evidence={"motivo_informado": True})
+    return decision
+
+
+def decide_payment_proposal(session: TrialSession, doc_ids: list[str], approver: str,
+                            status: str, note: str = "") -> list[dict]:
+    from . import workflow
+
+    approver = (approver or "").strip()
+    note = (note or "").strip()
+    if not approver:
+        raise ValueError("Ingresá el nombre de quien toma la decisión.")
+    if status not in {"approved", "rejected"}:
+        raise ValueError("Decisión de pago inválida.")
+    if not doc_ids:
+        raise ValueError("Seleccioná al menos una factura.")
+    if status == "rejected" and not note:
+        raise ValueError("El rechazo requiere un motivo.")
+
+    states = {row["result"].doc_id: row
+              for row in workflow.approval_rows(
+                  session.results, session.review_decisions, session.approval_decisions)}
+    decisions = []
+    for doc_id in doc_ids:
+        row = states.get(doc_id)
+        if row is None:
+            raise ValueError(f"Documento no encontrado: {doc_id}")
+        if status == "approved" and row["status"] != "eligible":
+            raise ValueError(f"{doc_id} no es elegible: " + ", ".join(row["reasons"]))
+        reviewer = (session.review_decisions.get(doc_id) or {}).get("actor")
+        if reviewer and reviewer.casefold() == approver.casefold():
+            raise ValueError("Maker-checker: quien revisó no puede aprobar la misma factura.")
+        decision = {"status": status, "actor": approver, "note": note[:500],
+                    "timestamp": workflow.now_iso()}
+        session.approval_decisions[doc_id] = decision
+        session.audit.add(
+            agent=approver,
+            action=("aprobada-para-propuesta-pago" if status == "approved"
+                    else "rechazada-para-propuesta-pago"),
+            invoice_id=doc_id, result=status,
+            evidence={"motivo_informado": bool(note),
+                      "no_libera_dinero": True},
+        )
+        decisions.append(decision)
+    return decisions
+
+
 def persist(session: TrialSession) -> bool:
     """Guarda la sesión si PostgreSQL está disponible; degrada sin romper UI."""
     try:
@@ -153,6 +253,26 @@ def saved_runs(limit: int = 25) -> list[dict]:
 def load_saved_run(run_id: str):
     from . import persistence_bridge
     return persistence_bridge.load(run_id)
+
+
+def resume_saved_run(run_id: str) -> TrialSession:
+    """Recupera una corrida estructurada para continuar revisión/aprobación."""
+    import streamlit as st
+
+    stored = load_saved_run(run_id)
+    if stored is None:
+        raise ValueError("La corrida guardada ya no existe.")
+    active = TrialSession(
+        audit=stored.audit, results=list(stored.results), errors=list(stored.errors),
+        proc_seconds=dict(stored.proc_seconds),
+        processing_seconds=float(stored.processing_seconds),
+        created_at=stored.created_at.isoformat(), file_hashes=dict(stored.file_hashes),
+        sources=dict(stored.sources),
+        review_decisions=dict(stored.review_decisions),
+        approval_decisions=dict(stored.approval_decisions),
+    )
+    st.session_state[_KEY] = active
+    return active
 
 
 def delete_saved_run(run_id: str) -> bool:

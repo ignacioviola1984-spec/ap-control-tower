@@ -90,13 +90,16 @@ def main() -> int:
                      "Aprobación de pagos", "Registro de auditoría", "Caso de negocio"):
         check(any(esperado in k for k in labels), f"la Demo conserva '{esperado}'")
 
-    print("== Trial: tres vistas internas ==")
+    print("== Trial: cinco vistas internas ==")
     from ap_control_tower.ui.trial import shell
-    check(len(shell.TRIAL_OPTIONS) == 3, f"trial tiene 3 opciones ({len(shell.TRIAL_OPTIONS)})")
+    check(len(shell.TRIAL_OPTIONS) == 5, f"trial tiene 5 opciones ({len(shell.TRIAL_OPTIONS)})")
     joined = " | ".join(shell.TRIAL_OPTIONS)
     check("Probar con mis facturas" in joined, "opción 'Probar con mis facturas'")
     check("Ver resultados con mis facturas" in joined, "opción 'Ver resultados con mis facturas'")
     check("Consultar caso de negocio" in joined, "opción 'Consultar caso de negocio'")
+    check("Revisión humana" in joined, "opción 'Revisión humana'")
+    check("Aprobación para propuesta de pago" in joined,
+          "opción 'Aprobación para propuesta de pago'")
     check("Abrir" not in joined and "Demo completa" not in joined,
           "el enlace a la Demo NO es una vista del selector")
 

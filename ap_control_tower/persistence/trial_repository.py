@@ -81,6 +81,8 @@ def save_trial_session(db: Session, trial_session) -> TrialRun:
         {"filename": filename, "detail": (detail or "")[:240]}
         for filename, detail in trial_session.errors
     ]
+    row.review_decisions = _json_value(trial_session.review_decisions)
+    row.approval_decisions = _json_value(trial_session.approval_decisions)
     db.flush()
 
     db.execute(delete(TrialDocument).where(TrialDocument.run_id == run_id))
@@ -117,6 +119,10 @@ class StoredTrialRun:
     proc_seconds: dict[str, float]
     processing_seconds: float
     audit: AuditTrail
+    review_decisions: dict
+    approval_decisions: dict
+    file_hashes: dict
+    sources: dict
 
 
 def list_trial_runs(db: Session, limit: int = 25) -> list[dict]:
@@ -170,6 +176,8 @@ def load_trial_run(db: Session, run_id: str) -> StoredTrialRun | None:
     ) for item in documents]
     proc_seconds = {
         item.doc_id: float(item.processing_seconds or 0) for item in documents}
+    file_hashes = {item.doc_id: item.file_hash for item in documents if item.file_hash}
+    sources = {item.doc_id: item.source for item in documents}
     audit = _load_audit(db, run_id)
     if audit.events and not verify_persisted_chain(db, run_id):
         raise ValueError(f"cadena de auditoría inconsistente para {run_id}")
@@ -184,6 +192,10 @@ def load_trial_run(db: Session, run_id: str) -> StoredTrialRun | None:
         proc_seconds=proc_seconds,
         processing_seconds=float(row.processing_seconds or 0),
         audit=audit,
+        review_decisions=dict(row.review_decisions or {}),
+        approval_decisions=dict(row.approval_decisions or {}),
+        file_hashes=file_hashes,
+        sources=sources,
     )
 
 

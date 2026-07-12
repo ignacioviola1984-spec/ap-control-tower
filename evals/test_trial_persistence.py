@@ -64,6 +64,10 @@ def main() -> int:
     trial_session.add_document(
         state, result, 1.25, file_hash="b" * 64, source="correo-ap")
     trial_session.record_intake(state, "correo-ap", 1)
+    state.review_decisions[long_doc_id] = {
+        "status": "confirmed", "actor": "Ana", "timestamp": "2026-07-12T12:00:00Z"}
+    state.approval_decisions[long_doc_id] = {
+        "status": "approved", "actor": "Bruno", "timestamp": "2026-07-12T12:05:00Z"}
 
     print("== Guardar y recuperar corrida ==")
     with Session(engine) as db:
@@ -81,6 +85,13 @@ def main() -> int:
               "recupera tiempo de procesamiento")
         check(loaded is not None and loaded.audit.events[1].invoice_id == long_doc_id,
               "auditoría conserva identificador real mayor a 48 caracteres")
+        check(loaded is not None
+              and loaded.review_decisions[long_doc_id]["status"] == "confirmed"
+              and loaded.approval_decisions[long_doc_id]["status"] == "approved",
+              "recupera decisiones de revisión y propuesta de pago")
+        check(loaded is not None and loaded.file_hashes[long_doc_id] == "b" * 64
+              and loaded.sources[long_doc_id] == "correo-ap",
+              "recupera metadatos para continuar la corrida")
 
         stored = db.query(TrialDocument).one()
         blob = str(stored.document)

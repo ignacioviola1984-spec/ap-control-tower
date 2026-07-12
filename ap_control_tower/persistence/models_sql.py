@@ -497,6 +497,8 @@ class TrialRun(Base):
     processing_seconds: Mapped[Decimal] = mapped_column(Numeric(12, 3), default=Decimal("0"))
     metrics: Mapped[dict] = mapped_column(JSON, default=dict)
     errors: Mapped[list] = mapped_column(JSON, default=list)
+    review_decisions: Mapped[dict] = mapped_column(JSON, default=dict)
+    approval_decisions: Mapped[dict] = mapped_column(JSON, default=dict)
 
     documents: Mapped[list["TrialDocument"]] = relationship(
         back_populates="run", cascade="all, delete-orphan")

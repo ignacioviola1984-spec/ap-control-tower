@@ -161,12 +161,8 @@ def sidebar_brand() -> None:
 
 def sidebar_footer(run_id: str | None, commit: str | None) -> None:
     st.sidebar.markdown("---")
-    meta = ""
-    if run_id:
-        meta = (f"<div style='font-size:11px;color:#9FB3C8 !important;'>"
-                f"corrida <code>{run_id}</code> · commit <code>{commit}</code></div>")
     st.sidebar.html(
-        f"<div style='padding:0 4px;'>{meta}"
+        "<div style='padding:0 4px;'>"
         "<div class='apct-motto' style='margin-top:8px;'>"
         "“El sistema se auto-bloquea ante alertas.<br>La aprobación para liberar "
         "dinero es siempre humana.”</div>"
@@ -175,6 +171,5 @@ def sidebar_footer(run_id: str | None, commit: str | None) -> None:
         "confirma datos en <b>Revisión humana</b> ·<br>"
         "libera dinero en <b>Aprobación de pagos</b></div>"
         "<div style='font-size:11px;color:#9FB3C8 !important;margin-top:8px;'>"
-        "Modo demo · corrida AP con datos sintéticos<br>"
-        "PoC documental: Google Document AI opcional</div></div>",
+        "Modo demo · corrida AP con datos sintéticos</div></div>",
     )

@@ -100,6 +100,21 @@ def main() -> int:
     check("Abrir" not in joined and "Demo completa" not in joined,
           "el enlace a la Demo NO es una vista del selector")
 
+    print("== Copy comercial y limpieza de metadatos técnicos ==")
+    import inspect
+    from ap_control_tower.ui import theme
+    from ap_control_tower.ui.trial import intake
+    intake_source = inspect.getsource(intake)
+    footer_source = inspect.getsource(theme.sidebar_footer)
+    check("Cargá tus facturas reales y verás cómo el agente las procesa en tiempo real"
+          in intake_source, "Trial usa el mensaje comercial acordado")
+    check("Importar desde el correo AP (" not in intake_source,
+          "el título de Gmail no repite carpeta/modo")
+    check("corrida <code>" not in footer_source and "commit <code>" not in footer_source,
+          "la Demo no expone run/commit en el pie")
+    check("PoC documental" not in footer_source,
+          "la Demo no muestra el wording técnico de Document AI")
+
     print("== Enlace a la Demo por configuración externa ==")
     from ap_control_tower.ui.trial import demo_link
     prev = os.environ.get("AP_DEMO_URL")

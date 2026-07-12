@@ -65,14 +65,14 @@ def _render_manual() -> None:
 
 
 def _render_gmail() -> None:
-    st.markdown("#### Importar desde el correo AP (carpeta AP-DEMO, solo lectura)")
+    st.markdown("#### Importar desde el correo AP")
     gmail_panel.render_gmail_panel(
         on_import=lambda files: _process_and_store(files, canal="correo-ap"),
         require_open=True)
 
 
 def render() -> None:
-    st.markdown("## Probar con mis facturas")
+    st.markdown("## Cargá tus facturas reales y verás cómo el agente las procesa en tiempo real")
     if not document_ai_configured():
         st.warning("Document AI no está configurado: los PDF se procesan con el motor "
                    "local y quedan marcados para revisión.")

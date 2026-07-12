@@ -146,9 +146,16 @@ def main() -> int:
           "Aprobación ofrece selección masiva explícita")
     check("Documentos retenidos / fuera de la propuesta" in payment_source,
           "retenidos tienen una sección visible propia")
-    for action in ("Confirmar exclusión de la propuesta", "Rechazar para propuesta",
-                   "Enviar a revisión por clasificación"):
-        check(action in payment_source, f"retenidos permiten '{action}'")
+    check("Confirmar exclusión de la propuesta" not in payment_source
+          and "Rechazar para propuesta" not in payment_source,
+          "Aprobación elimina acciones duplicadas sobre retenidos")
+    check("Ir a Revisión humana" in payment_source,
+          "retenidos se gestionan desde Revisión humana")
+    check("Exportar lote aprobado CSV" in payment_source
+          and "Exportar lote aprobado Excel" in payment_source,
+          "lote aprobado se exporta en CSV y Excel")
+    check("Autorizar excepción para propuesta de pago" in review_source,
+          "Revisión humana puede autorizar una excepción de pago")
 
     print("== Enlace a la Demo por configuración externa ==")
     from ap_control_tower.ui.trial import demo_link

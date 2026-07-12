@@ -22,6 +22,12 @@ FIELD_LABELS = {
     "po_reference": "Referencia de OC (opcional)",
 }
 
+REVIEW_STATUS_LABELS = {
+    "confirmed": "Confirmada",
+    "retained": "Retenida",
+    "payment_exception_approved": "Autorizada para propuesta",
+}
+
 
 def _value(document: dict, field: str) -> str:
     value = document.get(field)
@@ -45,15 +51,16 @@ def render() -> None:
     if session is None:
         return
 
-    queue = workflow.review_queue(session.results, session.review_decisions)
+    queue = workflow.review_queue(
+        session.results, session.review_decisions, session.approval_decisions)
     pending = [item for item in queue if item["pending"]]
-    confirmed = sum(1 for item in queue
-                    if item["decision"].get("status") == "confirmed")
+    confirmed = sum(1 for item in queue if item["decision"].get("status") in {
+        "confirmed", "payment_exception_approved"})
     retained = sum(1 for item in queue
                    if item["decision"].get("status") == "retained")
     c1, c2, c3 = st.columns(3)
     c1.metric("Pendientes de revisión", len(pending))
-    c2.metric("Confirmadas", confirmed)
+    c2.metric("Confirmadas / autorizadas", confirmed)
     c3.metric("Retenidas", retained)
 
     if not queue:
@@ -70,16 +77,14 @@ def render() -> None:
             "proveedor": result.document.get("proveedor_nombre_comercial") or "—",
             "número": result.document.get("numero_factura") or "—",
             "motivo": " · ".join(item["reasons"]) or "revisión resuelta",
-            "estado": {"confirmed": "Confirmada", "retained": "Retenida"}.get(
-                decision.get("status"), "Pendiente"),
+            "estado": REVIEW_STATUS_LABELS.get(decision.get("status"), "Pendiente"),
         })
     st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
 
     for item in queue:
         result = item["result"]
         decision = item["decision"]
-        status = {"confirmed": "Confirmada", "retained": "Retenida"}.get(
-            decision.get("status"), "Pendiente")
+        status = REVIEW_STATUS_LABELS.get(decision.get("status"), "Pendiente")
         with st.expander(f"{result.doc_id} · {status}", expanded=False):
             if item["reasons"]:
                 st.warning("Motivos: " + " · ".join(item["reasons"]))
@@ -110,6 +115,11 @@ def render() -> None:
                     "Confirmar revisión", type="primary", use_container_width=True)
                 retain = st.form_submit_button(
                     "Retener documento", use_container_width=True)
+                approve_exception = False
+                if result.document.get("document_type") != "invoice":
+                    approve_exception = st.form_submit_button(
+                        "Autorizar excepción para propuesta de pago",
+                        use_container_width=True)
             try:
                 if confirm:
                     sess.confirm_review(session, result.doc_id, reviewer, updates, note)
@@ -120,6 +130,12 @@ def render() -> None:
                     sess.retain_review(session, result.doc_id, reviewer, note)
                     sess.persist(session)
                     st.success("Documento retenido y decisión auditada.")
+                    st.rerun()
+                if approve_exception:
+                    sess.approve_payment_exception(
+                        session, result.doc_id, reviewer, note)
+                    sess.persist(session)
+                    st.success("Excepción autorizada. El documento pasó al gate de pago.")
                     st.rerun()
             except ValueError as exc:
                 st.error(str(exc))

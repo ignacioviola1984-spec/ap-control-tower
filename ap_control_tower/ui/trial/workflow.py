@@ -49,6 +49,16 @@ def missing_critical_fields(document: dict) -> list[str]:
     return missing
 
 
+def missing_payment_fields(document: dict) -> list[str]:
+    """Datos mínimos para proponer un pago, incluso si es un anticipo."""
+    missing = [field for field in ("moneda", "importe_total")
+               if not present(document.get(field))]
+    if not (present(document.get("proveedor_nombre_comercial")) or
+            present(document.get("proveedor_razon_social_legal"))):
+        missing.append("proveedor")
+    return missing
+
+
 def _field_warnings(result) -> list[str]:
     relevant: list[str] = []
     for item in result.warnings or []:
@@ -92,8 +102,8 @@ def review_reasons(result, *, duplicate: bool = False,
         if low:
             reasons.append("baja confianza en campo crítico: " + ", ".join(sorted(low)))
         reasons.extend(_field_warnings(result))
-    # Una proforma correctamente clasificada se trata en elegibilidad, no como
-    # error de extracción ni como revisión automática.
+    elif doc_type == "proforma_or_advance_request":
+        reasons.append("proforma / anticipo: requiere autorización humana para pago")
     if duplicate:
         reasons.append("posible factura duplicada")
     return list(dict.fromkeys(reasons))
@@ -137,21 +147,27 @@ def duplicate_doc_ids(results) -> set[str]:
     return {doc_id for ids in groups.values() if len(ids) > 1 for doc_id in ids}
 
 
-def review_queue(results, decisions: dict) -> list[dict]:
+def review_queue(results, decisions: dict,
+                 approval_decisions: dict | None = None) -> list[dict]:
     duplicates = duplicate_doc_ids(results)
     queue = []
+    approval_decisions = approval_decisions or {}
     for result in unique_results(results):
         decision = decisions.get(result.doc_id) or {}
         requested = decision.get("status") == "requested"
         reasons = review_reasons(
             result, duplicate=result.doc_id in duplicates,
             classification_requested=requested)
+        if (approval_decisions.get(result.doc_id) or {}).get("status") in {
+                "rejected", "excluded"}:
+            reasons.append("decisión previa fuera de propuesta: requiere revisión humana")
         # Las decisiones históricas creadas por una política anterior se
         # conservan en auditoría, pero no fuerzan su reaparición en la cola.
         if reasons:
             queue.append({"result": result, "reasons": reasons,
                           "decision": decision,
-                          "pending": decision.get("status") not in {"confirmed", "retained"}})
+                          "pending": decision.get("status") not in {
+                              "confirmed", "retained", "payment_exception_approved"}})
     return queue
 
 
@@ -181,9 +197,13 @@ def approval_state(result, review_decisions: dict, approval_decisions: dict,
 
     reasons: list[str] = []
     doc = result.document
-    if doc.get("document_type") != "invoice":
+    review = review_decisions.get(doc_id) or {}
+    exception_approved = review.get("status") == "payment_exception_approved"
+    if doc.get("document_type") != "invoice" and not exception_approved:
         reasons.append("Proforma / solicitud de anticipo: no es una factura fiscal "
                        "y no puede incorporarse a una propuesta de pago de facturas.")
+    elif doc.get("document_type") != "invoice":
+        reasons.extend("falta " + field for field in missing_payment_fields(doc))
     else:
         reasons.extend("falta " + field for field in missing_critical_fields(doc))
         try:
@@ -193,12 +213,11 @@ def approval_state(result, review_decisions: dict, approval_decisions: dict,
             reasons.append("importe inválido")
     if duplicates and doc_id in duplicates:
         reasons.append("posible duplicado")
-    review = review_decisions.get(doc_id) or {}
     needs_review = requires_human_review(
         result, duplicate=bool(duplicates and doc_id in duplicates),
         classification_requested=review.get("status") == "requested")
     if needs_review:
-        if review.get("status") != "confirmed":
+        if review.get("status") not in {"confirmed", "payment_exception_approved"}:
             reasons.append("revisión humana pendiente")
     if existing.get("status") == "approved":
         return {"status": "approved", "reasons": [], "decision": existing}

@@ -195,7 +195,11 @@ def confirm_review(session: TrialSession, doc_id: str, reviewer: str,
         missing = workflow.missing_critical_fields(candidate)
         if missing:
             raise ValueError("Todavía faltan campos críticos: " + ", ".join(missing))
+    else:
+        raise ValueError("Para un documento no fiscal, reclasificalo como factura o "
+                         "autorizá la excepción para propuesta de pago.")
     result.document.update(clean)
+    previous_payment = session.approval_decisions.pop(doc_id, None)
     decision = {"status": "confirmed", "actor": reviewer,
                 "note": (note or "").strip()[:500], "fields_changed": changed,
                 "timestamp": workflow.now_iso()}
@@ -203,7 +207,45 @@ def confirm_review(session: TrialSession, doc_id: str, reviewer: str,
     session.audit.add(
         agent=reviewer, action="revision-humana-confirmada", invoice_id=doc_id,
         result="confirmed", evidence={"campos_corregidos": changed,
-                                      "motivo_informado": bool(decision["note"])},
+                                      "motivo_informado": bool(decision["note"]),
+                                      "decision_pago_previa_revertida": bool(previous_payment)},
+    )
+    return decision
+
+
+def approve_payment_exception(session: TrialSession, doc_id: str, reviewer: str,
+                              note: str) -> dict:
+    """Autoriza humanamente que un documento no fiscal pase al gate de pago."""
+    from . import workflow
+
+    reviewer = (reviewer or "").strip()
+    note = (note or "").strip()
+    if not reviewer:
+        raise ValueError("Ingresá el nombre de quien autoriza la excepción.")
+    if not note:
+        raise ValueError("Indicá el motivo de la autorización excepcional.")
+    result = _result_by_id(session, doc_id)
+    if result.document.get("document_type") == "invoice":
+        raise ValueError("Las facturas fiscales deben confirmarse corrigiendo sus campos; "
+                         "la excepción es solo para proformas, anticipos u otros documentos.")
+    missing = workflow.missing_payment_fields(result.document)
+    if missing:
+        raise ValueError("Faltan datos mínimos para proponer el pago: " + ", ".join(missing))
+    decision = {
+        "status": "payment_exception_approved", "actor": reviewer,
+        "note": note[:500], "fields_changed": [], "timestamp": workflow.now_iso(),
+    }
+    session.review_decisions[doc_id] = decision
+    # Una autorización nueva revierte una exclusión/rechazo anterior del mismo
+    # documento; la reversión queda visible en el audit trail.
+    previous_payment = session.approval_decisions.pop(doc_id, None)
+    session.audit.add(
+        agent=reviewer, action="excepcion-pago-autorizada", invoice_id=doc_id,
+        result="payment_exception_approved",
+        evidence={"motivo_informado": True,
+                  "decision_pago_previa_revertida": bool(previous_payment),
+                  "requiere_aprobador_distinto": True,
+                  "no_libera_dinero": True},
     )
     return decision
 

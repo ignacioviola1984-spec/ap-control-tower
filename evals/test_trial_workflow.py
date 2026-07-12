@@ -47,7 +47,9 @@ def must_raise(fn, text: str) -> None:
 
 
 def main() -> int:
-    from ap_control_tower.ui.trial.payment_approval import _selected_doc_ids
+    from ap_control_tower.ui.trial.payment_approval import (
+        _selected_doc_ids, payment_export_csv, payment_export_excel,
+        payment_export_rows)
     from ap_control_tower.ui.trial import session as sess
     from ap_control_tower.ui.trial import workflow
     from ap_control_tower.ui.components import extraction_view as ev
@@ -73,13 +75,15 @@ def main() -> int:
     assert workflow.approval_state(missing, {}, {})["status"] == "retained"
     print("  PASS  baja confianza y campos ausentes se retienen")
 
-    print("== Proforma nunca llega a propuesta de pago ==")
+    print("== Proforma se deriva a revisión antes del gate de pago ==")
     proforma = invoice("P-1")
     proforma.document["document_type"] = "proforma_or_advance_request"
     state = workflow.approval_state(proforma, {}, {})
     assert state["status"] == "retained" and any(
         "no es una factura fiscal" in reason for reason in state["reasons"])
-    print("  PASS  proforma retenida")
+    proforma_queue = workflow.review_queue([proforma], {})
+    assert len(proforma_queue) == 1 and proforma_queue[0]["pending"]
+    print("  PASS  proforma retenida y visible automáticamente en revisión")
 
     print("== Duplicados ==")
     duplicate = invoice("F-1-COPY")
@@ -123,7 +127,33 @@ def main() -> int:
     assert last.evidence["no_libera_dinero"] is True
     must_raise(lambda: sess.decide_payment_proposal(
         active, ["P-1"], "Bruno Aprobador", "approved"), "no es elegible")
-    print("  PASS  maker-checker, auditoría y proforma bloqueada")
+    must_raise(lambda: sess.approve_payment_exception(
+        active, "P-1", "Ana Revisora", ""), "motivo")
+    sess.approve_payment_exception(
+        active, "P-1", "Ana Revisora", "anticipo validado por Finanzas")
+    assert workflow.approval_state(
+        proforma, active.review_decisions, active.approval_decisions)["status"] == "eligible"
+    must_raise(lambda: sess.decide_payment_proposal(
+        active, ["P-1"], "Ana Revisora", "approved"), "Maker-checker")
+    sess.decide_payment_proposal(
+        active, ["P-1"], "Bruno Aprobador", "approved", "anticipo en propuesta")
+    assert active.approval_decisions["P-1"]["status"] == "approved"
+    print("  PASS  excepción humana + maker-checker habilitan el anticipo")
+
+    print("== Exportación del lote aprobado ==")
+    approved_rows = [row for row in workflow.approval_rows(
+        active.results, active.review_decisions, active.approval_decisions)
+        if row["status"] == "approved"]
+    export_rows = payment_export_rows(approved_rows)
+    assert len(export_rows) == 3
+    assert {row["estado"] for row in export_rows} == {"aprobada_para_propuesta"}
+    csv_blob = payment_export_csv(approved_rows)
+    assert b"beneficiario" in csv_blob and b"Bruno Aprobador" in csv_blob
+    from io import BytesIO
+    from openpyxl import load_workbook
+    workbook = load_workbook(BytesIO(payment_export_excel(approved_rows)))
+    assert workbook["Propuesta de pago"].max_row == 4
+    print("  PASS  CSV y Excel contienen solo las tres aprobadas")
 
     print("== Retención/rechazo requiere motivo ==")
     must_raise(lambda: sess.retain_review(active, "F-1", "Ana", ""), "motivo")
@@ -143,7 +173,7 @@ def main() -> int:
         "status": "confirmed", "actor": "Revisor histórico",
         "timestamp": "2026-07-01T00:00:00Z"}
     queue = workflow.review_queue(run.results, run.review_decisions)
-    assert len(queue) == 1 and queue[0]["result"].doc_id == "INV-1"
+    assert {item["result"].doc_id for item in queue} == {"INV-1", "PROFORMA-1"}
     assert ev.aggregate_metrics(run.results)["with_warnings"] == len(queue)
     sess.confirm_review(run, "INV-1", "Revisora", {
         field: str(seven[0].document.get(field) or "")

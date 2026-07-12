@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import streamlit as st
 
+from ..navigation import scroll_to_top_on_change
+
 INTAKE = "🧾  Probar con mis facturas"
 RESULTS = "📊  Ver resultados con mis facturas"
 BUSINESS_CASE = "📈  Consultar caso de negocio"
@@ -25,3 +27,4 @@ def render() -> None:
         results.render()
     else:
         business_case.render()
+    scroll_to_top_on_change(choice, state_key="_trial_last_view")

@@ -14,10 +14,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+import logging
 
 from ...audit import AuditTrail
 
 _KEY = "_trial_session"
+_LOGGER = logging.getLogger(__name__)
 
 
 def _now() -> str:
@@ -130,6 +132,7 @@ def persist(session: TrialSession) -> bool:
         session.persistence_error = None
         return True
     except Exception as exc:
+        _LOGGER.exception("No se pudo persistir la corrida Trial")
         session.persistence_error = str(exc)[:240]
         return False
 

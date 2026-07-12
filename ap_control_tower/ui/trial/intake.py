@@ -76,10 +76,10 @@ def render() -> None:
         st.warning("Document AI no está configurado: los PDF se procesan con el motor "
                    "local y quedan marcados para revisión.")
     st.html(
-        "<div class='apct-card'><b>Procesamiento en memoria, solo esta sesión.</b><br>"
-        "<span style='color:#5A6572;'>Los documentos se procesan con Google Document AI "
-        "cuando está configurado. No se guardan copias: al finalizar la sesión, todo se "
-        "borra.</span></div>",
+        "<div class='apct-card'><b>El PDF se usa solo durante el procesamiento.</b><br>"
+        "<span style='color:#5A6572;'>Google Document AI extrae los datos y el archivo "
+        "original se descarta. Se conservan la extracción, las métricas y la auditoría "
+        "hasta que borres la corrida.</span></div>",
     )
     _render_manual()
     st.markdown("---")

@@ -27,16 +27,25 @@ def _process_and_store(files, canal: str) -> None:
     bar = st.progress(0.0, text="Procesando documentos...")
     total = len(files)
     ok = 0
+    omitted = 0
     for index, (name, data) in enumerate(files, 1):
+        file_hash = hashlib.sha256(data).hexdigest()
+        if file_hash in session.file_hashes.values():
+            sess.record_event(session, "documento-repetido-omitido", {
+                "canal": canal, "motivo": "hash-ya-presente-en-la-corrida"})
+            omitted += 1
+            bar.progress(index / total, text=f"Omitido {index}/{total}: {name}")
+            continue
         result, error, seconds = ev.process_one(name, data)
         if error is not None:
             sess.add_error(session, name, error, seconds)
             st.error(f"No se pudo procesar **{name}**: {error}")
         else:
-            sess.add_document(
+            added = sess.add_document(
                 session, result, seconds,
-                file_hash=hashlib.sha256(data).hexdigest(), source=canal)
-            ok += 1
+                file_hash=file_hash, source=canal)
+            ok += int(added)
+            omitted += int(not added)
         bar.progress(index / total, text=f"Procesado {index}/{total}: {name}")
     bar.empty()
 
@@ -46,8 +55,14 @@ def _process_and_store(files, canal: str) -> None:
         st.success(f"{ok} documento(s) procesado(s) desde {canal}. "
                    "Abrí **Ver resultados con mis facturas**."
                    + (" Resultado guardado en el historial." if stored else ""))
+    elif omitted:
+        sess.persist(session)
+        st.info(f"{omitted} documento(s) ya estaban procesados en esta sesión; "
+                "no se volvieron a enviar a Document AI.")
     elif session.errors:
         sess.persist(session)
+    if ok and omitted:
+        st.info(f"{omitted} documento(s) repetido(s) fueron omitidos.")
 
 
 def _render_manual() -> None:

@@ -105,6 +105,11 @@ def main() -> int:
         db.commit()
         check(db.query(TrialRun).count() == 1 and db.query(TrialDocument).count() == 1,
               "guardar dos veces no duplica")
+        state.results.append(result)  # simula sesión dañada por importación doble
+        save_trial_session(db, state)
+        db.commit()
+        check(db.query(TrialDocument).count() == 1,
+              "persistencia defensiva colapsa doc_id repetidos")
         check(delete_trial_run(db, state.audit.run_id), "borrado explícito devuelve True")
         db.commit()
         check(db.query(TrialRun).count() == 0 and db.query(TrialDocument).count() == 0,

@@ -76,7 +76,8 @@ def render() -> None:
             if decision:
                 st.success(f"Última decisión: {status} por {decision.get('actor', '—')} · "
                            f"{decision.get('timestamp', '—')}")
-            with st.form(f"trial_review_form_{result.doc_id}"):
+            with st.form(
+                    f"trial_review_form_{session.audit.run_id}_{result.doc_id}"):
                 updates = {}
                 left, right = st.columns(2)
                 for index, field in enumerate(workflow.EDITABLE_FIELDS):

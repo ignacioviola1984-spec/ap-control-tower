@@ -162,8 +162,9 @@ EXPORT_COLUMNS = [
 
 
 def _export_rows(results) -> list[dict]:
-    from ..trial.workflow import duplicate_doc_ids
+    from ..trial.workflow import duplicate_doc_ids, unique_results
 
+    results = unique_results(results)
     duplicates = duplicate_doc_ids(results)
     rows = []
     for result in results:
@@ -246,6 +247,9 @@ def _informed_confidences(results) -> list:
 
 def aggregate_metrics(results, errors=None) -> dict:
     """Metricas descriptivas de extraccion; no implican exactitud validada."""
+    from ..trial.workflow import unique_results
+
+    results = unique_results(results)
     total = len(results)
     found = sum(len(present_fields(r)) for r in results)
     missing = sum(len(missing_fields(r)) for r in results)
@@ -290,8 +294,9 @@ def render_metrics(results, processing_seconds=None, errors=None) -> None:
 
 
 def _summary_rows(results, errors=None) -> list[dict]:
-    from ..trial.workflow import duplicate_doc_ids
+    from ..trial.workflow import duplicate_doc_ids, unique_results
 
+    results = unique_results(results)
     duplicates = duplicate_doc_ids(results)
     rows = []
     for r in results:
@@ -337,8 +342,9 @@ def render_download(results, *, key: str) -> None:
 
 
 def render_detail(results, audit=None, proc_seconds=None) -> None:
-    from ..trial.workflow import duplicate_doc_ids
+    from ..trial.workflow import duplicate_doc_ids, unique_results
 
+    results = unique_results(results)
     duplicates = duplicate_doc_ids(results)
     for r in results:
         doc = r.document

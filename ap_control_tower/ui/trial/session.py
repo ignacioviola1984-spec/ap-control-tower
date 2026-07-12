@@ -57,6 +57,9 @@ def add_results(session: TrialSession, results) -> None:
     """Agrega resultados de extraccion y registra un evento de auditoria por doc
     (sin contenido del documento: solo metadatos)."""
     for r in results:
+        if _already_present(session, r.doc_id):
+            _record_duplicate_omitted(session, r.doc_id)
+            continue
         session.results.append(r)
         session.audit.add(
             agent="trial",
@@ -73,11 +76,27 @@ def add_results(session: TrialSession, results) -> None:
         )
 
 
+def _already_present(session: TrialSession, doc_id: str,
+                     file_hash: str | None = None) -> bool:
+    if any(str(item.doc_id) == str(doc_id) for item in session.results):
+        return True
+    return bool(file_hash and file_hash in session.file_hashes.values())
+
+
+def _record_duplicate_omitted(session: TrialSession, doc_id: str) -> None:
+    session.audit.add(
+        agent="trial", action="documento-repetido-omitido", invoice_id=doc_id,
+        result="omitido", evidence={"motivo": "ya-presente-en-la-corrida"})
+
+
 def add_document(session: TrialSession, result, seconds: float = 0.0,
                  file_hash: str | None = None,
-                 source: str = "carga-manual") -> None:
+                 source: str = "carga-manual") -> bool:
     """Agrega UN documento procesado con su tiempo y un evento de auditoria
     (solo metadatos: nunca valores de campos ni contenido del PDF)."""
+    if _already_present(session, result.doc_id, file_hash):
+        _record_duplicate_omitted(session, result.doc_id)
+        return False
     session.results.append(result)
     session.proc_seconds[result.doc_id] = round(max(0.0, float(seconds)), 3)
     session.processing_seconds += max(0.0, float(seconds))
@@ -98,6 +117,35 @@ def add_document(session: TrialSession, result, seconds: float = 0.0,
             "segundos": round(max(0.0, float(seconds)), 2),
         },
     )
+    return True
+
+
+def repair_duplicates(session: TrialSession) -> int:
+    """Repara sesiones antiguas contaminadas por una importación repetida."""
+    from .workflow import unique_results
+
+    before = len(session.results)
+    session.results = unique_results(session.results)
+    removed = before - len(session.results)
+    if removed:
+        valid_ids = {str(result.doc_id) for result in session.results}
+        session.proc_seconds = {
+            key: value for key, value in session.proc_seconds.items()
+            if str(key) in valid_ids}
+        session.file_hashes = {
+            key: value for key, value in session.file_hashes.items()
+            if str(key) in valid_ids}
+        session.sources = {
+            key: value for key, value in session.sources.items()
+            if str(key) in valid_ids}
+        # La versión defectuosa sumaba nuevamente el tiempo de los mismos PDF.
+        # Al reparar, el total vuelve a derivarse de los documentos únicos.
+        session.processing_seconds = round(
+            sum(float(value) for value in session.proc_seconds.values()), 3)
+        session.audit.add(
+            agent="trial", action="sesion-deduplicada", result="reparada",
+            evidence={"documentos_repetidos_eliminados": removed})
+    return removed
 
 
 def add_error(session: TrialSession, filename: str, detalle: str,
@@ -309,7 +357,10 @@ def get_session() -> TrialSession:
 
     if _KEY not in st.session_state:
         st.session_state[_KEY] = new_session()
-    return st.session_state[_KEY]
+    session = st.session_state[_KEY]
+    if repair_duplicates(session):
+        persist(session)
+    return session
 
 
 def session_keys_to_clear(all_keys) -> list:

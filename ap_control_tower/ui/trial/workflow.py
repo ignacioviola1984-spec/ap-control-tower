@@ -106,9 +106,26 @@ def requires_human_review(result, *, duplicate: bool = False,
         classification_requested=classification_requested))
 
 
+def unique_results(results) -> list:
+    """Devuelve una sola instancia por documento, conservando el orden original.
+
+    ``doc_id`` identifica el documento dentro de una corrida. Repetir el mismo
+    ``doc_id`` por un rerun/importación doble no es un duplicado comercial.
+    """
+    unique = []
+    seen: set[str] = set()
+    for result in results:
+        doc_id = str(result.doc_id)
+        if doc_id in seen:
+            continue
+        seen.add(doc_id)
+        unique.append(result)
+    return unique
+
+
 def duplicate_doc_ids(results) -> set[str]:
     groups: dict[tuple[str, str], list[str]] = {}
-    for result in results:
+    for result in unique_results(results):
         doc = result.document
         supplier = (doc.get("proveedor_tax_id") or
                     doc.get("proveedor_razon_social_legal") or
@@ -123,7 +140,7 @@ def duplicate_doc_ids(results) -> set[str]:
 def review_queue(results, decisions: dict) -> list[dict]:
     duplicates = duplicate_doc_ids(results)
     queue = []
-    for result in results:
+    for result in unique_results(results):
         decision = decisions.get(result.doc_id) or {}
         requested = decision.get("status") == "requested"
         reasons = review_reasons(
@@ -198,4 +215,4 @@ def approval_rows(results, review_decisions: dict, approval_decisions: dict) -> 
     duplicates = duplicate_doc_ids(results)
     return [{"result": result,
              **approval_state(result, review_decisions, approval_decisions, duplicates)}
-            for result in results]
+            for result in unique_results(results)]

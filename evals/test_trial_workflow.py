@@ -87,6 +87,14 @@ def main() -> int:
     assert ids == {"F-1", "F-1-COPY"}
     print("  PASS  mismo proveedor+número detectado")
 
+    print("== Repetición técnica no es duplicado comercial ==")
+    repeated_same_object = [clean, clean]
+    assert workflow.unique_results(repeated_same_object) == [clean]
+    assert workflow.duplicate_doc_ids(repeated_same_object) == set()
+    assert len(workflow.review_queue(repeated_same_object, {})) == 0
+    assert len(workflow.approval_rows(repeated_same_object, {}, {})) == 1
+    print("  PASS  mismo doc_id repetido se colapsa y no genera falsa alerta")
+
     print("== Decisión humana, maker-checker y no liberación ==")
     active = sess.new_session()
     active.results = [low, clean, proforma]

@@ -75,6 +75,33 @@ def main() -> int:
     check(actions == ["sesion-iniciada", "documento-procesado", "documento-procesado", "ingesta"],
           f"eventos esperados en orden ({actions})")
 
+    print("== Idempotencia: una carga repetida no contamina la corrida ==")
+    duplicate_state = se.new_session()
+    first = se.add_document(
+        duplicate_state, r1, 0.5, file_hash="d" * 64, source="correo-ap")
+    second = se.add_document(
+        duplicate_state, r1, 0.5, file_hash="d" * 64, source="correo-ap")
+    check(first is True and second is False and len(duplicate_state.results) == 1,
+          "el mismo PDF se guarda una sola vez")
+    check(duplicate_state.processing_seconds == 0.5,
+          "la repetición omitida no duplica el tiempo")
+    check(duplicate_state.audit.events[-1].action == "documento-repetido-omitido",
+          "la omisión queda auditada sin reprocesar")
+
+    legacy_state = se.new_session()
+    legacy_state.results = [r1, r2, r1, r2]
+    legacy_state.proc_seconds = {"DOC-1": 0.4, "DOC-2": 0.6}
+    legacy_state.processing_seconds = 2.0
+    removed = se.repair_duplicates(legacy_state)
+    check(removed == 2 and len(legacy_state.results) == 2,
+          "una sesión ya contaminada se repara automáticamente")
+    check(legacy_state.processing_seconds == 1.0,
+          "la reparación corrige el tiempo acumulado")
+    check(ev.aggregate_metrics([r1, r2, r1, r2])["documents"] == 2,
+          "métricas defensivas cuentan documentos únicos")
+    check(len(ev.results_csv([r1, r2, r1, r2]).splitlines()) == 3,
+          "exportación defensiva contiene una fila por documento único")
+
     print("== Privacidad: el audit trail no guarda contenido del documento ==")
     blob = " ".join(str(e.evidence) for e in s.audit.events)
     check("F-001" not in blob and "ESB12345678" not in blob and "121.00" not in blob,

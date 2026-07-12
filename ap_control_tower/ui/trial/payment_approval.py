@@ -153,7 +153,8 @@ def render() -> None:
                         "resultado": event.result or "",
                     } for event in doc_events[-8:]]), use_container_width=True,
                                  hide_index=True)
-                with st.form(f"trial_retained_action_{result.doc_id}"):
+                with st.form(
+                        f"trial_retained_action_{session.audit.run_id}_{result.doc_id}"):
                     actor = st.text_input(
                         "Decisión tomada por", key=f"retained_actor_{result.doc_id}")
                     retained_note = st.text_area(

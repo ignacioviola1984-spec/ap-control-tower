@@ -44,9 +44,9 @@ def _masked_document(document: dict) -> dict:
 
 
 def _metrics(trial_session) -> dict:
-    from ..ui.trial.workflow import duplicate_doc_ids, requires_human_review
+    from ..ui.trial.workflow import duplicate_doc_ids, requires_human_review, unique_results
 
-    results = trial_session.results
+    results = unique_results(trial_session.results)
     duplicates = duplicate_doc_ids(results)
     informed = [
         float(confidence)
@@ -69,6 +69,9 @@ def _metrics(trial_session) -> dict:
 
 def save_trial_session(db: Session, trial_session) -> TrialRun:
     """Upsert idempotente de una sesión. Reemplaza documentos de ese run_id."""
+    from ..ui.trial.workflow import unique_results
+
+    results = unique_results(trial_session.results)
     run_id = trial_session.audit.run_id
     row = db.get(TrialRun, run_id)
     if row is None:
@@ -77,7 +80,7 @@ def save_trial_session(db: Session, trial_session) -> TrialRun:
         db.add(row)
     row.updated_at = datetime.now().astimezone()
     row.source = "trial"
-    row.document_count = len(trial_session.results)
+    row.document_count = len(results)
     row.error_count = len(trial_session.errors)
     row.processing_seconds = Decimal(str(round(trial_session.processing_seconds, 3)))
     row.metrics = _metrics(trial_session)
@@ -90,7 +93,7 @@ def save_trial_session(db: Session, trial_session) -> TrialRun:
     db.flush()
 
     db.execute(delete(TrialDocument).where(TrialDocument.run_id == run_id))
-    for result in trial_session.results:
+    for result in results:
         db.add(TrialDocument(
             run_id=run_id,
             doc_id=result.doc_id,

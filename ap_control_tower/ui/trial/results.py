@@ -35,6 +35,8 @@ def _format_run(run: dict) -> str:
 
 def _render_history(current_run_id: str) -> None:
     st.markdown("### Corridas anteriores")
+    st.caption("Consulta histórica independiente: abrir una corrida guardada aquí "
+               "no la agrega ni la mezcla con la sesión actual.")
     if not sess.persistence_available():
         st.caption("El historial estará disponible cuando PostgreSQL esté configurado.")
         return

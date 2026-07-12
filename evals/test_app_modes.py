@@ -100,6 +100,11 @@ def main() -> int:
     check("Revisión humana" in joined, "opción 'Revisión humana'")
     check("Aprobación para propuesta de pago" in joined,
           "opción 'Aprobación para propuesta de pago'")
+    trial_results_source = (
+        ROOT / "ap_control_tower" / "ui" / "trial" / "results.py"
+    ).read_text(encoding="utf-8")
+    check("Corridas anteriores" not in trial_results_source,
+          "Resultados muestra solo la sesión actual, sin corridas anteriores")
     check("Abrir" not in joined and "Demo completa" not in joined,
           "el enlace a la Demo NO es una vista del selector")
 

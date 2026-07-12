@@ -11,6 +11,7 @@ import streamlit as st
 from ..components import extraction_view as ev
 from . import session as sess
 from . import workflow
+from .step_navigation import render_next, request_navigation
 from .workflow_ui import active_session_or_resume
 
 
@@ -109,8 +110,7 @@ def payment_export_excel(approved_rows: list[dict]) -> bytes:
 def _go_to_human_review() -> None:
     from .shell import HUMAN_REVIEW
 
-    st.session_state["_trial_navigation"] = HUMAN_REVIEW
-    st.rerun()
+    request_navigation(HUMAN_REVIEW)
 
 
 def render() -> None:
@@ -245,3 +245,7 @@ def render() -> None:
 
     st.markdown("### Audit trail de la corrida")
     ev.render_session_audit(session.audit, persisted=sess.persistence_available())
+    from .shell import BUSINESS_CASE
+
+    render_next("Consultar caso de negocio", BUSINESS_CASE,
+                key="trial_payment_next_business_case")

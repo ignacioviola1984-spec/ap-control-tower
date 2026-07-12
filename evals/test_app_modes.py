@@ -156,6 +156,27 @@ def main() -> int:
           "lote aprobado se exporta en CSV y Excel")
     check("Autorizar excepción para propuesta de pago" in review_source,
           "Revisión humana puede autorizar una excepción de pago")
+    from ap_control_tower.ui.trial.step_navigation import (
+        NAVIGATION_KEY, PENDING_KEY, resolve_pending)
+    pending_state = {PENDING_KEY: shell.PAYMENT_APPROVAL,
+                     NAVIGATION_KEY: shell.HUMAN_REVIEW}
+    check(resolve_pending(pending_state, shell.TRIAL_OPTIONS) == shell.PAYMENT_APPROVAL
+          and pending_state[NAVIGATION_KEY] == shell.PAYMENT_APPROVAL,
+          "navegación aplica el destino antes de instanciar el selector")
+    from ap_control_tower.ui.trial import results
+    next_sources = "\n".join((inspect.getsource(intake), inspect.getsource(results),
+                               inspect.getsource(human_review),
+                               inspect.getsource(payment_approval)))
+    for next_label in ("Ver resultados con mis facturas", "Revisión humana",
+                       "Aprobación - propuesta de pago", "Consultar caso de negocio"):
+        check(next_label in next_sources, f"recorrido incluye botón '{next_label}'")
+    from ap_control_tower.ui.trial import business_case
+    business_source = inspect.getsource(business_case)
+    check("apct-method-note" in business_source,
+          "Caso de Negocio destaca las notas metodológicas")
+    check("business_case_evidence_metrics" in business_source
+          and "business_case_asis_metrics" in business_source,
+          "Caso de Negocio permite reequilibrar labels y valores")
 
     print("== Enlace a la Demo por configuración externa ==")
     from ap_control_tower.ui.trial import demo_link

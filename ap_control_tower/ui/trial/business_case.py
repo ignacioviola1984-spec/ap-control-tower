@@ -38,6 +38,10 @@ FIELD_LABELS = {
 }
 
 
+def _method_note(text: str) -> None:
+    st.html(f"<div class='apct-method-note'>{text}</div>")
+
+
 def _present(value) -> bool:
     return value not in (None, "", [], {})
 
@@ -119,24 +123,25 @@ def field_coverage_rows(results) -> list[dict]:
 
 
 def _render_metrics(metrics: BusinessMetrics) -> None:
-    row1 = st.columns(4)
-    row1[0].metric("Documentos procesados", metrics.documents)
-    row1[1].metric("Facturas reconocidas", metrics.invoices)
-    row1[2].metric("Campos críticos encontrados", metrics.critical_found)
-    row1[3].metric("Cobertura de campos críticos", f"{metrics.coverage * 100:.0f}%")
-    row2 = st.columns(4)
-    row2[0].metric(
-        "Confianza promedio",
-        "—" if metrics.confidence is None else f"{metrics.confidence * 100:.0f}%",
-    )
-    row2[1].metric("Sin advertencias", metrics.clean_documents)
-    row2[2].metric("A revisar", metrics.review_documents)
-    row2[3].metric(
-        "Tiempo de procesamiento",
-        f"{metrics.total_seconds:.1f} s",
-        help=f"Promedio: {metrics.average_seconds:.1f} s por documento.",
-    )
-    st.caption(
+    with st.container(key="business_case_evidence_metrics"):
+        row1 = st.columns(4)
+        row1[0].metric("Documentos procesados", metrics.documents)
+        row1[1].metric("Facturas reconocidas", metrics.invoices)
+        row1[2].metric("Campos críticos encontrados", metrics.critical_found)
+        row1[3].metric("Cobertura de campos críticos", f"{metrics.coverage * 100:.0f}%")
+        row2 = st.columns(4)
+        row2[0].metric(
+            "Confianza promedio",
+            "—" if metrics.confidence is None else f"{metrics.confidence * 100:.0f}%",
+        )
+        row2[1].metric("Sin advertencias", metrics.clean_documents)
+        row2[2].metric("A revisar", metrics.review_documents)
+        row2[3].metric(
+            "Tiempo de procesamiento",
+            f"{metrics.total_seconds:.1f} s",
+            help=f"Promedio: {metrics.average_seconds:.1f} s por documento.",
+        )
+    _method_note(
         "Cobertura y confianza describen la extracción; no equivalen a exactitud "
         "contable validada por una persona."
     )
@@ -183,18 +188,19 @@ def _render_asis_comparison(metrics: BusinessMetrics) -> None:
 def _render_asis_snapshot() -> None:
     """Datos declarados por la consultora en su mapeo del proceso actual."""
     st.markdown("### Punto de partida declarado por la consultora")
-    row1 = st.columns(3)
-    row1[0].metric("Volumen actual", "~35 facturas/mes")
-    row1[1].metric("Proceso punta a punta", "30 pasos manuales")
-    row1[2].metric("Personas involucradas", "2–4")
-    row2 = st.columns(2)
-    row2[0].metric(
-        "Sistemas y canales",
-        "5",
-        help="Email, SharePoint, Excel de cashflow, Sage ERP y Banco Sabadell.",
-    )
-    row2[1].metric("Frecuencia de pagos", "Semanal")
-    st.caption(
+    with st.container(key="business_case_asis_metrics"):
+        row1 = st.columns(3)
+        row1[0].metric("Volumen actual", "~35 facturas/mes")
+        row1[1].metric("Proceso punta a punta", "30 pasos manuales")
+        row1[2].metric("Personas involucradas", "2–4")
+        row2 = st.columns(2)
+        row2[0].metric(
+            "Sistemas y canales",
+            "5",
+            help="Email, SharePoint, Excel de cashflow, Sage ERP y Banco Sabadell.",
+        )
+        row2[1].metric("Frecuencia de pagos", "Semanal")
+    _method_note(
         "Fuente: proceso AS-IS mapeado por la propia consultora. Estos datos no "
         "son una estimación del modelo."
     )
@@ -260,7 +266,7 @@ def _render_executive_readout(metrics: BusinessMetrics) -> None:
 
 def render() -> None:
     st.markdown("## Consultar caso de negocio")
-    st.caption(
+    _method_note(
         "Evidencia de esta sesión comparada con el proceso AS-IS mapeado por la consultora."
     )
     session = sess.get_session()
@@ -297,7 +303,7 @@ def render() -> None:
         use_container_width=True,
         hide_index=True,
     )
-    st.caption(
+    _method_note(
         "El AS-IS también requiere leyenda/descripción. El esquema actual todavía no la "
         "expone como campo canónico; se declara como brecha y no se inventa en la cobertura."
     )

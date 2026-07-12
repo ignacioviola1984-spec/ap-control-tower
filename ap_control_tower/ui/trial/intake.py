@@ -16,6 +16,7 @@ from ...app import document_ai_configured
 from ..components import extraction_view as ev
 from ..components import gmail_panel
 from . import session as sess
+from .step_navigation import render_next
 
 HERO_TEXT = "Cargá tus facturas reales y verás cómo el agente las procesa en tiempo real"
 
@@ -104,3 +105,7 @@ def render() -> None:
     _render_manual()
     st.markdown("---")
     _render_gmail()
+    from .shell import RESULTS
+
+    render_next("Ver resultados con mis facturas", RESULTS,
+                key="trial_intake_next_results")

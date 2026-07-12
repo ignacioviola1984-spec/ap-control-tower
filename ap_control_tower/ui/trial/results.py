@@ -6,6 +6,7 @@ import streamlit as st
 
 from ..components import extraction_view as ev
 from . import session as sess
+from .step_navigation import render_next
 
 
 def _render_result_set(title: str, results, errors, processing_seconds,
@@ -44,3 +45,8 @@ def render() -> None:
     else:
         st.info("Todavía no procesaste documentos en esta sesión. "
                 "Podés cargar tus facturas desde la primera opción.")
+
+    from .shell import HUMAN_REVIEW
+
+    render_next("Revisión humana", HUMAN_REVIEW,
+                key="trial_results_next_review")

@@ -8,6 +8,7 @@ import streamlit as st
 from ..components import extraction_view as ev
 from . import session as sess
 from . import workflow
+from .step_navigation import render_next
 from .workflow_ui import active_session_or_resume
 
 
@@ -35,12 +36,10 @@ def _value(document: dict, field: str) -> str:
 
 
 def _render_next_step() -> None:
-    if st.button("Aprobación - propuesta de pago", type="primary",
-                 use_container_width=True, key="trial_review_next_payment"):
-        from .shell import PAYMENT_APPROVAL
+    from .shell import PAYMENT_APPROVAL
 
-        st.session_state["_trial_navigation"] = PAYMENT_APPROVAL
-        st.rerun()
+    render_next("Aprobación - propuesta de pago", PAYMENT_APPROVAL,
+                key="trial_review_next_payment")
 
 
 def render() -> None:
@@ -142,5 +141,4 @@ def render() -> None:
 
     st.markdown("### Audit trail de la corrida")
     ev.render_session_audit(session.audit, persisted=sess.persistence_available())
-    st.markdown("---")
     _render_next_step()

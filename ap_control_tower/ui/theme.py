@@ -68,6 +68,19 @@ h1, h2, h3 {{ font-weight: 750; letter-spacing: -0.01em; color: {TEXT}; }}
   letter-spacing: -.015em; color: {TEXT}; white-space: nowrap;
   margin: 0 0 16px 0;
 }}
+.apct-method-note {{
+  background: #EAF1F9; border: 1px solid #C8DAEE; border-left: 4px solid {INFO};
+  border-radius: 9px; padding: 11px 14px; margin: 8px 0 14px 0;
+  color: #24476B; font-size: 14px; line-height: 1.4; font-weight: 750;
+}}
+.st-key-business_case_evidence_metrics [data-testid="stMetricLabel"] p,
+.st-key-business_case_asis_metrics [data-testid="stMetricLabel"] p {{
+  font-size: 16px !important; line-height: 1.25 !important; font-weight: 750 !important;
+}}
+.st-key-business_case_evidence_metrics [data-testid="stMetricValue"],
+.st-key-business_case_asis_metrics [data-testid="stMetricValue"] {{
+  font-size: 28px !important; line-height: 1.15 !important;
+}}
 .apct-kpi-label {{ font-size: 12px; color: {MUTED}; text-transform: uppercase;
   letter-spacing: .06em; font-weight: 600; }}
 .apct-kpi-value {{ font-size: 26px; font-weight: 800; color: {TEXT}; margin-top: 2px; }}

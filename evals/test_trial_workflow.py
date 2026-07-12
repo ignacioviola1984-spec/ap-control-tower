@@ -56,6 +56,11 @@ def main() -> int:
     assert workflow.approval_state(clean, {}, {})["status"] == "eligible"
     print("  PASS  factura non-PO limpia es elegible sin revisión")
 
+    irrelevant = invoice("F-IRRELEVANTE")
+    irrelevant.warnings = ["baja confianza en: cliente_nombre"]
+    assert workflow.review_reasons(irrelevant) == []
+    print("  PASS  campo informativo no deriva a revisión")
+
     print("== Baja confianza y campos críticos ==")
     low = invoice("F-2", confidence="0.50")
     assert any("baja confianza" in reason for reason in workflow.review_reasons(low))

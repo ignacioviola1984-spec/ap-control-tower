@@ -20,6 +20,11 @@ EDITABLE_FIELDS = (
     "importe_total",
     "po_reference",
 )
+REVIEW_RELEVANT_FIELDS = set(EDITABLE_FIELDS) | {
+    "proveedor_razon_social_legal", "proveedor_tax_id", "cliente_tax_id",
+    "tipo_iva", "importe_neto", "importe_iva", "condiciones_pago",
+    "iban", "bic", "metodo_pago",
+}
 
 
 def now_iso() -> str:
@@ -40,8 +45,20 @@ def missing_critical_fields(document: dict) -> list[str]:
 
 
 def _field_warnings(result) -> list[str]:
-    return [str(item) for item in (result.warnings or [])
-            if "document ai" not in str(item).casefold()]
+    relevant: list[str] = []
+    for item in result.warnings or []:
+        text = str(item)
+        lowered = text.casefold()
+        if "document ai" in lowered:
+            continue
+        if lowered.startswith("baja confianza en:"):
+            fields = [field.strip() for field in text.split(":", 1)[1].split(",")]
+            fields = [field for field in fields if field in REVIEW_RELEVANT_FIELDS]
+            if fields:
+                relevant.append("baja confianza en: " + ", ".join(fields))
+            continue
+        relevant.append(text)
+    return relevant
 
 
 def review_reasons(result) -> list[str]:

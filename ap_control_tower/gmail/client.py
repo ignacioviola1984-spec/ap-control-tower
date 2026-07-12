@@ -122,7 +122,8 @@ class RealGmailClient:
         return self._service
 
     def _label_id(self, service) -> str | None:
-        labels = service.users().labels().list(userId="me").execute().get("labels", [])
+        labels = service.users().labels().list(
+            userId=self._config.user).execute().get("labels", [])
         for label in labels:
             if label.get("name") == self._config.label:
                 return label.get("id")
@@ -134,11 +135,12 @@ class RealGmailClient:
         if label_id is None:
             return []
         resp = service.users().messages().list(
-            userId="me", labelIds=[label_id], maxResults=max_results).execute()
+            userId=self._config.user, labelIds=[label_id],
+            maxResults=max_results).execute()
         out: list = []
         for meta in resp.get("messages", []) or ():
             full = service.users().messages().get(
-                userId="me", id=meta["id"], format="full").execute()
+                userId=self._config.user, id=meta["id"], format="full").execute()
             payload = full.get("payload", {}) or {}
             headers = {h.get("name", "").lower(): h.get("value", "")
                        for h in payload.get("headers", []) or ()}
@@ -154,7 +156,8 @@ class RealGmailClient:
     def download_attachment(self, message_id: str, attachment_id: str) -> bytes:
         service = self._build_service()
         att = service.users().messages().attachments().get(
-            userId="me", messageId=message_id, id=attachment_id).execute()
+            userId=self._config.user, messageId=message_id,
+            id=attachment_id).execute()
         return base64.urlsafe_b64decode(att["data"])
 
 

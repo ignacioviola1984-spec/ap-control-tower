@@ -215,11 +215,8 @@ def sidebar_footer(run_id: str | None, commit: str | None) -> None:
     st.sidebar.markdown("---")
     st.sidebar.html(
         "<div style='padding:0 4px;'>"
-        "<div class='apct-motto' style='margin-top:8px;'>"
-        "“El sistema se auto-bloquea ante alertas.<br>La aprobación para liberar "
-        "dinero es siempre humana.”</div>"
-        "<div style='font-size:11px;color:#9FB3C8 !important;margin-top:8px;'>"
-        "El humano interviene en dos lugares:<br>"
+        "<div style='font-size:12px;line-height:1.5;color:#BFD1E2 !important;"
+        "margin-top:8px;'><b>El humano interviene en dos lugares:</b><br>"
         "confirma datos en <b>Revisión humana</b> ·<br>"
         "libera dinero en <b>Aprobación de pagos</b></div>"
         "<div style='font-size:11px;color:#9FB3C8 !important;margin-top:8px;'>"

@@ -141,6 +141,9 @@ def main() -> int:
           "marca Trial centrada y sin separador superior redundante")
     check("corrida <code>" not in footer_source and "commit <code>" not in footer_source,
           "la Demo no expone run/commit en el pie")
+    check("El sistema se auto-bloquea ante alertas" not in footer_source
+          and "El humano interviene en dos lugares" in footer_source,
+          "pie Demo reemplaza la frase guía por la intervención humana")
     check("PoC documental" not in footer_source,
           "la Demo no muestra el wording técnico de Document AI")
     payment_source = inspect.getsource(payment_approval)

@@ -128,11 +128,15 @@ def render() -> None:
     retained = [row for row in rows
                 if row["status"] in {"retained", "rejected", "excluded"}]
     c1, c2, c3 = st.columns(3)
-    c1.metric("Elegibles", len(eligible))
-    c1.caption("Total elegible: " + _totals(rows, "eligible"))
+    c1.metric("Pendientes de aprobación", len(eligible))
+    c1.caption("Total pendiente: " + _totals(rows, "eligible"))
     c2.metric("Aprobadas para propuesta", len(approved))
     c2.caption("Total aprobado: " + _totals(rows, "approved"))
     c3.metric("Retenidas / fuera de propuesta", len(retained))
+    if eligible:
+        subject = "documento elegible espera" if len(eligible) == 1 else "documentos elegibles esperan"
+        st.info(f"{len(eligible)} {subject} la aprobación humana final en esta pestaña. "
+                "Hasta ejecutar ese gate, Aprobadas para propuesta permanece en 0.")
 
     table = []
     for row in rows:

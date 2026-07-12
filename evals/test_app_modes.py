@@ -137,6 +137,8 @@ def main() -> int:
     brand_source = inspect.getsource(theme.sidebar_brand)
     check("Prueba de concepto con facturas reales" in brand_source,
           "lateral identifica la experiencia como prueba de concepto real")
+    check("apct-trial-brand" in brand_source and "return" in brand_source,
+          "marca Trial centrada y sin separador superior redundante")
     check("corrida <code>" not in footer_source and "commit <code>" not in footer_source,
           "la Demo no expone run/commit en el pie")
     check("PoC documental" not in footer_source,
@@ -144,6 +146,9 @@ def main() -> int:
     payment_source = inspect.getsource(payment_approval)
     check("Seleccionar todas las elegibles" in payment_source,
           "Aprobación ofrece selección masiva explícita")
+    check("Pendientes de aprobación" in payment_source
+          and "Aprobadas para propuesta permanece en 0" in payment_source,
+          "gate distingue pendientes de documentos ya aprobados")
     check("Documentos retenidos / fuera de la propuesta" in payment_source,
           "retenidos tienen una sección visible propia")
     check("Confirmar exclusión de la propuesta" not in payment_source

@@ -68,23 +68,44 @@ h1, h2, h3 {{ font-weight: 750; letter-spacing: -0.01em; color: {TEXT}; }}
   letter-spacing: -.015em; color: {TEXT}; white-space: nowrap;
   margin: 0 0 16px 0;
 }}
+.apct-trial-brand {{
+  min-height: 205px; padding: 8px 6px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; text-align: center;
+}}
+.apct-trial-brand-title {{
+  font-size: 25px; line-height: 1.15; font-weight: 850; letter-spacing: -.015em;
+  color: #FFFFFF !important; white-space: nowrap;
+}}
+.apct-trial-brand-poc {{
+  font-size: 15px; line-height: 1.3; font-weight: 800; color: #E8EEF5 !important;
+  margin-top: 12px;
+}}
+.apct-trial-brand-flow {{
+  max-width: 260px; font-size: 13.5px; line-height: 1.4; font-weight: 750;
+  color: #BFD1E2 !important; margin-top: 7px;
+}}
 .apct-method-note {{
   background: #EAF1F9; border: 1px solid #C8DAEE; border-left: 4px solid {INFO};
   border-radius: 9px; padding: 11px 14px; margin: 8px 0 14px 0;
   color: #24476B; font-size: 14px; line-height: 1.4; font-weight: 750;
 }}
-.st-key-business_case_evidence_metrics [data-testid="stMetricLabel"] p,
-.st-key-business_case_asis_metrics [data-testid="stMetricLabel"] p {{
+.st-key-business_case_evidence_metrics [data-testid="stMetricLabel"] p {{
   font-size: 16px !important; line-height: 1.25 !important; font-weight: 750 !important;
+  white-space: normal !important; overflow: visible !important; text-overflow: clip !important;
+}}
+.st-key-business_case_asis_metrics [data-testid="stMetricLabel"] p {{
+  font-size: 18px !important; line-height: 1.25 !important; font-weight: 800 !important;
   white-space: normal !important; overflow: visible !important; text-overflow: clip !important;
 }}
 .st-key-business_case_evidence_metrics [data-testid="stMetricLabel"],
 .st-key-business_case_asis_metrics [data-testid="stMetricLabel"] {{
   white-space: normal !important; overflow: visible !important;
 }}
-.st-key-business_case_evidence_metrics [data-testid="stMetricValue"],
+.st-key-business_case_evidence_metrics [data-testid="stMetricValue"] {{
+  font-size: 26px !important; line-height: 1.15 !important;
+}}
 .st-key-business_case_asis_metrics [data-testid="stMetricValue"] {{
-  font-size: 28px !important; line-height: 1.15 !important;
+  font-size: 22px !important; line-height: 1.15 !important;
 }}
 .apct-kpi-label {{ font-size: 12px; color: {MUTED}; text-transform: uppercase;
   letter-spacing: .06em; font-weight: 600; }}
@@ -172,22 +193,20 @@ def eur(amount) -> str:
 
 def sidebar_brand(mode: str = "demo") -> None:
     if mode == "trial":
-        subtitle = (
-            "<div style='font-size:12px;font-weight:700;color:#E8EEF5 !important;"
-            "margin-top:4px;'>Prueba de concepto con facturas reales</div>"
-            "<div style='font-size:10.5px;line-height:1.35;color:#9FB3C8 !important;"
-            "margin-top:3px;'>Extracción, revisión y propuesta de pago en un circuito "
-            "completo.</div>")
-    else:
-        subtitle = (
-            "<div style='font-size:12px;color:#9FB3C8 !important;margin-top:2px;'>"
-            "Cuentas a Pagar · agentes maker-checker</div>")
+        st.sidebar.html(
+            "<div class='apct-trial-brand'>"
+            "<div class='apct-trial-brand-title'>AP Control Tower</div>"
+            "<div class='apct-trial-brand-poc'>Prueba de concepto con facturas reales</div>"
+            "<div class='apct-trial-brand-flow'>Extracción, revisión y propuesta de pago "
+            "en un circuito completo.</div></div>",
+        )
+        return
     st.sidebar.html(
         "<div style='padding:6px 4px 2px 4px;'>"
         "<div style='font-size:21px;font-weight:800;letter-spacing:-.01em;'>"
         "AP <span style='color:#7FB3E3;'>Control Tower</span></div>"
-        + subtitle +
-        "</div>",
+        "<div style='font-size:12px;color:#9FB3C8 !important;margin-top:2px;'>"
+        "Cuentas a Pagar · agentes maker-checker</div></div>",
     )
     st.sidebar.markdown("---")
 

@@ -1,4 +1,4 @@
-"""Integracion Gmail READ-ONLY, reutilizable por la demo y la app trial.
+"""Integracion de correo READ-ONLY, reutilizable por demo y trial.
 
 Alcance estrictamente de solo lectura (scope gmail.readonly): listar mensajes con
 una etiqueta (AP-DEMO), leer remitente/asunto/fecha/adjuntos y descargar los PDF
@@ -20,10 +20,15 @@ from .client import (
     RealGmailClient,
     build_client,
     gmail_configured,
+    mailbox_configured,
+    mailbox_provider,
 )
 from .fake import FakeGmailClient
+from .imap_client import IMAPConfig, ReadOnlyIMAPClient, imap_configured
 
 __all__ = [
     "SCOPES", "GmailAttachment", "GmailConfig", "GmailMessage",
-    "RealGmailClient", "build_client", "gmail_configured", "FakeGmailClient",
+    "RealGmailClient", "build_client", "gmail_configured", "mailbox_configured",
+    "mailbox_provider", "IMAPConfig", "ReadOnlyIMAPClient", "imap_configured",
+    "FakeGmailClient",
 ]

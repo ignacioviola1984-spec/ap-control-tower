@@ -84,8 +84,8 @@ def main() -> int:
     labels = list(demo_shell.VIEWS)
     check(not any("PoC" in k for k in labels),
           "la Demo ya NO muestra 'PoC documentos reales'")
-    check(any("Gmail AP-DEMO" in k for k in labels),
-          "la Demo muestra 'Gmail AP-DEMO'")
+    check(any("Correo AP-DEMO" in k for k in labels),
+          "la Demo muestra 'Correo AP-DEMO'")
     for esperado in ("Corrida del mes", "Cola de excepciones", "Revisión humana",
                      "Aprobación de pagos", "Registro de auditoría", "Caso de negocio"):
         check(any(esperado in k for k in labels), f"la Demo conserva '{esperado}'")

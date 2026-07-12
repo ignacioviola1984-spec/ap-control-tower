@@ -1,4 +1,4 @@
-"""Panel Gmail reutilizable (demo y trial): listar AP-DEMO e importar PDFs.
+"""Panel de correo reutilizable: listar AP-DEMO e importar PDFs.
 
 Solo lectura: lista mensajes con la etiqueta, muestra remitente/asunto/fecha/
 adjuntos y descarga los PDF seleccionados. El QUE hacer con los PDF importados lo
@@ -10,23 +10,25 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
-from ...gmail import build_client, gmail_configured
+from ...gmail import build_client, mailbox_configured, mailbox_provider
 
 
 def render_gmail_panel(on_import, client=None) -> None:
     if client is None:
-        if not gmail_configured():
-            st.info("Gmail no está configurado. Podés continuar con la carga manual. "
-                    "Para habilitarlo se configuran por entorno el client id, el client "
-                    "secret y el refresh token (solo lectura, etiqueta AP-DEMO).")
+        if not mailbox_configured():
+            st.info("El correo AP no está configurado. Podés continuar con la carga "
+                    "manual. La conexión al buzón se habilita por secretos de entorno "
+                    "y funciona en modo de solo lectura.")
             return
         client = build_client()
 
     try:
         messages = client.list_messages()
     except Exception as exc:  # credenciales/red: mensaje claro, sin crash
-        st.error(f"No se pudo leer Gmail (solo lectura): {exc}")
+        st.error(f"No se pudo leer el correo AP (solo lectura): {exc}")
         return
+
+    st.caption(f"Conexión: {mailbox_provider() or 'correo'} · carpeta AP-DEMO · solo lectura")
 
     if not messages:
         st.caption("No hay mensajes con la etiqueta configurada.")
@@ -50,7 +52,7 @@ def render_gmail_panel(on_import, client=None) -> None:
         st.caption("Los mensajes con esa etiqueta no traen adjuntos PDF.")
         return
 
-    picked = st.multiselect("Adjuntos PDF a importar (etiqueta AP-DEMO)", list(options))
+    picked = st.multiselect("Adjuntos PDF a importar (carpeta AP-DEMO)", list(options))
     if picked and st.button("Importar y procesar seleccionados", type="primary",
                             use_container_width=True):
         files = []

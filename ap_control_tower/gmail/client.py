@@ -55,6 +55,21 @@ def gmail_configured() -> bool:
     return GmailConfig.from_env() is not None
 
 
+def mailbox_configured() -> bool:
+    """True si hay un buzón IMAP o Gmail API configurado."""
+    from .imap_client import imap_configured
+    return imap_configured() or gmail_configured()
+
+
+def mailbox_provider() -> str | None:
+    from .imap_client import imap_configured
+    if imap_configured():
+        return "IMAP"
+    if gmail_configured():
+        return "Gmail"
+    return None
+
+
 @dataclass(frozen=True)
 class GmailAttachment:
     message_id: str
@@ -161,6 +176,11 @@ class RealGmailClient:
         return base64.urlsafe_b64decode(att["data"])
 
 
-def build_client() -> "RealGmailClient | None":
+def build_client():
+    """Prioriza el buzón IMAP externo; conserva Gmail como fallback."""
+    from .imap_client import build_imap_client
+    imap_client = build_imap_client()
+    if imap_client is not None:
+        return imap_client
     config = GmailConfig.from_env()
     return RealGmailClient(config) if config is not None else None

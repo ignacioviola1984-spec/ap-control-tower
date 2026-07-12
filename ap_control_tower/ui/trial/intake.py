@@ -1,4 +1,4 @@
-"""Opcion 1: Probar con mis facturas (carga manual + import Gmail).
+"""Opcion 1: Probar con mis facturas (carga manual + correo AP).
 
 Carga manual de uno o varios PDF y (cuando este configurado) importacion desde
 Gmail con la etiqueta AP-DEMO. Ambas rutas usan EL MISMO procesamiento y guardan
@@ -57,9 +57,9 @@ def _render_manual() -> None:
 
 
 def _render_gmail() -> None:
-    st.markdown("#### Importar desde Gmail (etiqueta AP-DEMO, solo lectura)")
+    st.markdown("#### Importar desde el correo AP (carpeta AP-DEMO, solo lectura)")
     gmail_panel.render_gmail_panel(
-        on_import=lambda files: _process_and_store(files, canal="gmail"))
+        on_import=lambda files: _process_and_store(files, canal="correo-ap"))
 
 
 def render() -> None:

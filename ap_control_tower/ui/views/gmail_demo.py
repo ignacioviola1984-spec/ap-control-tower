@@ -1,4 +1,4 @@
-"""Vista Demo: Gmail AP-DEMO (recepcion + extraccion de PDF reales, solo lectura).
+"""Vista Demo: correo AP-DEMO (recepcion + extraccion, solo lectura).
 
 Demuestra la recepcion de facturas por Gmail (etiqueta AP-DEMO) y su extraccion
 con Document AI, SIN incorporarlas a la corrida sintetica ni persistir nada. Los
@@ -17,11 +17,11 @@ _KEY = "_gmail_demo_results"
 
 
 def render() -> None:
-    st.markdown("## Gmail AP-DEMO")
+    st.markdown("## Correo AP-DEMO")
     st.html(
-        "<div class='apct-card'><b>Recepción y extracción de facturas por Gmail "
+        "<div class='apct-card'><b>Recepción y extracción desde el correo AP "
         "(solo lectura).</b><br>"
-        "<span style='color:#5A6572;'>Lee mensajes con la etiqueta AP-DEMO, muestra "
+        "<span style='color:#5A6572;'>Lee mensajes de la carpeta AP-DEMO, muestra "
         "los adjuntos y los procesa con Document AI. No se suman a la corrida sintética "
         "ni se guardan: es una demostración en memoria.</span></div>",
     )

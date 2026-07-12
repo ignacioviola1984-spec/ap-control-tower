@@ -13,7 +13,15 @@ import streamlit as st
 from ...gmail import build_client, mailbox_configured, mailbox_provider
 
 
-def render_gmail_panel(on_import, client=None) -> None:
+def render_gmail_panel(on_import, client=None, *, require_open: bool = False) -> None:
+    if require_open and not st.session_state.get("_trial_gmail_browse"):
+        st.caption("La carpeta se consulta únicamente cuando lo solicites.")
+        if st.button("Consultar carpeta AP-DEMO", use_container_width=True,
+                     key="_trial_gmail_open"):
+            st.session_state["_trial_gmail_browse"] = True
+            st.rerun()
+        return
+
     if client is None:
         if not mailbox_configured():
             st.info("El correo AP no está configurado. Podés continuar con la carga "

@@ -46,6 +46,16 @@ h1, h2, h3 {{ font-weight: 750; letter-spacing: -0.01em; color: {TEXT}; }}
   padding: 7px 10px; border-radius: 8px; width: 100%;
 }}
 [data-testid="stSidebar"] [role="radiogroup"] label:hover {{ background: #16324E; }}
+[data-testid="stSidebar"] .stButton > button {{
+  background: #163E63; border: 1px solid #2B5D87; color: #FFFFFF !important;
+}}
+[data-testid="stSidebar"] .stButton > button:hover {{
+  background: #1D527F; border-color: #4A7DA6;
+}}
+[data-testid="stSidebar"] .stButton > button p {{ color: #FFFFFF !important; }}
+[data-testid="stSidebar"] .stButton > button:disabled {{
+  background: #29445D; color: #D9E4EE !important; opacity: .8;
+}}
 
 /* ---- cards y KPIs ---- */
 .apct-card {{

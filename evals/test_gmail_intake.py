@@ -76,6 +76,34 @@ def main() -> int:
     data = fake.download_attachment("msg-1", "att-1")
     check(data == b"%PDF-1.4 uno", "descarga el adjunto correcto por id")
 
+    print("== Trial limpio: Gmail no lista adjuntos antes de solicitarlo ==")
+    from ap_control_tower.ui.components import gmail_panel
+    original_state = gmail_panel.st.session_state
+    original_caption = gmail_panel.st.caption
+    original_button = gmail_panel.st.button
+    state: dict = {}
+    captions: list[str] = []
+    panel_list_calls = 0
+    original_list_messages = fake.list_messages
+    def counted_list_messages(*args, **kwargs):
+        nonlocal panel_list_calls
+        panel_list_calls += 1
+        return original_list_messages(*args, **kwargs)
+    fake.list_messages = counted_list_messages
+    try:
+        gmail_panel.st.session_state = state
+        gmail_panel.st.caption = lambda text: captions.append(text)
+        gmail_panel.st.button = lambda *args, **kwargs: False
+        gmail_panel.render_gmail_panel(lambda files: None, client=fake, require_open=True)
+    finally:
+        gmail_panel.st.session_state = original_state
+        gmail_panel.st.caption = original_caption
+        gmail_panel.st.button = original_button
+        fake.list_messages = original_list_messages
+    check(panel_list_calls == 0, "el panel cerrado no consulta ni muestra mensajes")
+    check(any("únicamente cuando lo solicites" in text for text in captions),
+          "el inicio muestra el acceso a Gmail cerrado, sin adjuntos precargados")
+
     print("== Un adjunto Gmail se procesa por el MISMO motor que la carga manual ==")
     try:
         from reportlab.pdfgen import canvas  # opcional (esta en requirements.txt)

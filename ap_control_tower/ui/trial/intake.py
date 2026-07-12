@@ -67,7 +67,8 @@ def _render_manual() -> None:
 def _render_gmail() -> None:
     st.markdown("#### Importar desde el correo AP (carpeta AP-DEMO, solo lectura)")
     gmail_panel.render_gmail_panel(
-        on_import=lambda files: _process_and_store(files, canal="correo-ap"))
+        on_import=lambda files: _process_and_store(files, canal="correo-ap"),
+        require_open=True)
 
 
 def render() -> None:

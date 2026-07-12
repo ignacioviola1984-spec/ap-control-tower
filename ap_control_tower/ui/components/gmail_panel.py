@@ -62,12 +62,18 @@ def render_gmail_panel(on_import, client=None, *, require_open: bool = False) ->
         st.caption("No hay adjuntos PDF disponibles en la carpeta configurada.")
         return
 
+    total_pdfs = sum(len(attachments) for _, attachments in visible_messages)
+    mail_label = "correo encontrado" if len(visible_messages) == 1 else "correos encontrados"
+    pdf_label = "PDF disponible" if total_pdfs == 1 else "PDF disponibles"
+    st.info(f"{len(visible_messages)} {mail_label} · {total_pdfs} {pdf_label}. "
+            "Todavía no seleccionaste ni procesaste ningún documento.")
+
     st.dataframe(
         pd.DataFrame([{
             "fecha": m.date,
             "remitente": m.sender,
             "asunto": m.subject,
-            "adjuntos PDF": ", ".join(a.filename for a in attachments),
+            "PDF disponibles": len(attachments),
         } for m, attachments in visible_messages]),
         use_container_width=True, hide_index=True,
     )

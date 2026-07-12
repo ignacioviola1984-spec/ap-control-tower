@@ -114,6 +114,31 @@ def main() -> int:
     check(not visible and len(visible_other) == 1,
           "un archivo excluido no aparece; los demás adjuntos siguen disponibles")
 
+    print("== Inventario neutral: no revela nombres antes de seleccionar ==")
+    original_dataframe = gmail_panel.st.dataframe
+    original_info = gmail_panel.st.info
+    original_multiselect = gmail_panel.st.multiselect
+    captured_frames: list = []
+    infos: list[str] = []
+    try:
+        gmail_panel.st.session_state = {"_trial_gmail_browse": True}
+        gmail_panel.st.caption = lambda text: None
+        gmail_panel.st.dataframe = lambda frame, **kwargs: captured_frames.append(frame)
+        gmail_panel.st.info = lambda text: infos.append(text)
+        gmail_panel.st.multiselect = lambda *args, **kwargs: []
+        gmail_panel.render_gmail_panel(lambda files: None, client=fake, require_open=True)
+    finally:
+        gmail_panel.st.session_state = original_state
+        gmail_panel.st.caption = original_caption
+        gmail_panel.st.dataframe = original_dataframe
+        gmail_panel.st.info = original_info
+        gmail_panel.st.multiselect = original_multiselect
+    frame_text = captured_frames[0].to_string() if captured_frames else ""
+    check("factura-uno.pdf" not in frame_text and "proforma-dos.pdf" not in frame_text,
+          "la tabla de correos no expone nombres de facturas")
+    check("PDF disponibles" in captured_frames[0].columns and bool(infos),
+          "muestra cantidades y aclara que nada fue seleccionado ni procesado")
+
     print("== Un adjunto Gmail se procesa por el MISMO motor que la carga manual ==")
     try:
         from reportlab.pdfgen import canvas  # opcional (esta en requirements.txt)

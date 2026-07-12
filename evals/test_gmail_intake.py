@@ -104,6 +104,16 @@ def main() -> int:
     check(any("únicamente cuando lo solicites" in text for text in captions),
           "el inicio muestra el acceso a Gmail cerrado, sin adjuntos precargados")
 
+    print("== Exclusión configurable de adjuntos de prueba ==")
+    os.environ["AP_GMAIL_EXCLUDED_FILENAMES"] = "factura-uno.pdf"
+    try:
+        visible = gmail_panel._visible_attachments(msgs[0])
+        visible_other = gmail_panel._visible_attachments(msgs[1])
+    finally:
+        os.environ.pop("AP_GMAIL_EXCLUDED_FILENAMES", None)
+    check(not visible and len(visible_other) == 1,
+          "un archivo excluido no aparece; los demás adjuntos siguen disponibles")
+
     print("== Un adjunto Gmail se procesa por el MISMO motor que la carga manual ==")
     try:
         from reportlab.pdfgen import canvas  # opcional (esta en requirements.txt)

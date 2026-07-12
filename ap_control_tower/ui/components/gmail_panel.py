@@ -7,10 +7,23 @@ decide el llamador via ``on_import(files)`` (files = [(nombre, bytes)]).
 
 from __future__ import annotations
 
+import os
+
 import pandas as pd
 import streamlit as st
 
 from ...gmail import build_client, mailbox_configured, mailbox_provider
+
+
+def _excluded_filenames() -> set[str]:
+    raw = os.environ.get("AP_GMAIL_EXCLUDED_FILENAMES", "")
+    return {name.strip().casefold() for name in raw.split("|") if name.strip()}
+
+
+def _visible_attachments(message) -> list:
+    excluded = _excluded_filenames()
+    return [a for a in message.attachments
+            if a.filename.strip().casefold() not in excluded]
 
 
 def render_gmail_panel(on_import, client=None, *, require_open: bool = False) -> None:
@@ -42,19 +55,26 @@ def render_gmail_panel(on_import, client=None, *, require_open: bool = False) ->
         st.caption("No hay mensajes con la etiqueta configurada.")
         return
 
+    visible_messages = [(m, _visible_attachments(m)) for m in messages]
+    visible_messages = [(m, attachments) for m, attachments in visible_messages
+                        if attachments]
+    if not visible_messages:
+        st.caption("No hay adjuntos PDF disponibles en la carpeta configurada.")
+        return
+
     st.dataframe(
         pd.DataFrame([{
             "fecha": m.date,
             "remitente": m.sender,
             "asunto": m.subject,
-            "adjuntos PDF": ", ".join(a.filename for a in m.attachments) or "—",
-        } for m in messages]),
+            "adjuntos PDF": ", ".join(a.filename for a in attachments),
+        } for m, attachments in visible_messages]),
         use_container_width=True, hide_index=True,
     )
 
     options: dict = {}
-    for m in messages:
-        for a in m.attachments:
+    for m, attachments in visible_messages:
+        for a in attachments:
             options[f"{m.date[:16]} · {m.sender[:28]} · {a.filename}"] = a
     if not options:
         st.caption("Los mensajes con esa etiqueta no traen adjuntos PDF.")

@@ -37,6 +37,13 @@ def _totals(rows: list[dict], status: str) -> str:
     return " · ".join(f"{currency} {amount:,.2f}" for currency, amount in totals.items()) or "—"
 
 
+def _selected_doc_ids(labels: dict, selected_labels: list[str],
+                      select_all: bool) -> list[str]:
+    """Resuelve la selección sin depender del estado visual del multiselect."""
+    chosen = list(labels) if select_all else selected_labels
+    return [labels[label]["result"].doc_id for label in chosen if label in labels]
+
+
 def render() -> None:
     st.markdown("## Aprobación para propuesta de pago")
     st.info("Esta decisión prepara una propuesta controlada. No contabiliza, no genera "
@@ -85,33 +92,37 @@ def render() -> None:
         f"{row['result'].document.get('importe_total') or '—'}": row
         for row in eligible
     }
-    select_all = st.checkbox(
-        "Seleccionar todas las elegibles", disabled=not labels,
-        key="trial_payment_select_all")
-    with st.form("trial_payment_decision"):
-        selected_labels = st.multiselect(
-            "Facturas elegibles para aprobar", list(labels),
-            default=list(labels) if select_all else [],
-            key=f"trial_payment_selection_{'all' if select_all else 'manual'}")
-        approver = st.text_input("Decisión tomada por")
-        note = st.text_area("Comentario / motivo")
-        acknowledgement = st.checkbox(
-            "Confirmo que esta acción no libera dinero ni reemplaza la autorización bancaria")
-        approve = st.form_submit_button(
-            "Aprobar para propuesta de pago", type="primary", use_container_width=True)
+    if not labels:
+        st.success("No quedan facturas elegibles pendientes de aprobación.")
+    else:
+        select_all = st.checkbox(
+            "Seleccionar todas las elegibles",
+            key=f"trial_payment_select_all_{session.audit.run_id}")
+        with st.form(f"trial_payment_decision_{session.audit.run_id}"):
+            selected_labels = st.multiselect(
+                "Facturas elegibles para aprobar", list(labels),
+                default=list(labels) if select_all else [],
+                disabled=select_all,
+                key=f"trial_payment_selection_{session.audit.run_id}")
+            approver = st.text_input("Decisión tomada por")
+            note = st.text_area("Comentario / motivo")
+            acknowledgement = st.checkbox(
+                "Confirmo que esta acción no libera dinero ni reemplaza la autorización bancaria")
+            approve = st.form_submit_button(
+                "Aprobar para propuesta de pago", type="primary", use_container_width=True)
 
-    selected_ids = [labels[label]["result"].doc_id for label in selected_labels]
-    try:
-        if approve:
-            if not acknowledgement:
-                raise ValueError("Confirmá el alcance de la acción antes de aprobar.")
-            sess.decide_payment_proposal(
-                session, selected_ids, approver, "approved", note)
-            sess.persist(session)
-            st.success("Facturas aprobadas para la propuesta de pago. No se liberó dinero.")
-            st.rerun()
-    except ValueError as exc:
-        st.error(str(exc))
+        selected_ids = _selected_doc_ids(labels, selected_labels, select_all)
+        try:
+            if approve:
+                if not acknowledgement:
+                    raise ValueError("Confirmá el alcance de la acción antes de aprobar.")
+                sess.decide_payment_proposal(
+                    session, selected_ids, approver, "approved", note)
+                sess.persist(session)
+                st.success("Facturas aprobadas para la propuesta de pago. No se liberó dinero.")
+                st.rerun()
+        except ValueError as exc:
+            st.error(str(exc))
 
     st.markdown("### Documentos retenidos / fuera de la propuesta")
     if not retained:

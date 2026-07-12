@@ -47,6 +47,7 @@ def must_raise(fn, text: str) -> None:
 
 
 def main() -> int:
+    from ap_control_tower.ui.trial.payment_approval import _selected_doc_ids
     from ap_control_tower.ui.trial import session as sess
     from ap_control_tower.ui.trial import workflow
     from ap_control_tower.ui.components import extraction_view as ev
@@ -94,6 +95,14 @@ def main() -> int:
     assert len(workflow.review_queue(repeated_same_object, {})) == 0
     assert len(workflow.approval_rows(repeated_same_object, {}, {})) == 1
     print("  PASS  mismo doc_id repetido se colapsa y no genera falsa alerta")
+
+    print("== Selección masiva de propuesta de pago ==")
+    selection_labels = {"Factura 1": {"result": clean},
+                        "Factura 2": {"result": duplicate}}
+    assert _selected_doc_ids(selection_labels, [], True) == ["F-1", "F-1-COPY"]
+    assert _selected_doc_ids(selection_labels, ["Factura 2"], False) == ["F-1-COPY"]
+    assert _selected_doc_ids({}, [], True) == []
+    print("  PASS  seleccionar todas no depende del valor visual del multiselect")
 
     print("== Decisión humana, maker-checker y no liberación ==")
     active = sess.new_session()

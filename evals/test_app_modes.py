@@ -1,8 +1,8 @@
 """Eval: contrato de los dos modos (demo y trial). exit 0 = verde.
 
 - La Demo conserva sus vistas y NO muestra "PoC documentos reales" (ahora Gmail).
-- La app trial tiene tres vistas internas y un enlace externo separado.
-- El enlace a la Demo usa configuracion externa (AP_DEMO_URL).
+- La app trial tiene cinco vistas internas sin enlace externo.
+- La Demo enlaza al PoC mediante configuracion externa (AP_POC_URL).
 - Ambos modos ARRANCAN (streamlit sirve el health endpoint).
 
 SKIP con exit 0 si Streamlit no esta instalado (dependencia de UI).
@@ -186,20 +186,23 @@ def main() -> int:
           and "business_case_asis_metrics" in business_source,
           "Caso de Negocio permite reequilibrar labels y valores")
 
-    print("== Enlace a la Demo por configuración externa ==")
-    from ap_control_tower.ui.trial import demo_link
-    prev = os.environ.get("AP_DEMO_URL")
+    print("== Enlace desde la Demo al PoC por configuración externa ==")
+    from ap_control_tower.ui import poc_link
+    demo_source = inspect.getsource(demo_shell.render)
+    check("render_poc_link" in demo_source,
+          "la Demo muestra el acceso externo al PoC")
+    prev = os.environ.get("AP_POC_URL")
     try:
-        os.environ.pop("AP_DEMO_URL", None)
-        check(demo_link.demo_url() is None, "sin AP_DEMO_URL -> None (no hardcodeada)")
-        os.environ["AP_DEMO_URL"] = "https://demo.example/app"
-        check(demo_link.demo_url() == "https://demo.example/app",
-              "con AP_DEMO_URL -> se usa esa URL")
+        os.environ.pop("AP_POC_URL", None)
+        check(poc_link.poc_url() is None, "sin AP_POC_URL -> None (no hardcodeada)")
+        os.environ["AP_POC_URL"] = "https://poc.example/app"
+        check(poc_link.poc_url() == "https://poc.example/app",
+              "con AP_POC_URL -> se usa esa URL")
     finally:
         if prev is None:
-            os.environ.pop("AP_DEMO_URL", None)
+            os.environ.pop("AP_POC_URL", None)
         else:
-            os.environ["AP_DEMO_URL"] = prev
+            os.environ["AP_POC_URL"] = prev
 
     print("== bootstrap.normalize_mode ==")
     from ap_control_tower.ui import bootstrap

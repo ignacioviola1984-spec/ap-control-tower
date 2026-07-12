@@ -12,6 +12,7 @@ import streamlit as st
 
 from . import state
 from .navigation import scroll_to_top_on_change
+from .poc_link import render_sidebar as render_poc_link
 from .theme import sidebar_footer
 from .views import (
     audit_view,
@@ -42,6 +43,7 @@ def render() -> None:
         run["result"].run_id if run else None,
         run["result"].commit if run else None,
     )
+    render_poc_link()
 
     VIEWS[choice]()
     scroll_to_top_on_change(choice, state_key="_demo_last_view")

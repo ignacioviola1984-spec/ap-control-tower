@@ -57,8 +57,9 @@ def main() -> int:
         "iban": "ES9121000418450200051332",
         "proveedor_cuenta_bancaria": "12345678901234567890",
     })
+    long_doc_id = "02. REMOTE 2026-05-Invoice-050IN26048878-Brand up slu.pdf"
     result = FakeResult(
-        "factura.pdf", "factura.pdf", document,
+        long_doc_id, long_doc_id, document,
         field_confidences={"numero_factura": Decimal("0.91")})
     trial_session.add_document(
         state, result, 1.25, file_hash="b" * 64, source="correo-ap")
@@ -76,8 +77,10 @@ def main() -> int:
               "recupera resultado estructurado")
         check(loaded is not None and loaded.audit.verify_chain(),
               "recupera audit trail con cadena íntegra")
-        check(loaded is not None and loaded.proc_seconds["factura.pdf"] == 1.25,
+        check(loaded is not None and loaded.proc_seconds[long_doc_id] == 1.25,
               "recupera tiempo de procesamiento")
+        check(loaded is not None and loaded.audit.events[1].invoice_id == long_doc_id,
+              "auditoría conserva identificador real mayor a 48 caracteres")
 
         stored = db.query(TrialDocument).one()
         blob = str(stored.document)

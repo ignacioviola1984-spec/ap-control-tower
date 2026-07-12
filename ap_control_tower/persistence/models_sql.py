@@ -480,3 +480,53 @@ class AuditoriaEvento(Base):
     __table_args__ = (
         UniqueConstraint("run_id", "seq", name="uq_auditoria_run_seq"),
     )
+
+
+# ------------------------------------------------------------------ trial real
+class TrialRun(Base):
+    """Corrida de documentos reales del Trial, sin almacenar el PDF original."""
+
+    __tablename__ = "trial_runs"
+
+    run_id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    created_at: Mapped[datetime] = _ts_col()
+    updated_at: Mapped[datetime] = _ts_col(onupdate=func.now())
+    source: Mapped[str] = mapped_column(String(32), default="trial")
+    document_count: Mapped[int] = mapped_column(Integer, default=0)
+    error_count: Mapped[int] = mapped_column(Integer, default=0)
+    processing_seconds: Mapped[Decimal] = mapped_column(Numeric(12, 3), default=Decimal("0"))
+    metrics: Mapped[dict] = mapped_column(JSON, default=dict)
+    errors: Mapped[list] = mapped_column(JSON, default=list)
+
+    documents: Mapped[list["TrialDocument"]] = relationship(
+        back_populates="run", cascade="all, delete-orphan")
+
+
+class TrialDocument(Base):
+    """Resultado estructurado y enmascarado; nunca contiene bytes del PDF."""
+
+    __tablename__ = "trial_documents"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    run_id: Mapped[str] = mapped_column(
+        ForeignKey("trial_runs.run_id", ondelete="CASCADE"), index=True)
+    doc_id: Mapped[str] = mapped_column(String(255))
+    filename: Mapped[str] = mapped_column(String(255))
+    file_hash: Mapped[str | None] = mapped_column(String(64), index=True)
+    source: Mapped[str] = mapped_column(String(32), default="carga-manual")
+    engine: Mapped[str] = mapped_column(String(64))
+    pages: Mapped[int] = mapped_column(Integer, default=0)
+    text_chars: Mapped[int] = mapped_column(Integer, default=0)
+    confidence: Mapped[Decimal] = mapped_column(RATIO, default=Decimal("0"))
+    warnings: Mapped[list] = mapped_column(JSON, default=list)
+    document: Mapped[dict] = mapped_column(JSON, default=dict)
+    field_confidences: Mapped[dict] = mapped_column(JSON, default=dict)
+    processing_seconds: Mapped[Decimal] = mapped_column(
+        Numeric(12, 3), default=Decimal("0"))
+    created_at: Mapped[datetime] = _ts_col()
+
+    run: Mapped[TrialRun] = relationship(back_populates="documents")
+
+    __table_args__ = (
+        UniqueConstraint("run_id", "doc_id", name="uq_trial_run_document"),
+    )

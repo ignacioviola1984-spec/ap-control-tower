@@ -299,8 +299,8 @@ def render_detail(results, audit=None, proc_seconds=None) -> None:
                     } for e in doc_events]), use_container_width=True, hide_index=True)
 
 
-def render_session_audit(audit) -> None:
-    """Audit trail temporal (en memoria) de la sesion."""
+def render_session_audit(audit, persisted: bool = False) -> None:
+    """Audit trail encadenado de la sesión activa o de una corrida guardada."""
     events = audit.events
     if not events:
         st.caption("Sin eventos todavía.")
@@ -314,5 +314,7 @@ def render_session_audit(audit) -> None:
     } for ev in events]
     st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
     ok = audit.verify_chain()
+    location = ("guardada en PostgreSQL" if persisted
+                else "activa en esta sesión")
     st.caption(f"Cadena de auditoría {'íntegra ✓' if ok else 'inconsistente ✗'} · "
-               "vive solo en esta sesión (no se guarda en disco ni base).")
+               f"{location}.")

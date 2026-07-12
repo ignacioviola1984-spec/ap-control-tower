@@ -1,4 +1,4 @@
-"""Eval: estado session-only del trial. exit 0 = verde.
+"""Eval: estado activo del trial y privacidad. exit 0 = verde.
 
 Hermetico (no arranca Streamlit, no toca red ni disco): usa un resultado de
 extraccion de mentira (duck-typed) para ejercitar el modelo puro de la sesion y
@@ -133,11 +133,14 @@ def main() -> int:
 
     print("== add_document / add_error: tiempos por documento y estado de error ==")
     s3 = se.new_session()
-    se.add_document(s3, r_ok, 0.5)
+    se.add_document(s3, r_ok, 0.5, file_hash="a" * 64, source="carga-manual")
     se.add_error(s3, "roto.pdf", "boom", 0.2)
     check(len(s3.results) == 1 and len(s3.errors) == 1, "un ok y un error en la sesion")
     check(s3.proc_seconds.get("OK-1") == 0.5 and abs(s3.processing_seconds - 0.7) < 1e-9,
           "tiempo por documento y total acumulado")
+    check(s3.file_hashes.get("OK-1") == "a" * 64 and
+          s3.sources.get("OK-1") == "carga-manual",
+          "conserva hash y canal, nunca bytes del PDF")
     rows = ev._summary_rows(s3.results, s3.errors)
     need = {"archivo", "tipo", "proveedor", "número", "fecha", "vencimiento",
             "moneda", "total", "ruta PO/non-PO", "confianza", "estado"}
@@ -152,7 +155,7 @@ def main() -> int:
     if failures:
         print(f"TRIAL SESSION ROJO: {len(failures)} fallas")
         return 1
-    print("TRIAL SESSION VERDE: session-only, audit temporal sin PII, borrado y aislamiento (exit 0)")
+    print("TRIAL SESSION VERDE: estado activo, audit sin PII, borrado y aislamiento (exit 0)")
     return 0
 
 

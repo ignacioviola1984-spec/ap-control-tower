@@ -10,8 +10,9 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 # requirements primero: cache de capas para builds rapidos.
 # La misma imagen sirve la Demo y "Prueba con tus facturas" (AP_APP_MODE).
 # Gmail (solo lectura) se incluye en la imagen; las credenciales NO (van por env).
-COPY requirements.txt requirements-gmail.txt ./
-RUN pip install --no-cache-dir -r requirements.txt -r requirements-gmail.txt
+COPY requirements.txt requirements-gmail.txt requirements-persistence.txt ./
+RUN pip install --no-cache-dir -r requirements.txt -r requirements-gmail.txt \
+    -r requirements-persistence.txt
 
 # commit hash para el audit trail (envutil.resolve_commit lee GIT_COMMIT)
 ARG GIT_COMMIT=sin-git

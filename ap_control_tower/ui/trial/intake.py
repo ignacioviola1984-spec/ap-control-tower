@@ -8,6 +8,8 @@ se procesan y se descartan; no se conservan.
 
 from __future__ import annotations
 
+import hashlib
+
 import streamlit as st
 
 from ...app import document_ai_configured
@@ -31,15 +33,21 @@ def _process_and_store(files, canal: str) -> None:
             sess.add_error(session, name, error, seconds)
             st.error(f"No se pudo procesar **{name}**: {error}")
         else:
-            sess.add_document(session, result, seconds)
+            sess.add_document(
+                session, result, seconds,
+                file_hash=hashlib.sha256(data).hexdigest(), source=canal)
             ok += 1
         bar.progress(index / total, text=f"Procesado {index}/{total}: {name}")
     bar.empty()
 
     if ok:
         sess.record_intake(session, canal=canal, cantidad=ok)
+        stored = sess.persist(session)
         st.success(f"{ok} documento(s) procesado(s) desde {canal}. "
-                   "Abrí **Ver resultados con mis facturas**.")
+                   "Abrí **Ver resultados con mis facturas**."
+                   + (" Resultado guardado en el historial." if stored else ""))
+    elif session.errors:
+        sess.persist(session)
 
 
 def _render_manual() -> None:

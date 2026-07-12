@@ -76,6 +76,11 @@ h1, h2, h3 {{ font-weight: 750; letter-spacing: -0.01em; color: {TEXT}; }}
 .st-key-business_case_evidence_metrics [data-testid="stMetricLabel"] p,
 .st-key-business_case_asis_metrics [data-testid="stMetricLabel"] p {{
   font-size: 16px !important; line-height: 1.25 !important; font-weight: 750 !important;
+  white-space: normal !important; overflow: visible !important; text-overflow: clip !important;
+}}
+.st-key-business_case_evidence_metrics [data-testid="stMetricLabel"],
+.st-key-business_case_asis_metrics [data-testid="stMetricLabel"] {{
+  white-space: normal !important; overflow: visible !important;
 }}
 .st-key-business_case_evidence_metrics [data-testid="stMetricValue"],
 .st-key-business_case_asis_metrics [data-testid="stMetricValue"] {{

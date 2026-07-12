@@ -107,6 +107,7 @@ def main() -> int:
     import inspect
     from ap_control_tower.ui import theme
     from ap_control_tower.ui.trial import intake
+    from ap_control_tower.ui.trial import payment_approval
     intake_source = inspect.getsource(intake)
     footer_source = inspect.getsource(theme.sidebar_footer)
     check("Cargá tus facturas reales y verás cómo el agente las procesa en tiempo real"
@@ -117,6 +118,14 @@ def main() -> int:
           "la Demo no expone run/commit en el pie")
     check("PoC documental" not in footer_source,
           "la Demo no muestra el wording técnico de Document AI")
+    payment_source = inspect.getsource(payment_approval)
+    check("Seleccionar todas las elegibles" in payment_source,
+          "Aprobación ofrece selección masiva explícita")
+    check("Documentos retenidos / fuera de la propuesta" in payment_source,
+          "retenidos tienen una sección visible propia")
+    for action in ("Confirmar exclusión de la propuesta", "Rechazar para propuesta",
+                   "Enviar a revisión por clasificación"):
+        check(action in payment_source, f"retenidos permiten '{action}'")
 
     print("== Enlace a la Demo por configuración externa ==")
     from ap_control_tower.ui.trial import demo_link

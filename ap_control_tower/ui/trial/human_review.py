@@ -12,6 +12,7 @@ from .workflow_ui import active_session_or_resume
 
 
 FIELD_LABELS = {
+    "document_type": "Tipo documental",
     "proveedor_nombre_comercial": "Proveedor",
     "numero_factura": "Número de factura",
     "fecha_emision": "Fecha de emisión",
@@ -80,9 +81,17 @@ def render() -> None:
                 left, right = st.columns(2)
                 for index, field in enumerate(workflow.EDITABLE_FIELDS):
                     container = left if index % 2 == 0 else right
-                    updates[field] = container.text_input(
-                        FIELD_LABELS[field], value=_value(result.document, field),
-                        key=f"review_{result.doc_id}_{field}")
+                    if field == "document_type":
+                        options = ["invoice", "proforma_or_advance_request", "other"]
+                        current = _value(result.document, field)
+                        updates[field] = container.selectbox(
+                            FIELD_LABELS[field], options,
+                            index=options.index(current) if current in options else 2,
+                            key=f"review_{result.doc_id}_{field}")
+                    else:
+                        updates[field] = container.text_input(
+                            FIELD_LABELS[field], value=_value(result.document, field),
+                            key=f"review_{result.doc_id}_{field}")
                 reviewer = st.text_input("Revisado por", key=f"reviewer_{result.doc_id}")
                 note = st.text_area("Comentario / evidencia de la decisión",
                                     key=f"review_note_{result.doc_id}")

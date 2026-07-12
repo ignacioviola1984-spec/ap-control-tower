@@ -14,6 +14,7 @@ import streamlit as st
 
 from ..components import extraction_view as ev
 from . import session as sess
+from . import workflow
 
 MANAGED_ENGINE = "google_document_ai_invoice_parser"
 
@@ -79,7 +80,9 @@ def calculate_metrics(results, proc_seconds: dict | None = None) -> BusinessMetr
     ]
     times = proc_seconds or {}
     total_seconds = sum(float(times.get(r.doc_id, 0.0)) for r in eligible)
-    review = sum(1 for r in eligible if ev.field_warnings(r))
+    duplicates = workflow.duplicate_doc_ids(eligible)
+    review = sum(1 for r in eligible if workflow.requires_human_review(
+        r, duplicate=r.doc_id in duplicates))
     po = sum(1 for r in invoices if r.document.get("po_reference"))
     return BusinessMetrics(
         documents=len(eligible),

@@ -45,6 +45,7 @@ def _fake_result(doc_id: str, numero: str, total: str, warn: bool) -> FakeResult
     doc = empty_document()
     doc["document_type"] = "invoice"
     doc["numero_factura"] = numero
+    doc["fecha_emision"] = "2026-05-01"
     doc["proveedor_nombre_comercial"] = "Proveedor Test SL"
     doc["proveedor_tax_id"] = "ESB12345678"
     doc["importe_total"] = total
@@ -82,26 +83,52 @@ def main() -> int:
     check("tipo" in ev0 and "confianza" in ev0 and "motor" in ev0,
           "la evidencia guarda solo metadatos (tipo/confianza/motor)")
 
-    print("== Helpers de presentacion (cobertura, ausentes, CSV) ==")
+    print("== Helpers de presentacion (cobertura, CSV y Excel) ==")
     check(0.0 < ev.coverage(r1) < 1.0, "cobertura entre 0 y 1")
     check(len(ev.present_fields(r1)) + len(ev.missing_fields(r1)) == len(ev.BUSINESS_FIELDS),
           "encontrados + ausentes == total de campos de negocio")
     csv = ev.results_csv([r1, r2])
-    check(csv.splitlines()[0].startswith("archivo,motor,confidence"),
+    check(csv.splitlines()[0].startswith("archivo,tipo documental,proveedor"),
           "CSV con encabezado esperado")
     check(len(csv.splitlines()) == 3, "CSV con una fila por documento")
+    check("ESB12345678" not in csv,
+          "CSV no revela tax ID completo")
+    from io import BytesIO
+    from openpyxl import load_workbook
+    workbook = load_workbook(BytesIO(ev.results_excel([r1, r2])))
+    sheet = workbook["Extracción"]
+    excel_headers = [cell.value for cell in sheet[1]]
+    csv_headers = csv.splitlines()[0].split(",")
+    check(excel_headers == csv_headers == ev.EXPORT_COLUMNS,
+          "CSV y Excel comparten columnas comerciales")
+    check(sheet.max_row == 3, "Excel con una fila por documento")
+    check("ESB12345678" not in " ".join(
+        str(cell.value or "") for row in sheet.iter_rows() for cell in row),
+        "Excel no revela tax ID completo")
+    total_col = excel_headers.index("importe total") + 1
+    check(isinstance(sheet.cell(2, total_col).value, (int, float)),
+          "Excel conserva importes como números")
+    from datetime import datetime
+    date_col = excel_headers.index("fecha de emisión") + 1
+    check(isinstance(sheet.cell(2, date_col).value, datetime),
+          "Excel conserva fechas como fechas")
 
     print("== Descargas: claves unicas para sesion e historial ==")
     download_keys: list[str] = []
-    original_download_button = ev.st.download_button
+    original_columns = ev.st.columns
+    class FakeColumn:
+        def download_button(self, *args, **kwargs):
+            download_keys.append(kwargs["key"])
     try:
-        ev.st.download_button = lambda *args, **kwargs: download_keys.append(kwargs["key"])
+        ev.st.columns = lambda count: [FakeColumn() for _ in range(count)]
         ev.render_download([r1], key="trial_download_current_run-1")
         ev.render_download([r1], key="trial_download_history_run-2")
     finally:
-        ev.st.download_button = original_download_button
-    check(download_keys == ["trial_download_current_run-1", "trial_download_history_run-2"],
-          "sesion actual e historial usan IDs distintos en sus botones de descarga")
+        ev.st.columns = original_columns
+    check(download_keys == [
+        "trial_download_current_run-1_csv", "trial_download_current_run-1_xlsx",
+        "trial_download_history_run-2_csv", "trial_download_history_run-2_xlsx"],
+        "sesión/historial y CSV/Excel usan IDs distintos")
 
     print("== 'Finalizar y borrar' limpia la sesion ==")
     to_clear = se.session_keys_to_clear(

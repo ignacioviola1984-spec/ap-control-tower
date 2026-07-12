@@ -187,7 +187,7 @@ def decide_payment_proposal(session: TrialSession, doc_ids: list[str], approver:
     note = (note or "").strip()
     if not approver:
         raise ValueError("Ingresá el nombre de quien toma la decisión.")
-    if status not in {"approved", "rejected"}:
+    if status not in {"approved", "rejected", "excluded"}:
         raise ValueError("Decisión de pago inválida.")
     if not doc_ids:
         raise ValueError("Seleccioná al menos una factura.")
@@ -213,13 +213,36 @@ def decide_payment_proposal(session: TrialSession, doc_ids: list[str], approver:
         session.audit.add(
             agent=approver,
             action=("aprobada-para-propuesta-pago" if status == "approved"
-                    else "rechazada-para-propuesta-pago"),
+                    else ("rechazada-para-propuesta-pago" if status == "rejected"
+                          else "excluida-de-propuesta-pago")),
             invoice_id=doc_id, result=status,
             evidence={"motivo_informado": bool(note),
                       "no_libera_dinero": True},
         )
         decisions.append(decision)
     return decisions
+
+
+def request_classification_review(session: TrialSession, doc_id: str,
+                                  actor: str, note: str) -> dict:
+    from . import workflow
+
+    actor = (actor or "").strip()
+    note = (note or "").strip()
+    if not actor:
+        raise ValueError("Ingresá el nombre de quien solicita la revisión.")
+    if not note:
+        raise ValueError("Indicá por qué la clasificación debe revisarse.")
+    _result_by_id(session, doc_id)
+    decision = {"status": "requested", "actor": actor, "note": note[:500],
+                "fields_changed": [], "timestamp": workflow.now_iso()}
+    session.review_decisions[doc_id] = decision
+    session.audit.add(
+        agent=actor, action="revision-clasificacion-solicitada",
+        invoice_id=doc_id, result="requested",
+        evidence={"motivo_informado": True, "no_cambia_tipo_automaticamente": True},
+    )
+    return decision
 
 
 def persist(session: TrialSession) -> bool:

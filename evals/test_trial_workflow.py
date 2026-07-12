@@ -49,6 +49,7 @@ def must_raise(fn, text: str) -> None:
 def main() -> int:
     from ap_control_tower.ui.trial import session as sess
     from ap_control_tower.ui.trial import workflow
+    from ap_control_tower.ui.components import extraction_view as ev
 
     print("== Enrutamiento: OC ausente no implica revisión ==")
     clean = invoice("F-1", po=None)
@@ -63,6 +64,7 @@ def main() -> int:
 
     print("== Baja confianza y campos críticos ==")
     low = invoice("F-2", confidence="0.50")
+    low.warnings = ["baja confianza en: numero_factura"]
     assert any("baja confianza" in reason for reason in workflow.review_reasons(low))
     missing = invoice("F-3")
     missing.document["importe_total"] = None
@@ -74,7 +76,8 @@ def main() -> int:
     proforma = invoice("P-1")
     proforma.document["document_type"] = "proforma_or_advance_request"
     state = workflow.approval_state(proforma, {}, {})
-    assert state["status"] == "retained" and "no es una factura fiscal" in state["reasons"]
+    assert state["status"] == "retained" and any(
+        "no es una factura fiscal" in reason for reason in state["reasons"])
     print("  PASS  proforma retenida")
 
     print("== Duplicados ==")
@@ -110,6 +113,53 @@ def main() -> int:
     must_raise(lambda: sess.decide_payment_proposal(
         active, ["P-1"], "Bruno", "rejected", ""), "motivo")
     print("  PASS  decisiones negativas justificadas")
+
+    print("== Invariante end-to-end: 1 revision -> 7 elegibles -> 7 aprobadas ==")
+    seven = [invoice(f"INV-{index}") for index in range(1, 8)]
+    seven[0].field_confidences["numero_factura"] = Decimal("0.50")
+    seven[0].warnings = ["baja confianza en: numero_factura"]
+    retained_proforma = invoice("PROFORMA-1")
+    retained_proforma.document["document_type"] = "proforma_or_advance_request"
+    run = sess.new_session()
+    run.results = [*seven, retained_proforma]
+    run.review_decisions["INV-2"] = {
+        "status": "confirmed", "actor": "Revisor histórico",
+        "timestamp": "2026-07-01T00:00:00Z"}
+    queue = workflow.review_queue(run.results, run.review_decisions)
+    assert len(queue) == 1 and queue[0]["result"].doc_id == "INV-1"
+    assert ev.aggregate_metrics(run.results)["with_warnings"] == len(queue)
+    sess.confirm_review(run, "INV-1", "Revisora", {
+        field: str(seven[0].document.get(field) or "")
+        for field in workflow.EDITABLE_FIELDS
+    }, "controlado")
+    before = workflow.approval_rows(
+        run.results, run.review_decisions, run.approval_decisions)
+    assert sum(row["status"] == "eligible" for row in before) == 7
+    assert sum(row["status"] == "approved" for row in before) == 0
+    assert sum(row["status"] == "retained" for row in before) == 1
+    sess.decide_payment_proposal(
+        run, [item.doc_id for item in seven], "Aprobador", "approved", "propuesta")
+    after = workflow.approval_rows(
+        run.results, run.review_decisions, run.approval_decisions)
+    assert sum(row["status"] == "eligible" for row in after) == 0
+    assert sum(row["status"] == "approved" for row in after) == 7
+    assert sum(row["status"] == "retained" for row in after) == 1
+    assert all(event.evidence.get("no_libera_dinero") is True
+               for event in run.audit.events
+               if event.action == "aprobada-para-propuesta-pago")
+    print("  PASS  estados 1/7/0/1 antes y 0/7/1 después, sin liberar dinero")
+
+    print("== Retenida accionable y revisión por clasificación ==")
+    sess.request_classification_review(
+        run, "PROFORMA-1", "Analista", "validar si corresponde factura")
+    manual_queue = workflow.review_queue(run.results, run.review_decisions)
+    assert any(item["result"].doc_id == "PROFORMA-1" and item["pending"]
+               for item in manual_queue)
+    sess.decide_payment_proposal(
+        run, ["PROFORMA-1"], "Aprobador", "excluded", "gestionar como anticipo")
+    assert run.approval_decisions["PROFORMA-1"]["status"] == "excluded"
+    assert run.audit.verify_chain()
+    print("  PASS  clasificación solicitada y exclusión auditada")
 
     assert active.audit.verify_chain()
     print("\nTRIAL WORKFLOW VERDE: revisión, maker-checker, propuesta y audit trail")

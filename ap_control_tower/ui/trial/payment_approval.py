@@ -18,6 +18,7 @@ STATUS_LABEL = {
     "retained": "Retenida",
     "approved": "Aprobada para propuesta",
     "rejected": "Rechazada",
+    "excluded": "Fuera de propuesta",
 }
 
 
@@ -48,11 +49,14 @@ def render() -> None:
         session.results, session.review_decisions, session.approval_decisions)
     eligible = [row for row in rows if row["status"] == "eligible"]
     approved = [row for row in rows if row["status"] == "approved"]
-    retained = [row for row in rows if row["status"] == "retained"]
+    retained = [row for row in rows
+                if row["status"] in {"retained", "rejected", "excluded"}]
     c1, c2, c3 = st.columns(3)
-    c1.metric("Elegibles", len(eligible), _totals(rows, "eligible"))
-    c2.metric("Aprobadas para propuesta", len(approved), _totals(rows, "approved"))
-    c3.metric("Retenidas", len(retained))
+    c1.metric("Elegibles", len(eligible))
+    c1.caption("Total elegible: " + _totals(rows, "eligible"))
+    c2.metric("Aprobadas para propuesta", len(approved))
+    c2.caption("Total aprobado: " + _totals(rows, "approved"))
+    c3.metric("Retenidas / fuera de propuesta", len(retained))
 
     table = []
     for row in rows:
@@ -71,23 +75,30 @@ def render() -> None:
         })
     st.dataframe(pd.DataFrame(table), use_container_width=True, hide_index=True)
 
-    selectable = [row for row in rows if row["status"] in {"eligible", "retained"}]
+    st.markdown("### Decisión sobre facturas elegibles")
+    st.caption("Las facturas elegibles todavía no están aprobadas. Seleccionalas y "
+               "ejecutá la aprobación humana para incorporarlas a la propuesta de pago.")
     labels = {
         f"{row['result'].doc_id} · "
         f"{row['result'].document.get('proveedor_nombre_comercial') or '—'} · "
         f"{row['result'].document.get('moneda') or '—'} "
         f"{row['result'].document.get('importe_total') or '—'}": row
-        for row in selectable
+        for row in eligible
     }
+    select_all = st.checkbox(
+        "Seleccionar todas las elegibles", disabled=not labels,
+        key="trial_payment_select_all")
     with st.form("trial_payment_decision"):
-        selected_labels = st.multiselect("Facturas para decidir", list(labels))
+        selected_labels = st.multiselect(
+            "Facturas elegibles para aprobar", list(labels),
+            default=list(labels) if select_all else [],
+            key=f"trial_payment_selection_{'all' if select_all else 'manual'}")
         approver = st.text_input("Decisión tomada por")
         note = st.text_area("Comentario / motivo")
         acknowledgement = st.checkbox(
             "Confirmo que esta acción no libera dinero ni reemplaza la autorización bancaria")
         approve = st.form_submit_button(
             "Aprobar para propuesta de pago", type="primary", use_container_width=True)
-        reject = st.form_submit_button("Rechazar selección", use_container_width=True)
 
     selected_ids = [labels[label]["result"].doc_id for label in selected_labels]
     try:
@@ -99,14 +110,81 @@ def render() -> None:
             sess.persist(session)
             st.success("Facturas aprobadas para la propuesta de pago. No se liberó dinero.")
             st.rerun()
-        if reject:
-            sess.decide_payment_proposal(
-                session, selected_ids, approver, "rejected", note)
-            sess.persist(session)
-            st.success("Selección rechazada y auditada.")
-            st.rerun()
     except ValueError as exc:
         st.error(str(exc))
+
+    st.markdown("### Documentos retenidos / fuera de la propuesta")
+    if not retained:
+        st.success("No hay documentos retenidos ni fuera de la propuesta.")
+    else:
+        retained_table = []
+        for row in retained:
+            result = row["result"]
+            doc = result.document
+            decision = row.get("decision") or {}
+            retained_table.append({
+                "archivo": result.doc_id,
+                "proveedor": doc.get("proveedor_nombre_comercial") or "—",
+                "tipo documental": doc.get("document_type") or "—",
+                "número": doc.get("numero_factura") or "—",
+                "moneda": doc.get("moneda") or "—",
+                "importe": doc.get("importe_total") or "—",
+                "motivo": " · ".join(row["reasons"]) or "—",
+                "estado": STATUS_LABEL[row["status"]],
+                "última decisión": (f"{decision.get('actor')} · "
+                                    f"{decision.get('timestamp')}"
+                                    if decision else "—"),
+            })
+        st.dataframe(pd.DataFrame(retained_table), use_container_width=True,
+                     hide_index=True)
+
+        for row in retained:
+            result = row["result"]
+            doc = result.document
+            with st.expander(
+                    f"{result.doc_id} · {STATUS_LABEL[row['status']]}", expanded=False):
+                st.warning("Motivo: " + (" · ".join(row["reasons"]) or "—"))
+                st.caption("Tipo documental: " + str(doc.get("document_type") or "—"))
+                doc_events = [event for event in session.audit.events
+                              if event.invoice_id == result.doc_id]
+                if doc_events:
+                    st.dataframe(pd.DataFrame([{
+                        "hora (UTC)": event.ts, "acción": event.action,
+                        "resultado": event.result or "",
+                    } for event in doc_events[-8:]]), use_container_width=True,
+                                 hide_index=True)
+                with st.form(f"trial_retained_action_{result.doc_id}"):
+                    actor = st.text_input(
+                        "Decisión tomada por", key=f"retained_actor_{result.doc_id}")
+                    retained_note = st.text_area(
+                        "Motivo / evidencia", key=f"retained_note_{result.doc_id}")
+                    exclude = st.form_submit_button(
+                        "Confirmar exclusión de la propuesta", use_container_width=True)
+                    reject = st.form_submit_button(
+                        "Rechazar para propuesta", use_container_width=True)
+                    request_review = st.form_submit_button(
+                        "Enviar a revisión por clasificación", use_container_width=True)
+                try:
+                    if exclude:
+                        sess.decide_payment_proposal(
+                            session, [result.doc_id], actor, "excluded", retained_note)
+                        sess.persist(session)
+                        st.success("Exclusión confirmada y auditada.")
+                        st.rerun()
+                    if reject:
+                        sess.decide_payment_proposal(
+                            session, [result.doc_id], actor, "rejected", retained_note)
+                        sess.persist(session)
+                        st.success("Rechazo registrado y auditado.")
+                        st.rerun()
+                    if request_review:
+                        sess.request_classification_review(
+                            session, result.doc_id, actor, retained_note)
+                        sess.persist(session)
+                        st.success("Revisión por clasificación solicitada y auditada.")
+                        st.rerun()
+                except ValueError as exc:
+                    st.error(str(exc))
 
     st.markdown("### Audit trail de la corrida")
     ev.render_session_audit(session.audit, persisted=sess.persistence_available())

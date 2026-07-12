@@ -44,7 +44,10 @@ def _masked_document(document: dict) -> dict:
 
 
 def _metrics(trial_session) -> dict:
+    from ..ui.trial.workflow import duplicate_doc_ids, requires_human_review
+
     results = trial_session.results
+    duplicates = duplicate_doc_ids(results)
     informed = [
         float(confidence)
         for result in results
@@ -57,7 +60,8 @@ def _metrics(trial_session) -> dict:
         "invoices": sum(
             1 for result in results
             if result.document.get("document_type") == "invoice"),
-        "with_warnings": sum(1 for result in results if result.warnings),
+        "with_warnings": sum(1 for result in results if requires_human_review(
+            result, duplicate=result.doc_id in duplicates)),
         "confidence": (sum(informed) / len(informed)) if informed else None,
         "processing_seconds": round(float(trial_session.processing_seconds), 3),
     }

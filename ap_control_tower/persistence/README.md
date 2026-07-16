@@ -81,11 +81,45 @@ incrementales por autogenerado: `python -m alembic revision --autogenerate -m ".
 (con `AP_DATABASE_URL` apuntando a una base en el head anterior) y luego
 `alembic upgrade head`. `alembic check` no debe detectar drift modelo↔migracion.
 
+## Esquema `analytics` (vistas para BI externo)
+
+La migracion `0006_analytics_views` agrega un esquema **`analytics`** con vistas
+curadas de solo lectura sobre las tablas del Trial, para que una herramienta de
+BI externa consuma los datos sin tocar las tablas base ni la aplicacion. Es
+aditivo: nada de lo existente cambia de comportamiento.
+
+- `v_documents`, `v_field_confidences`, `v_review_queue`, `v_payment_proposals`,
+  `v_run_metrics`, `v_exceptions`.
+- **El enmascarado vive en la definicion de la vista, no en la app**: IBAN sale
+  como `****` + 4 ultimos y los tax_id con el criterio de `masking.py`. Aunque
+  la app ya enmascara al escribir, la vista no confia en eso.
+- Fuera de las vistas: texto libre del documento, identidad del cliente, notas
+  humanas y nombres propios de revisores/aprobadores (de ellos solo sale el rol).
+- Los conversores `analytics.fecha_iso_o_null` / `numero_o_null` / `ts_o_null`
+  existen porque el JSON del extractor es texto arbitrario: sin ellos, un solo
+  documento con una fecha como `2026-02-30` haria fallar la consulta entera
+  (PostgreSQL 16 lanza `DatetimeFieldOverflow`) y cortaria la sincronizacion.
+- **Postgres-only**: en SQLite la migracion es un no-op (las vistas usan jsonb,
+  regexp_replace y to_date).
+
+El rol de lectura se crea con `scripts/sql/create_zoho_ro_role.sql` (parametrizado,
+sin secretos). Puesta en marcha, permisos, rotacion y nota RGPD sobre residencia
+de datos: `docs_operacion/runbook_zoho_analytics.md`.
+
 ## Verificacion
 
 ```bash
 python evals/test_lifecycle.py          # matriz de transiciones (puro, sin base)
 python evals/test_persistence.py        # round-trip + migraciones + transiciones (exit 0/1)
+python evals/test_analytics_views.py    # vistas analytics: migracion, enmascarado y permisos
+```
+
+`test_analytics_views.py` requiere Postgres (hace SKIP con exit 0 sin el):
+
+```bash
+docker compose -f docker-compose.dev.yml up -d postgres
+export AP_TEST_DATABASE_URL="postgresql+psycopg://ap:ap_dev_local@localhost:5432/ap_control_tower"
+python evals/test_analytics_views.py
 ```
 
 Corre sobre SQLite temporal por defecto; con `AP_TEST_DATABASE_URL` apunta a

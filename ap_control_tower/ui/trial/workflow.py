@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
+from difflib import SequenceMatcher
 
 
 REVIEW_THRESHOLD = Decimal("0.65")
@@ -59,16 +60,77 @@ def missing_payment_fields(document: dict) -> list[str]:
     return missing
 
 
+# Advertencias informativas (FYI): se muestran y se auditan, pero no derivan
+# a revisión humana. Decisión funcional 2026-07-14: la mayoría de las facturas
+# reales se pagan por débito directo; que el extractor no estructure datos
+# bancarios visibles no requiere aprobación humana, solo flag.
+FYI_WARNINGS = (
+    "hay datos bancarios visibles pero no se pudieron estructurar",
+)
+
+KNOWN_CURRENCIES = {
+    "EUR", "USD", "GBP", "CHF", "MXN", "CAD", "JPY",
+    "SEK", "NOK", "DKK", "PLN", "BRL", "ARS",
+}
+
+
+def _amounts_reconcile(document: dict) -> bool:
+    """Neto + IVA = total (tolerancia 0.02): validación determinista."""
+    try:
+        net = Decimal(str(document["importe_neto"]))
+        tax = Decimal(str(document["importe_iva"]))
+        total = Decimal(str(document["importe_total"]))
+    except (InvalidOperation, TypeError, KeyError):
+        return False
+    return abs((net + tax) - total) <= Decimal("0.02")
+
+
+def _plausible_date(value) -> bool:
+    text = str(value or "").strip()
+    try:
+        parsed = datetime.strptime(text[:10], "%Y-%m-%d")
+    except ValueError:
+        return False
+    return 2000 <= parsed.year <= 2035
+
+
+def _field_validated(document: dict, field: str) -> bool:
+    """Una validación determinista aprobada pesa más que un score de confianza.
+
+    Si el valor extraído pasa un chequeo objetivo, la baja confianza del
+    extractor no deriva por sí sola (decisión funcional 2026-07-14, basada en
+    la corrida run1: la confianza del extractor no correlaciona con la
+    exactitud real).
+    """
+    if not present(document.get(field)):
+        return False
+    if field in {"importe_neto", "importe_iva", "importe_total", "tipo_iva"}:
+        return _amounts_reconcile(document)
+    if field == "moneda":
+        return str(document["moneda"]).strip().upper() in KNOWN_CURRENCIES
+    if field in {"fecha_emision", "fecha_vencimiento_calculada"}:
+        return _plausible_date(document.get(field))
+    if field in {"numero_factura", "document_type",
+                 "proveedor_nombre_comercial", "proveedor_razon_social_legal"}:
+        return True
+    return False
+
+
 def _field_warnings(result) -> list[str]:
     relevant: list[str] = []
+    document = result.document
     for item in result.warnings or []:
         text = str(item)
         lowered = text.casefold()
         if "document ai" in lowered:
             continue
+        if any(fyi in lowered for fyi in FYI_WARNINGS):
+            continue
         if lowered.startswith("baja confianza en:"):
             fields = [field.strip() for field in text.split(":", 1)[1].split(",")]
-            fields = [field for field in fields if field in REVIEW_RELEVANT_FIELDS]
+            fields = [field for field in fields
+                      if field in CRITICAL_CONFIDENCE_FIELDS
+                      and not _field_validated(document, field)]
             if fields:
                 relevant.append("baja confianza en: " + ", ".join(fields))
             continue
@@ -93,14 +155,26 @@ def review_reasons(result, *, duplicate: bool = False,
         extractor_flagged = any(
             "document ai" not in str(item).casefold() for item in (result.warnings or []))
         # Una confianza técnica aislada no alcanza: debe existir además una
-        # advertencia explícita del extractor. Evita derivar documentos sanos
-        # por umbrales internos secundarios.
+        # advertencia explícita del extractor, y el campo dudoso no debe
+        # superar su validación determinista (aritmética, formato, plausibilidad).
+        # run1 demostró que el score de confianza no correlaciona con exactitud.
         low = [field for field, confidence in (result.field_confidences or {}).items()
                if extractor_flagged and field in CRITICAL_CONFIDENCE_FIELDS
                and Decimal(str(confidence)) < REVIEW_THRESHOLD
-               and present(document.get(field))]
+               and present(document.get(field))
+               and not _field_validated(document, field)]
         if low:
             reasons.append("baja confianza en campo crítico: " + ", ".join(sorted(low)))
+        # Fix run2/GD-119: un importe no positivo clasificado como invoice es
+        # casi siempre una nota de crédito. Nunca debe tratarse como factura
+        # a pagar sin que un humano confirme el tipo documental.
+        try:
+            if present(document.get("importe_total")) and \
+                    Decimal(str(document["importe_total"])) <= 0:
+                reasons.append("importe no positivo: posible nota de crédito, "
+                               "requiere confirmación humana del tipo documental")
+        except InvalidOperation:
+            reasons.append("importe total ilegible")
         reasons.extend(_field_warnings(result))
     elif doc_type == "proforma_or_advance_request":
         reasons.append("proforma / anticipo: requiere autorización humana para pago")
@@ -133,18 +207,66 @@ def unique_results(results) -> list:
     return unique
 
 
+NEAR_DUP_AMOUNT_TOLERANCE = Decimal("0.05")
+# 0.85 y no menos: series legítimas tipo INV-1..INV-7 (cuotas recurrentes con
+# el mismo importe) tienen similitud ~0.80 y no deben marcarse; un correlativo
+# largo con un dígito cambiado (EF-2026-045 vs -046) da ~0.91 y sí.
+NEAR_DUP_NUMBER_SIMILARITY = 0.85
+
+
+def _amount_of(doc: dict) -> Decimal | None:
+    try:
+        return Decimal(str(doc.get("importe_total")))
+    except (InvalidOperation, TypeError):
+        return None
+
+
 def duplicate_doc_ids(results) -> set[str]:
-    groups: dict[tuple[str, str], list[str]] = {}
+    """Duplicados exactos (proveedor+número) y casi-duplicados.
+
+    Fix run2/GD-107: un casi-duplicado (número correlativo o con typo, importe
+    igual o con diferencia de céntimos) evadía el matching exacto. Regla:
+    mismo proveedor + importe dentro de la tolerancia + números similares.
+    Costo asumido y documentado: una factura recurrente legítima de importe
+    idéntico y numeración correlativa (ej. cuota mensual) puede marcarse para
+    revisión; es preferible a pagar un duplicado real.
+    """
+    flagged: set[str] = set()
+    by_supplier: dict[str, list] = {}
+    exact: dict[tuple[str, str], list[str]] = {}
     for result in unique_results(results):
         doc = result.document
         supplier = (doc.get("proveedor_tax_id") or
                     doc.get("proveedor_razon_social_legal") or
                     doc.get("proveedor_nombre_comercial"))
         number = doc.get("numero_factura")
-        if present(supplier) and present(number):
-            key = (str(supplier).strip().casefold(), str(number).strip().casefold())
-            groups.setdefault(key, []).append(result.doc_id)
-    return {doc_id for ids in groups.values() if len(ids) > 1 for doc_id in ids}
+        if not present(supplier):
+            continue
+        skey = str(supplier).strip().casefold()
+        by_supplier.setdefault(skey, []).append(result)
+        if present(number):
+            key = (skey, str(number).strip().casefold())
+            exact.setdefault(key, []).append(result.doc_id)
+    flagged.update(doc_id for ids in exact.values() if len(ids) > 1
+                   for doc_id in ids)
+
+    for _, group in by_supplier.items():
+        if len(group) < 2:
+            continue
+        for i, a in enumerate(group):
+            for b in group[i + 1:]:
+                amount_a, amount_b = _amount_of(a.document), _amount_of(b.document)
+                if amount_a is None or amount_b is None:
+                    continue
+                if abs(amount_a - amount_b) > NEAR_DUP_AMOUNT_TOLERANCE:
+                    continue
+                num_a = str(a.document.get("numero_factura") or "").strip().casefold()
+                num_b = str(b.document.get("numero_factura") or "").strip().casefold()
+                similar = (not num_a or not num_b or SequenceMatcher(
+                    None, num_a, num_b).ratio() >= NEAR_DUP_NUMBER_SIMILARITY)
+                if similar:
+                    flagged.update({a.doc_id, b.doc_id})
+    return flagged
 
 
 def review_queue(results, decisions: dict,

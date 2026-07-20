@@ -66,14 +66,37 @@ def main() -> int:
     print("  PASS  campo informativo no deriva a revisión")
 
     print("== Baja confianza y campos críticos ==")
+    # Política 2026-07-14: la validación determinista pesa más que el score.
+    # Un número de factura presente no deriva solo por confianza baja (run1
+    # demostró que el score no correlaciona con exactitud real).
     low = invoice("F-2", confidence="0.50")
     low.warnings = ["baja confianza en: numero_factura"]
-    assert any("baja confianza" in reason for reason in workflow.review_reasons(low))
+    assert workflow.review_reasons(low) == []
+    print("  PASS  baja confianza con campo presente y validado no deriva")
+    # Sí deriva cuando el campo dudoso ademas falla su validación:
+    # moneda fuera del catálogo ISO conocido.
+    bad_currency = invoice("F-2B", confidence="0.50")
+    bad_currency.document["moneda"] = "EU?"
+    bad_currency.warnings = ["baja confianza en: moneda"]
+    assert any("baja confianza" in reason
+               for reason in workflow.review_reasons(bad_currency))
+    print("  PASS  baja confianza con validación fallida sí deriva")
     missing = invoice("F-3")
     missing.document["importe_total"] = None
     assert "importe_total" in workflow.missing_critical_fields(missing.document)
     assert workflow.approval_state(missing, {}, {})["status"] == "retained"
-    print("  PASS  baja confianza y campos ausentes se retienen")
+    print("  PASS  campos ausentes se retienen")
+    # Datos bancarios visibles no estructurados: flag FYI, nunca revisión.
+    fyi = invoice("F-4")
+    fyi.warnings = ["hay datos bancarios visibles pero no se pudieron estructurar"]
+    assert workflow.review_reasons(fyi) == []
+    print("  PASS  datos bancarios no estructurados es FYI, no deriva")
+    # Confusión emisor/receptor detectada por el extractor sí deriva.
+    own = invoice("F-5")
+    own.warnings = ["el proveedor extraido coincide con la empresa propia: "
+                    "posible confusion emisor/receptor"]
+    assert any("empresa propia" in reason for reason in workflow.review_reasons(own))
+    print("  PASS  proveedor igual a la empresa propia deriva a revisión")
 
     print("== Proforma se deriva a revisión antes del gate de pago ==")
     proforma = invoice("P-1")
@@ -91,6 +114,39 @@ def main() -> int:
     ids = workflow.duplicate_doc_ids([clean, duplicate])
     assert ids == {"F-1", "F-1-COPY"}
     print("  PASS  mismo proveedor+número detectado")
+    # Fix GD-107: casi-duplicado con número correlativo largo y 1 céntimo de
+    # diferencia (similitud de número >= 0.85).
+    base = invoice("F-BASE")
+    base.document["numero_factura"] = "EF-2026-045"
+    base.document["importe_total"] = "2500.00"
+    near = invoice("F-NEAR")
+    near.document["numero_factura"] = "EF-2026-046"
+    near.document["importe_total"] = "2500.01"
+    assert workflow.duplicate_doc_ids([base, near]) == {"F-BASE", "F-NEAR"}
+    print("  PASS  casi-duplicado (importe ~igual, número similar) detectado")
+    # Serie recurrente legítima (números cortos correlativos, mismo importe):
+    # similitud ~0.8, NO debe marcarse.
+    serie = []
+    for index in (1, 2):
+        item = invoice(f"F-SERIE-{index}")
+        item.document["numero_factura"] = f"INV-{index}"
+        item.document["importe_total"] = "100.00"
+        serie.append(item)
+    assert workflow.duplicate_doc_ids(serie) == set()
+    print("  PASS  serie recurrente legítima no genera falso duplicado")
+    # Mismo proveedor con importe claramente distinto no es duplicado.
+    other = invoice("F-OTRA")
+    other.document["numero_factura"] = "F-9"
+    other.document["importe_total"] = "250.00"
+    assert workflow.duplicate_doc_ids([clean, other]) == set()
+    print("  PASS  mismo proveedor con importe distinto no genera falso duplicado")
+
+    print("== Nota de crédito (fix GD-119) ==")
+    credit = invoice("NC-1")
+    credit.document["importe_total"] = "-302.50"
+    assert any("nota de crédito" in reason
+               for reason in workflow.review_reasons(credit))
+    print("  PASS  importe no positivo deriva como posible nota de crédito")
 
     print("== Repetición técnica no es duplicado comercial ==")
     repeated_same_object = [clean, clean]

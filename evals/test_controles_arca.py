@@ -249,14 +249,151 @@ def _seccion_wsaa() -> None:
             check(True, "respuesta invalida -> WsaaError")
 
 
+def _respuesta_padron(estado: str = "ACTIVO", *, monotributo: bool = False,
+                      regimen_general: bool = True, existe: bool = True,
+                      razon: str = "PROVEEDOR SINTETICO SA") -> bytes:
+    if not existe:
+        return (b"<soap:Envelope xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\">"
+                b"<soap:Body><ns2:getPersona_v2Response xmlns:ns2=\"http://a5\">"
+                b"<personaReturn><errorConstancia>No existe persona con ese Id"
+                b"</errorConstancia></personaReturn>"
+                b"</ns2:getPersona_v2Response></soap:Body></soap:Envelope>")
+    bloques = (f"<datosGenerales><estadoClave>{estado}</estadoClave>"
+               f"<razonSocial>{razon}</razonSocial></datosGenerales>")
+    if monotributo:
+        bloques += "<datosMonotributo><impuesto><idImpuesto>20</idImpuesto></impuesto></datosMonotributo>"
+    elif regimen_general:
+        bloques += "<datosRegimenGeneral><impuesto><idImpuesto>30</idImpuesto></impuesto></datosRegimenGeneral>"
+    xml = ("<soap:Envelope xmlns:soap=\"http://schemas.xmlsoap.org/soap/envelope/\">"
+           "<soap:Body><ns2:getPersona_v2Response xmlns:ns2=\"http://a5\">"
+           f"<personaReturn>{bloques}</personaReturn>"
+           "</ns2:getPersona_v2Response></soap:Body></soap:Envelope>")
+    return xml.encode()
+
+
+def _cliente_padron(respuestas, tmp: Path, llamadas: list):
+    """PadronClient con WSAA y transporte falsos (cero red)."""
+    from ap_control_tower.controls.arca import padron_client, wsaa
+
+    cert_path, key_path = _certificado_sintetico(tmp)
+    config = wsaa.WsaaConfig(environment="homologacion", cert_path=str(cert_path),
+                             key_path=str(key_path), ticket_dir=str(tmp / "tk"))
+
+    def transporte(url: str, body: bytes) -> bytes:
+        if "LoginCms" in url:
+            from datetime import datetime, timedelta, timezone
+            vence = (datetime.now(timezone.utc) + timedelta(hours=12)).isoformat(
+                timespec="seconds")
+            return _respuesta_wsaa(vence)
+        llamadas.append(url)
+        respuesta = respuestas.pop(0)
+        if isinstance(respuesta, Exception):
+            raise respuesta
+        return respuesta
+
+    # get_ticket usa el mismo transporte fake (LoginCms canned).
+    import ap_control_tower.controls.arca.padron_client as pc
+
+    cliente = pc.PadronClient(config=config, cuit_representada="30-00000000-7",
+                              transport=transporte)
+    cliente._transporte_wsaa = transporte  # referencia para get_ticket
+    original_get_ticket = pc.get_ticket
+    pc.get_ticket = lambda cfg, svc, **kw: original_get_ticket(
+        cfg, svc, transport=transporte)
+    return cliente, (pc, original_get_ticket)
+
+
+def _seccion_padron() -> None:
+    import tempfile
+    from datetime import datetime, timedelta, timezone
+
+    from sqlalchemy import create_engine, select
+    from sqlalchemy.orm import Session
+
+    from ap_control_tower.controls.arca import cuit, padron_client
+    from ap_control_tower.persistence.models_sql import ArcaPadronCache, Base
+
+    print("== Padron: cliente getPersona_v2 y cache con TTL ==")
+    objetivo = cuit.generar_cuit_sintetico(11)
+
+    with tempfile.TemporaryDirectory() as raw_tmp:
+        tmp = Path(raw_tmp)
+        llamadas: list[str] = []
+        respuestas = [
+            _respuesta_padron("ACTIVO"),
+            _respuesta_padron("BAJA POR FALLECIMIENTO", regimen_general=False),
+            _respuesta_padron(monotributo=True),
+            _respuesta_padron(existe=False),
+            TimeoutError("timeout simulado"),
+            TimeoutError("timeout simulado"),
+            TimeoutError("timeout simulado"),
+        ]
+        cliente, (pc, original) = _cliente_padron(respuestas, tmp, llamadas)
+        try:
+            activo = cliente.get_persona(objetivo)
+            check(activo["existe"] and activo["estado"] == "ACTIVO"
+                  and activo["condicion_iva"] == "responsable_inscripto",
+                  "activo + regimen general -> responsable_inscripto")
+            baja = cliente.get_persona(objetivo)
+            check(baja["estado"].startswith("BAJA"), "estado de baja se conserva literal")
+            mono = cliente.get_persona(objetivo)
+            check(mono["condicion_iva"] == "monotributo", "datosMonotributo -> monotributo")
+            inexistente = cliente.get_persona(objetivo)
+            check(inexistente["existe"] is False, "errorConstancia 'no existe' -> existe=False")
+            # Timeout persistente: 1 + 2 reintentos y PadronNoDisponible.
+            antes = len(llamadas)
+            try:
+                cliente.get_persona(objetivo)
+                check(False, "timeout persistente debe fallar")
+            except padron_client.PadronNoDisponible:
+                check(True, "timeout persistente -> PadronNoDisponible")
+            check(len(llamadas) - antes == 3, "timeout agota 1 intento + 2 reintentos")
+
+            # Cache con TTL: 1 llamada por CUIT nuevo, luego lectura local.
+            engine = create_engine("sqlite+pysqlite:///:memory:", future=True)
+            Base.metadata.create_all(engine)
+            respuestas.extend([_respuesta_padron("ACTIVO"), _respuesta_padron("ACTIVO")])
+            with Session(engine) as db:
+                antes = len(llamadas)
+                primera = padron_client.cached_persona(db, cliente, objetivo)
+                db.commit()
+                check(len(llamadas) - antes == 1, "primer lookup consulta el padron")
+                segunda = padron_client.cached_persona(db, cliente, objetivo)
+                check(len(llamadas) - antes == 1, "segundo lookup sale del cache (0 red)")
+                check(segunda["estado"] == "ACTIVO" and "fetched_at" in segunda,
+                      "cache devuelve payload + fetched_at")
+                # Vencido el TTL, refresca.
+                futuro = datetime.now(timezone.utc) + timedelta(
+                    days=padron_client.ttl_dias() + 1)
+                padron_client.cached_persona(db, cliente, objetivo, now=futuro)
+                check(len(llamadas) - antes == 2, "cache vencido refresca (1 llamada)")
+                filas = db.execute(select(ArcaPadronCache)).scalars().all()
+                check(len(filas) == 1 and filas[0].cuit == objetivo,
+                      "una fila de cache por CUIT")
+            check(primera["existe"], "payload cacheado coherente")
+        finally:
+            pc.get_ticket = original
+
+        # Sin certificado -> PadronNoDisponible (nace la advertencia).
+        sin_cert = padron_client.PadronClient(
+            config=padron_client.WsaaConfig(environment="homologacion"),
+            cuit_representada="30-00000000-7", transport=lambda u, b: b"")
+        try:
+            sin_cert.get_persona(objetivo)
+            check(False, "sin certificado debe fallar")
+        except padron_client.PadronNoDisponible:
+            check(True, "sin certificado -> PadronNoDisponible")
+
+
 def main() -> int:
     _seccion_cuit()
     _seccion_apoc()
     _seccion_wsaa()
+    _seccion_padron()
     if failures:
         print(f"CONTROLES ARCA ROJO: {len(failures)} fallas")
         return 1
-    print("CONTROLES ARCA VERDE: CUIT, APOC y WSAA OK (exit 0)")
+    print("CONTROLES ARCA VERDE: CUIT, APOC, WSAA y padron OK (exit 0)")
     return 0
 
 

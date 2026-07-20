@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
+from functools import lru_cache
 
 from .cuit import es_cuit_candidato, normalizar
 from .validators import (
@@ -68,15 +69,23 @@ class EvaluacionArca:
 
 
 # ------------------------------------------------------------------ acceso live
+@lru_cache(maxsize=1)
+def _cached_engine():
+    """Engine unico del proceso (mismo patron que ui/trial/persistence_bridge)."""
+    from ...persistence.session import build_engine
+
+    return build_engine()
+
+
 def _db_session_factory():
     """Session factory perezosa sobre la base configurada; None si no hay."""
     from ...persistence.config import is_persistence_available
 
     if not is_persistence_available():
         return None
-    from ...persistence.session import build_engine, session_scope
+    from ...persistence.session import session_scope
 
-    engine = build_engine()
+    engine = _cached_engine()
     return lambda: session_scope(engine)
 
 

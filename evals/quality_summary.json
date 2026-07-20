@@ -1,0 +1,83 @@
+{
+  "_fuente": "Generado desde los reportes run1/run2 y el manifest reproducible run3-policy-replay. Regenerar al cerrar cada corrida con los artefactos de Fable 5/AP Evals.",
+  "golden_dataset": {
+    "version": "v1.0",
+    "documentos": 106,
+    "composicion": {"reales": 8, "publicas": 76, "sinteticas": 22},
+    "casos_borde": "25% del dataset: duplicados y casi-duplicados, IBAN alterado, OC sin autorizar, match fuera de tolerancia, proformas, notas de credito, documentos que no son facturas"
+  },
+  "corridas": [
+    {
+      "id": "run1",
+      "fecha": "2026-07-14",
+      "politica": "derivacion por score de confianza del extractor",
+      "derivacion_pct": 88.0,
+      "ruteo_exactitud_pct": 14.6,
+      "precision_derivacion_pct": 4.7,
+      "recall_derivacion_pct": 100.0,
+      "extraccion_exactitud_pct": 95.3
+    },
+    {
+      "id": "run2",
+      "fecha": "2026-07-14",
+      "politica": "derivacion por validaciones deterministas (aritmetica, formato, plausibilidad); score de confianza descartado como criterio",
+      "derivacion_pct": 9.2,
+      "ruteo_exactitud_pct": 94.8,
+      "precision_derivacion_pct": 42.9,
+      "recall_derivacion_pct": 75.0,
+      "extraccion_exactitud_pct": 96.2,
+      "nota_recall": "1 falso negativo (nota de credito), corregido y verificado offline tras la corrida; el gate de aprobacion lo retenia igualmente por importe no positivo"
+    }
+  ],
+  "policy_replays": [
+    {
+      "id": "run3-policy-replay",
+      "fecha": "2026-07-16",
+      "modo": "offline sobre las extracciones persistidas de run2",
+      "documentos": 106,
+      "alcance_ruteo_documentos": 96,
+      "llamadas_document_ai": 0,
+      "run2_recalculado_sobre_golden_pct": 9.4,
+      "derivacion_cantidad": 11,
+      "derivacion_pct": 10.4,
+      "ruteo_exactitud_pct": 96.9,
+      "precision_derivacion_pct": 57.1,
+      "recall_derivacion_pct": 100.0,
+      "falsos_negativos": 0,
+      "extraccion_base": "run2; no re-medida",
+      "fixes_validados": [
+        "GD-107: casi-duplicado detectado",
+        "GD-119: nota de credito derivada a revision humana"
+      ],
+      "cobertura_controles": "C2 duplicados: 3/3 casos esperados detectados; C9 conserva la senal persistida de vendor master",
+      "limitaciones": [
+        "No revalida la extraccion de Document AI",
+        "C3 autorizacion de OC, C5 match y C6 datos bancarios requieren maestros externos no incluidos en el export run2",
+        "No permite afirmar cero escapes para todo el conjunto C2-C9"
+      ],
+      "smoke": {
+        "estado": "diferido hasta integrar Zoho/Sage",
+        "motivo": "Antes de conectar los maestros externos, el costo del smoke no agrega evidencia comercial material",
+        "candidatos_versionados": 15
+      }
+    }
+  ],
+  "calibracion_run1": [
+    {"bucket": "confianza < 80%", "exactitud_real_pct": 97.3},
+    {"bucket": "confianza 80-90%", "exactitud_real_pct": 95.9},
+    {"bucket": "confianza 90-100%", "exactitud_real_pct": 88.8}
+  ],
+  "hallazgo_central": "El score de confianza del extractor esta invertido respecto de la exactitud real: los documentos con mayor confianza reportada eran los peor extraidos. Por eso la derivacion a revision humana se decide con validaciones deterministas y no con el score.",
+  "extraccion_por_campo_run2": [
+    {"campo": "Proveedor", "exactitud_pct": 89.6},
+    {"campo": "Fecha de emision", "exactitud_pct": 95.3},
+    {"campo": "Tipo documental", "exactitud_pct": 97.2},
+    {"campo": "Referencia OC", "exactitud_pct": 97.2},
+    {"campo": "IVA", "exactitud_pct": 98.1},
+    {"campo": "Numero de factura", "exactitud_pct": 98.1},
+    {"campo": "Importe total", "exactitud_pct": 98.1},
+    {"campo": "Vencimiento", "exactitud_pct": 98.1},
+    {"campo": "Moneda", "exactitud_pct": 99.0},
+    {"campo": "NIF", "exactitud_pct": 99.0}
+  ]
+}

@@ -1,0 +1,6 @@
+# Dependencias de los controles ARCA (padron + APOC), OPCIONALES.
+# NO se instalan en la imagen de la demo (Dockerfile usa solo requirements.txt).
+# Solo AP_ARCA_MODE=live las necesita (firma CMS del TRA para WSAA):
+#   pip install -r requirements-arca.txt
+# La persistencia (tablas de cache/APOC) usa requirements-persistence.txt.
+cryptography>=42

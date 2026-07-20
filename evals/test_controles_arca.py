@@ -141,13 +141,122 @@ def _seccion_apoc() -> None:
     check(apoc_source.parse_apoc_text("")[0] == [], "texto vacio -> sin entradas")
 
 
+def _certificado_sintetico(tmp: Path) -> tuple[Path, Path]:
+    """Certificado X.509 autofirmado SOLO para tests (jamas material real)."""
+    from datetime import datetime, timedelta, timezone
+
+    from cryptography import x509
+    from cryptography.hazmat.primitives import hashes, serialization
+    from cryptography.hazmat.primitives.asymmetric import rsa
+    from cryptography.x509.oid import NameOID
+
+    key = rsa.generate_private_key(public_exponent=65537, key_size=2048)
+    name = x509.Name([x509.NameAttribute(NameOID.COMMON_NAME, "eval-arca-sintetico")])
+    now = datetime.now(timezone.utc)
+    cert = (x509.CertificateBuilder()
+            .subject_name(name).issuer_name(name)
+            .public_key(key.public_key())
+            .serial_number(x509.random_serial_number())
+            .not_valid_before(now - timedelta(days=1))
+            .not_valid_after(now + timedelta(days=30))
+            .sign(key, hashes.SHA256()))
+    cert_path = tmp / "cert_eval.pem"
+    key_path = tmp / "key_eval.pem"
+    cert_path.write_bytes(cert.public_bytes(serialization.Encoding.PEM))
+    key_path.write_bytes(key.private_bytes(
+        serialization.Encoding.PEM, serialization.PrivateFormat.PKCS8,
+        serialization.NoEncryption()))
+    return cert_path, key_path
+
+
+def _respuesta_wsaa(expiration: str) -> bytes:
+    from xml.sax.saxutils import escape
+
+    ta = ("<?xml version=\"1.0\"?><loginTicketResponse>"
+          "<header><expirationTime>" + expiration + "</expirationTime></header>"
+          "<credentials><token>tok-eval</token><sign>sig-eval</sign></credentials>"
+          "</loginTicketResponse>")
+    return ("<soapenv:Envelope xmlns:soapenv=\"http://schemas.xmlsoap.org/soap/envelope/\">"
+            "<soapenv:Body><loginCmsResponse xmlns=\"http://wsaa\">"
+            f"<loginCmsReturn>{escape(ta)}</loginCmsReturn>"
+            "</loginCmsResponse></soapenv:Body></soapenv:Envelope>").encode()
+
+
+def _seccion_wsaa() -> None:
+    import tempfile
+    from datetime import datetime, timedelta, timezone
+
+    from ap_control_tower.controls.arca import wsaa
+
+    print("== WSAA: TRA firmado, ticket cacheado y renovacion ==")
+    with tempfile.TemporaryDirectory() as raw_tmp:
+        tmp = Path(raw_tmp)
+        cert_path, key_path = _certificado_sintetico(tmp)
+        config = wsaa.WsaaConfig(
+            environment="homologacion", cert_path=str(cert_path),
+            key_path=str(key_path), ticket_dir=str(tmp / "tickets"))
+        check(config.configured, "config con cert y clave presentes -> configurada")
+        check("wsaahomo" in config.login_url, "homologacion apunta a wsaahomo")
+        check("://wsaa.afip" in wsaa.LOGIN_URLS["produccion"],
+              "produccion apunta a wsaa.afip")
+
+        tra = wsaa.build_tra("ws_sr_constancia_inscripcion")
+        check(b"<service>ws_sr_constancia_inscripcion</service>" in tra,
+              "el TRA declara el servicio")
+        check(b"generationTime" in tra and b"expirationTime" in tra,
+              "el TRA tiene ventana de vigencia")
+        cms = wsaa.sign_tra_cms(tra, cert_path.read_bytes(), key_path.read_bytes())
+        check(len(cms) > 500, "CMS/PKCS#7 en base64 no trivial")
+
+        llamadas: list[str] = []
+        vence = (datetime.now(timezone.utc) + timedelta(hours=12)).isoformat(
+            timespec="seconds")
+
+        def transporte(url: str, body: bytes) -> bytes:
+            llamadas.append(url)
+            check(b"loginCms" in body and b"in0" in body, "el SOAP invoca loginCms")
+            return _respuesta_wsaa(vence)
+
+        ticket = wsaa.get_ticket(config, "ws_sr_constancia_inscripcion",
+                                 transport=transporte)
+        check(ticket.token == "tok-eval" and ticket.sign == "sig-eval",
+              "ticket parseado del SOAP")
+        check(len(llamadas) == 1, "primera obtencion llama a WSAA")
+        otra_vez = wsaa.get_ticket(config, "ws_sr_constancia_inscripcion",
+                                   transport=transporte)
+        check(len(llamadas) == 1 and otra_vez.token == "tok-eval",
+              "segunda obtencion usa el cache (0 llamadas nuevas)")
+
+        # Por vencer -> renueva.
+        casi_vencido = datetime.fromisoformat(vence) - timedelta(minutes=5)
+        wsaa.get_ticket(config, "ws_sr_constancia_inscripcion",
+                        transport=transporte, now=casi_vencido)
+        check(len(llamadas) == 2, "ticket por vencer se renueva")
+
+        # Sin certificado configurado -> WsaaError explicito (la senal de
+        # 'verificacion no disponible' nace de aca).
+        sin_cert = wsaa.WsaaConfig(environment="homologacion")
+        try:
+            wsaa.request_ticket(sin_cert, "wsapoc", transport=transporte)
+            check(False, "sin certificado debe fallar")
+        except wsaa.WsaaError as exc:
+            check("no configurado" in str(exc), "error claro sin certificado")
+
+        try:
+            wsaa.parse_login_response(b"<no-es-soap/>")
+            check(False, "respuesta invalida debe fallar")
+        except wsaa.WsaaError:
+            check(True, "respuesta invalida -> WsaaError")
+
+
 def main() -> int:
     _seccion_cuit()
     _seccion_apoc()
+    _seccion_wsaa()
     if failures:
         print(f"CONTROLES ARCA ROJO: {len(failures)} fallas")
         return 1
-    print("CONTROLES ARCA VERDE: CUIT local y APOC OK (exit 0)")
+    print("CONTROLES ARCA VERDE: CUIT, APOC y WSAA OK (exit 0)")
     return 0
 
 

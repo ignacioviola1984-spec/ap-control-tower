@@ -532,3 +532,53 @@ class TrialDocument(Base):
     __table_args__ = (
         UniqueConstraint("run_id", "doc_id", name="uq_trial_run_document"),
     )
+
+
+# ------------------------------------------------------------------ controles ARCA
+class ArcaPadronCache(Base):
+    """Cache local de la constancia de inscripcion (padron ARCA) por CUIT.
+
+    Una consulta de red por CUIT nuevo cada TTL (AP_ARCA_PADRON_TTL_DIAS,
+    default 7 dias), no por factura. La vigencia se decide al LEER comparando
+    ``fetched_at``; las filas vencidas no se borran, se refrescan.
+    """
+
+    __tablename__ = "arca_padron_cache"
+
+    cuit: Mapped[str] = mapped_column(String(11), primary_key=True)
+    payload: Mapped[dict] = mapped_column(JSON, default=dict)  # normalizado, nunca XML crudo
+    estado: Mapped[str | None] = mapped_column(String(48))
+    condicion_iva: Mapped[str | None] = mapped_column(String(48))
+    fetched_at: Mapped[datetime] = _ts_col()
+
+
+class ArcaApocVersion(Base):
+    """Version descargada de la base APOC: fecha, checksum y cantidad.
+
+    El refresh es idempotente: si el checksum coincide con la ultima version
+    no se crea una nueva. La antiguedad de ``fecha_descarga`` alimenta la
+    advertencia "base APOC desactualizada" (> 15 dias).
+    """
+
+    __tablename__ = "arca_apoc_versions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    fecha_descarga: Mapped[datetime] = _ts_col()
+    checksum: Mapped[str] = mapped_column(String(64), index=True)
+    cantidad_registros: Mapped[int] = mapped_column(Integer, default=0)
+    origen: Mapped[str] = mapped_column(String(255))
+
+
+class ArcaApocEntry(Base):
+    """CUIT presente en la base APOC vigente. Lookup SIEMPRE local, sin red.
+
+    El refresh reemplaza el conjunto completo con la version nueva: la tabla
+    refleja exactamente la ultima base importada.
+    """
+
+    __tablename__ = "arca_apoc_entries"
+
+    cuit: Mapped[str] = mapped_column(String(11), primary_key=True)
+    fuente: Mapped[str | None] = mapped_column(String(255))
+    version_id: Mapped[int] = mapped_column(
+        ForeignKey("arca_apoc_versions.id", ondelete="CASCADE"), index=True)

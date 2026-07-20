@@ -12,13 +12,15 @@ RESULTS = "📊  Ver resultados con mis facturas"
 HUMAN_REVIEW = "📋  Revisión humana"
 PAYMENT_APPROVAL = "✅  Aprobación para propuesta de pago"
 BUSINESS_CASE = "📈  Consultar caso de negocio"
+QUALITY = "🧪  Calidad medida (evals)"
 
-TRIAL_OPTIONS = [INTAKE, RESULTS, HUMAN_REVIEW, PAYMENT_APPROVAL, BUSINESS_CASE]
+TRIAL_OPTIONS = [INTAKE, RESULTS, HUMAN_REVIEW, PAYMENT_APPROVAL, BUSINESS_CASE,
+                 QUALITY]
 
 
 def render() -> None:
     from . import (business_case, human_review, intake, payment_approval,
-                   results, session)
+                   quality, results, session)
 
     apply_pending(TRIAL_OPTIONS)
     session.render_sidebar_actions()
@@ -35,6 +37,8 @@ def render() -> None:
         human_review.render()
     elif choice == PAYMENT_APPROVAL:
         payment_approval.render()
+    elif choice == QUALITY:
+        quality.render()
     else:
         business_case.render()
     scroll_to_top_on_change(choice, state_key="_trial_last_view")

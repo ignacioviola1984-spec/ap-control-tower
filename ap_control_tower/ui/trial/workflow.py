@@ -66,7 +66,34 @@ def missing_payment_fields(document: dict) -> list[str]:
 # bancarios visibles no requiere aprobación humana, solo flag.
 FYI_WARNINGS = (
     "hay datos bancarios visibles pero no se pudieron estructurar",
+    # Controles ARCA con AP_ARCA_FAIL_MODE=warn: la falta de verificación se
+    # muestra y se audita, pero no deriva (el sufijo marca la variante aviso).
+    "modo aviso: no deriva",
 )
+
+# Motivos de los controles ARCA (C10 padrón / C11 APOC). Derivan a revisión
+# humana sin importar el tipo documental: un proveedor apócrifo debe verse en
+# la cola aunque el documento sea una proforma. Los textos los emite
+# controls/arca/validators.py; acá solo se reconocen por frases distintivas
+# (nunca "arca" solo: "marca" lo contiene).
+ARCA_WARNING_MARKERS = (
+    "padrón de arca",
+    "facturas apócrifas de arca",
+    "verificación contra padrón arca",
+    "dígito verificador inválido",
+    "incoherente con el tipo de comprobante",
+)
+
+
+def _arca_warnings(result) -> list[str]:
+    relevant: list[str] = []
+    for item in result.warnings or []:
+        lowered = str(item).casefold()
+        if any(fyi in lowered for fyi in FYI_WARNINGS):
+            continue
+        if any(marker in lowered for marker in ARCA_WARNING_MARKERS):
+            relevant.append(str(item))
+    return relevant
 
 KNOWN_CURRENCIES = {
     "EUR", "USD", "GBP", "CHF", "MXN", "CAD", "JPY",
@@ -142,7 +169,10 @@ def review_reasons(result, *, duplicate: bool = False,
                    classification_requested: bool = False) -> list[str]:
     """Política canónica. La ausencia de OC y una proforma clara no son errores."""
     document = result.document
-    reasons: list[str] = []
+    # Los motivos ARCA van primero: APOC es la señal de máxima severidad y
+    # debe leerse antes que cualquier otro motivo. dict.fromkeys al final
+    # evita duplicarlos cuando también pasan por _field_warnings.
+    reasons: list[str] = _arca_warnings(result)
     doc_type = document.get("document_type")
     if classification_requested:
         reasons.append("revisión solicitada por clasificación documental")
@@ -152,8 +182,13 @@ def review_reasons(result, *, duplicate: bool = False,
         missing = missing_critical_fields(document)
         if missing:
             reasons.append("campos críticos ausentes: " + ", ".join(missing))
+        # Las señales ARCA no son advertencias del extractor: no habilitan el
+        # camino de baja confianza de otros campos.
         extractor_flagged = any(
-            "document ai" not in str(item).casefold() for item in (result.warnings or []))
+            "document ai" not in lowered
+            and not any(marker in lowered for marker in ARCA_WARNING_MARKERS)
+            for lowered in (str(item).casefold()
+                            for item in (result.warnings or [])))
         # Una confianza técnica aislada no alcanza: debe existir además una
         # advertencia explícita del extractor, y el campo dudoso no debe
         # superar su validación determinista (aritmética, formato, plausibilidad).

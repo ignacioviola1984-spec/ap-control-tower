@@ -531,6 +531,120 @@ def _seccion_service() -> None:
     service.mock_data.reset()
 
 
+def _seccion_politica() -> None:
+    from dataclasses import dataclass, field
+    from decimal import Decimal
+
+    from ap_control_tower.audit import AuditTrail
+    from ap_control_tower.controls.arca import cuit, service, validators as v
+    from ap_control_tower.ui.trial import workflow
+
+    @dataclass
+    class FakeResult:
+        doc_id: str
+        document: dict
+        confidence: Decimal = Decimal("0.90")
+        warnings: list = field(default_factory=list)
+        field_confidences: dict = field(default_factory=dict)
+        engine: str = "google_document_ai_invoice_parser"
+        pages: int = 1
+        text_chars: int = 100
+
+    print("== Politica canonica: senales ARCA derivan por el mecanismo existente ==")
+    service.mock_data.reset()
+    apocrifo = cuit.generar_cuit_sintetico(41)
+    de_baja = cuit.generar_cuit_sintetico(42)
+    inexistente = cuit.generar_cuit_sintetico(43)
+    monotributista = cuit.generar_cuit_sintetico(44)
+    limpio = cuit.generar_cuit_sintetico(45)
+    service.mock_data.apoc.add(apocrifo)
+    service.mock_data.padron.update({
+        de_baja: {"existe": True, "estado": "BAJA DEFINITIVA",
+                  "condicion_iva": "responsable_inscripto"},
+        inexistente: {"existe": False},
+        monotributista: {"existe": True, "estado": "ACTIVO",
+                         "condicion_iva": "monotributo"},
+        limpio: {"existe": True, "estado": "ACTIVO",
+                 "condicion_iva": "responsable_inscripto"},
+    })
+
+    audit = AuditTrail(commit="eval-politica")
+    docs = {
+        "APOC-1": FakeResult("APOC-1", _doc(apocrifo, numero="FA-100")),
+        "BAJA-1": FakeResult("BAJA-1", _doc(de_baja, numero="FA-101")),
+        "INEX-1": FakeResult("INEX-1", _doc(inexistente, numero="FA-102")),
+        "MONO-A": FakeResult("MONO-A", _doc(monotributista, numero="FA-103", tipo="A")),
+        "LIMPIA": FakeResult("LIMPIA", _doc(limpio, numero="FA-104")),
+        "PROF-APOC": FakeResult("PROF-APOC", {
+            **_doc(apocrifo, numero="PF-1"),
+            "document_type": "proforma_or_advance_request"}),
+    }
+    for result in docs.values():
+        service.enriquecer_resultado(result, audit, modo="mock")
+
+    queue = workflow.review_queue(list(docs.values()), {})
+    en_cola = {item["result"].doc_id: item["reasons"] for item in queue}
+    check("LIMPIA" not in en_cola, "proveedor limpio NO deriva (mock con matches ajenos)")
+    check(en_cola.get("APOC-1", [None])[0] == v.MOTIVO_APOC,
+          "APOC deriva y el motivo va PRIMERO (maxima severidad)")
+    check(any("BAJA DEFINITIVA" in r for r in en_cola.get("BAJA-1", [])),
+          "CUIT de baja deriva con el estado visible")
+    check(v.MOTIVO_INEXISTENTE in en_cola.get("INEX-1", []),
+          "CUIT inexistente deriva")
+    check(any("monotributo" in r and "factura A" in r
+              for r in en_cola.get("MONO-A", [])),
+          "monotributista emitiendo A deriva")
+    check(v.MOTIVO_APOC in en_cola.get("PROF-APOC", []),
+          "el motivo APOC es visible aunque el documento sea proforma")
+
+    # Aprobacion: APOC queda retenido con revision pendiente; jamas elegible.
+    rows = {row["result"].doc_id: row for row in workflow.approval_rows(
+        list(docs.values()), {}, {})}
+    check(rows["APOC-1"]["status"] == "retained"
+          and "revisión humana pendiente" in rows["APOC-1"]["reasons"],
+          "APOC retenido en aprobacion hasta decision humana")
+    check(rows["LIMPIA"]["status"] == "eligible", "el limpio sigue elegible")
+
+    # Padron caido: derive deriva; warn queda visible pero NO deriva.
+    caido_derive = FakeResult("CAIDO-D", _doc(limpio, numero="FA-105"))
+    caido_derive.warnings.append(v.senal_no_disponible("timeout", "derive").motivo)
+    caido_warn = FakeResult("CAIDO-W", _doc(limpio, numero="FA-106"))
+    caido_warn.warnings.append(v.senal_no_disponible("timeout", "warn").motivo)
+    cola2 = {item["result"].doc_id
+             for item in workflow.review_queue([caido_derive, caido_warn], {})}
+    check("CAIDO-D" in cola2, "fail derive: 'no disponible' deriva a revision")
+    check("CAIDO-W" not in cola2, "fail warn: no deriva")
+    check(any("no disponible" in w for w in caido_warn.warnings),
+          "fail warn: la advertencia queda visible en el documento (sin pase silencioso)")
+
+    # Un warning cualquiera con 'marca' no se confunde con ARCA.
+    proforma_marca = FakeResult("PROF-M", {
+        **_doc(limpio, numero="PF-2"),
+        "document_type": "proforma_or_advance_request"})
+    proforma_marca.warnings.append("la marca de agua impide leer el pie")
+    motivos = {item["result"].doc_id: item["reasons"]
+               for item in workflow.review_queue([proforma_marca], {})}
+    check(all("marca de agua" not in r for r in motivos.get("PROF-M", [])),
+          "'marca' no activa los marcadores ARCA")
+
+    # Una senal ARCA no habilita el camino de baja confianza de otros campos.
+    ruido = FakeResult("RUIDO-1", {**_doc(apocrifo, numero="FA-107"),
+                                   "moneda": "XTS"})
+    ruido.field_confidences = {"moneda": Decimal("0.40")}
+    service.enriquecer_resultado(ruido, audit, modo="mock")
+    motivos_ruido = workflow.review_reasons(ruido)
+    check(v.MOTIVO_APOC in motivos_ruido
+          and not any("baja confianza" in r for r in motivos_ruido),
+          "ARCA no dispara 'baja confianza' de otros campos")
+
+    # Mock sin matches: cero derivaciones ARCA (regresion del golden).
+    service.mock_data.reset()
+    virgen = FakeResult("VIRGEN-1", _doc(limpio, numero="FA-108"))
+    service.enriquecer_resultado(virgen, audit, modo="mock")
+    check(virgen.warnings == [] and workflow.review_reasons(virgen) == [],
+          "mock sin matches: cero senales y cero derivacion")
+
+
 def main() -> int:
     _seccion_cuit()
     _seccion_apoc()
@@ -538,6 +652,7 @@ def main() -> int:
     _seccion_padron()
     _seccion_validadores()
     _seccion_service()
+    _seccion_politica()
     if failures:
         print(f"CONTROLES ARCA ROJO: {len(failures)} fallas")
         return 1

@@ -481,6 +481,12 @@ def _seccion_service() -> None:
     ev = service.evaluar_documento(_doc(invalido), modo="off")
     check(len(ev.senales) == 1 and ev.senales[0].codigo == "cuit_dv_invalido",
           "off NO apaga la validacion local del dv")
+    # Una factura espanola con NIF/CIF (o tax id enmascarado) JAMAS genera
+    # senal ARCA: el dv solo evalua candidatos a CUIT (11 digitos).
+    for nif in ("B12345678", "ESB12345678", "12345678Z", "******999"):
+        ev = service.evaluar_documento(_doc(nif), modo="off")
+        check(ev.senales == [] and ev.advertencias_globales == [],
+              f"off con tax id espanol/enmascarado {nif!r} -> cero senales")
 
     # Fixtures mock: APOC y padron generan senales y auditoria.
     service.mock_data.apoc.add(valido)

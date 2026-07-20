@@ -219,8 +219,12 @@ def main() -> int:
 
     print("== Invariante end-to-end: 1 revision -> 7 elegibles -> 7 aprobadas ==")
     seven = [invoice(f"INV-{index}") for index in range(1, 8)]
-    seven[0].field_confidences["numero_factura"] = Decimal("0.50")
-    seven[0].warnings = ["baja confianza en: numero_factura"]
+    # Política run2: baja confianza sola no deriva si el campo pasa su
+    # validación determinista; el caso de revisión necesita una validación
+    # fallida (moneda desconocida) además del score bajo.
+    seven[0].document["moneda"] = "XTS"
+    seven[0].field_confidences["moneda"] = Decimal("0.50")
+    seven[0].warnings = ["baja confianza en: moneda"]
     retained_proforma = invoice("PROFORMA-1")
     retained_proforma.document["document_type"] = "proforma_or_advance_request"
     run = sess.new_session()

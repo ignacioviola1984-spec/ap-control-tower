@@ -385,15 +385,163 @@ def _seccion_padron() -> None:
             check(True, "sin certificado -> PadronNoDisponible")
 
 
+def _doc(tax_id, numero="FAC-001", tipo=None) -> dict:
+    doc = {"document_type": "invoice", "proveedor_tax_id": tax_id,
+           "proveedor_nombre_comercial": "Proveedor Sintetico SA",
+           "numero_factura": numero, "fecha_emision": "2026-06-01",
+           "moneda": "ARS", "importe_total": "1000.00"}
+    if tipo is not None:
+        doc["tipo_comprobante"] = tipo
+    return doc
+
+
+def _seccion_validadores() -> None:
+    from ap_control_tower.controls.arca import cuit, validators as v
+
+    print("== Validadores puros: senales tipadas ==")
+    valido = cuit.generar_cuit_sintetico(3)
+    invalido = valido[:10] + str((int(valido[10]) + 1) % 10)
+
+    senales = v.validar_cuit_local(_doc(invalido))
+    check(len(senales) == 1 and senales[0].tipo == v.BLOQUEANTE
+          and senales[0].motivo == v.MOTIVO_DV_INVALIDO,
+          "dv invalido -> bloqueante con el motivo del spec")
+    check(v.validar_cuit_local(_doc(valido)) == [], "cuit valido -> sin senales")
+    check(v.validar_cuit_local(_doc("B00000000")) == [], "CIF -> sin senales")
+    check(v.validar_cuit_local(_doc(None)) == [], "sin tax id -> sin senales")
+
+    check(v.validar_padron(_doc(valido), None) == [], "persona None -> nada que validar")
+    inexistente = v.validar_padron(_doc(valido), {"existe": False})
+    check(len(inexistente) == 1 and inexistente[0].motivo == v.MOTIVO_INEXISTENTE,
+          "inexistente en padron -> bloqueante")
+    baja = v.validar_padron(_doc(valido), {
+        "existe": True, "estado": "BAJA DEFINITIVA", "condicion_iva": "responsable_inscripto"})
+    check(len(baja) == 1 and "BAJA DEFINITIVA" in baja[0].motivo,
+          "estado no activo -> bloqueante con el estado en el motivo")
+    mono_a = v.validar_padron(_doc(valido, tipo="A"), {
+        "existe": True, "estado": "ACTIVO", "condicion_iva": "monotributo"})
+    check(len(mono_a) == 1 and "monotributo" in mono_a[0].motivo
+          and "factura A" in mono_a[0].motivo,
+          "monotributista emitiendo factura A -> bloqueante")
+    mono_b = v.validar_padron(_doc(valido, tipo="B"), {
+        "existe": True, "estado": "ACTIVO", "condicion_iva": "monotributo"})
+    check(mono_b == [], "monotributista con factura B -> coherente")
+    check(v.letra_comprobante({"numero_factura": "A 0001-00001234"}) == "A",
+          "letra inferida del numero 'A 0001-...'")
+    check(v.letra_comprobante({"numero_factura": "FC-A-0001"}) is None
+          or v.letra_comprobante({"numero_factura": "FC-A 0001"}) in (None, "A"),
+          "prefijos ambiguos no fuerzan letra")
+    check(v.letra_comprobante({"numero_factura": "ES01-ARIV-0010205"}) is None,
+          "numero europeo no infiere letra")
+
+    apoc = v.validar_apoc(_doc(valido), True, {"version_id": 7, "checksum": "abc",
+                                               "fecha_descarga": "2026-07-20"})
+    check(len(apoc) == 1 and apoc[0].severidad == "maxima"
+          and apoc[0].motivo == v.MOTIVO_APOC
+          and apoc[0].evidencia["apoc_version_id"] == 7,
+          "en APOC -> bloqueante de maxima severidad con version en evidencia")
+    check(v.validar_apoc(_doc(valido), False) == [], "no listado -> sin senales")
+
+    deriva = v.senal_no_disponible("timeout", "derive")
+    aviso = v.senal_no_disponible("timeout", "warn")
+    check(deriva.tipo == v.ADVERTENCIA and deriva.motivo == v.MOTIVO_NO_DISPONIBLE,
+          "fail derive -> advertencia que deriva")
+    check(aviso.tipo == v.FYI and aviso.motivo.endswith(v.SUFIJO_SOLO_AVISO),
+          "fail warn -> FYI con sufijo (no deriva)")
+
+    check(v.advertencia_apoc_desactualizada({"desactualizada": True,
+                                             "fecha_descarga": "2026-07-01T00:00:00"})
+          == "base APOC desactualizada, última descarga: 2026-07-01",
+          "base vieja -> advertencia global con fecha")
+    check(v.advertencia_apoc_desactualizada({"desactualizada": False}) is None,
+          "base fresca -> sin advertencia global")
+
+
+def _seccion_service() -> None:
+    from ap_control_tower.audit import AuditTrail
+    from ap_control_tower.controls.arca import cuit, service, validators as v
+
+    print("== Service: modos off/mock/live y auditoria por senal ==")
+    valido = cuit.generar_cuit_sintetico(5)
+    invalido = valido[:10] + str((int(valido[10]) + 1) % 10)
+
+    class R:
+        def __init__(self, doc):
+            self.doc_id = "DOC-1"
+            self.document = doc
+            self.warnings = []
+
+    service.mock_data.reset()
+    # mock sin matches: identico a off para padron/APOC.
+    ev = service.evaluar_documento(_doc(valido), modo="mock")
+    check(ev.senales == [] and ev.advertencias_globales == [],
+          "mock sin matches -> cero senales")
+    ev = service.evaluar_documento(_doc(valido), modo="off")
+    check(ev.senales == [], "off con cuit valido -> cero senales")
+    ev = service.evaluar_documento(_doc(invalido), modo="off")
+    check(len(ev.senales) == 1 and ev.senales[0].codigo == "cuit_dv_invalido",
+          "off NO apaga la validacion local del dv")
+
+    # Fixtures mock: APOC y padron generan senales y auditoria.
+    service.mock_data.apoc.add(valido)
+    service.mock_data.padron[cuit.generar_cuit_sintetico(6)] = {
+        "existe": True, "estado": "BAJA PROVISORIA",
+        "condicion_iva": "responsable_inscripto"}
+    audit = AuditTrail(commit="eval-arca")
+    resultado = R(_doc(valido))
+    ev = service.enriquecer_resultado(resultado, audit, modo="mock")
+    check(any(s.control == v.C11_APOC for s in ev.senales),
+          "proveedor en fixture APOC -> senal C11")
+    check(v.MOTIVO_APOC in resultado.warnings,
+          "el motivo APOC queda en result.warnings (deriva por politica)")
+    eventos = [e for e in audit.events if e.action == "control-arca-senal"]
+    check(len(eventos) == 1 and eventos[0].evidence["severidad"] == "maxima"
+          and eventos[0].evidence["control"] == "C11_APOC",
+          "cada senal registra evento de auditoria con severidad y control")
+    check(audit.verify_chain(), "la cadena de auditoria sigue integra")
+
+    resultado2 = R(_doc(cuit.generar_cuit_sintetico(6)))
+    ev = service.enriquecer_resultado(resultado2, audit, modo="mock")
+    check(any("BAJA PROVISORIA" in w for w in resultado2.warnings),
+          "padron mock con baja -> motivo con estado en warnings")
+
+    # live sin base configurada -> advertencia explicita, no pase silencioso.
+    import os
+    sin_db = {k: os.environ.pop(k, None) for k in ("AP_DATABASE_URL", "DATABASE_URL")}
+    try:
+        ev = service.evaluar_documento(_doc(valido), modo="live", fail_mode="derive")
+        check(len(ev.senales) == 1 and ev.senales[0].codigo == "padron_no_disponible"
+              and ev.senales[0].tipo == v.ADVERTENCIA,
+              "live sin base local -> advertencia 'no disponible' que deriva")
+        ev = service.evaluar_documento(_doc(valido), modo="live", fail_mode="warn")
+        check(ev.senales[0].tipo == v.FYI, "live sin base + warn -> FYI")
+        ev = service.evaluar_documento(_doc("B00000000"), modo="live")
+        check(len(ev.senales) == 1 and ev.senales[0].codigo == "padron_no_disponible",
+              "live sin base con CIF: la advertencia igual deja rastro")
+    finally:
+        for k, val in sin_db.items():
+            if val is not None:
+                os.environ[k] = val
+
+    # Registro informativo del modo off.
+    audit_off = AuditTrail(commit="eval-arca")
+    service.registrar_modo_off(audit_off)
+    check(any(e.action == "controles-arca-omitidos" for e in audit_off.events),
+          "modo off deja constancia informativa en auditoria")
+    service.mock_data.reset()
+
+
 def main() -> int:
     _seccion_cuit()
     _seccion_apoc()
     _seccion_wsaa()
     _seccion_padron()
+    _seccion_validadores()
+    _seccion_service()
     if failures:
         print(f"CONTROLES ARCA ROJO: {len(failures)} fallas")
         return 1
-    print("CONTROLES ARCA VERDE: CUIT, APOC, WSAA y padron OK (exit 0)")
+    print("CONTROLES ARCA VERDE: CUIT, APOC, WSAA, padron, validadores y service OK (exit 0)")
     return 0
 
 

@@ -93,7 +93,7 @@ def main() -> int:
 
     print("== Trial: cinco vistas internas ==")
     from ap_control_tower.ui.trial import shell
-    check(len(shell.TRIAL_OPTIONS) == 5, f"trial tiene 5 opciones ({len(shell.TRIAL_OPTIONS)})")
+    check(len(shell.TRIAL_OPTIONS) == 6, f"trial tiene 6 opciones ({len(shell.TRIAL_OPTIONS)})")
     joined = " | ".join(shell.TRIAL_OPTIONS)
     check("Probar con mis facturas" in joined, "opción 'Probar con mis facturas'")
     check("Ver resultados con mis facturas" in joined, "opción 'Ver resultados con mis facturas'")

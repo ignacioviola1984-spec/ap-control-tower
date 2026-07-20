@@ -24,13 +24,20 @@ HERO_TEXT = "Cargá tus facturas reales y verás cómo el agente las procesa en 
 def _process_and_store(files, canal: str) -> None:
     """Procesa [(nombre, bytes)] documento por documento (tiempo individual) y
     guarda TODO en la sesion: exitosos y errores."""
+    from ...controls.arca import service as arca_service
+
     if not files:
         return
     session = sess.get_session()
+    modo_arca = arca_service.modo_actual()
+    if modo_arca == "off":
+        # Constancia informativa: los controles ARCA no verifican en off.
+        arca_service.registrar_modo_off(session.audit)
     bar = st.progress(0.0, text="Procesando documentos...")
     total = len(files)
     ok = 0
     omitted = 0
+    advertencias_globales: list[str] = []
     for index, (name, data) in enumerate(files, 1):
         file_hash = hashlib.sha256(data).hexdigest()
         if file_hash in session.file_hashes.values():
@@ -44,6 +51,13 @@ def _process_and_store(files, canal: str) -> None:
             sess.add_error(session, name, error, seconds)
             st.error(f"No se pudo procesar **{name}**: {error}")
         else:
+            # Controles ARCA (C10 padrón / C11 APOC): agrega motivos a
+            # result.warnings ANTES de registrar el documento, y audita cada
+            # señal. En off solo corre la validación local de CUIT.
+            evaluacion = arca_service.enriquecer_resultado(result, session.audit)
+            for advertencia in evaluacion.advertencias_globales:
+                if advertencia not in advertencias_globales:
+                    advertencias_globales.append(advertencia)
             added = sess.add_document(
                 session, result, seconds,
                 file_hash=file_hash, source=canal)
@@ -51,6 +65,10 @@ def _process_and_store(files, canal: str) -> None:
             omitted += int(not added)
         bar.progress(index / total, text=f"Procesado {index}/{total}: {name}")
     bar.empty()
+    for advertencia in advertencias_globales:
+        st.warning(advertencia)
+        sess.record_event(session, "advertencia-global-arca",
+                          {"motivo": advertencia})
 
     if ok:
         sess.record_intake(session, canal=canal, cantidad=ok)

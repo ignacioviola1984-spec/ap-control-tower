@@ -1,9 +1,12 @@
 # El motor y los evals usan solo la libreria estandar (Python 3.11+).
 # La UI usa streamlit + pandas; reportlab genera el PDF de auditoria local.
-# Google Document AI procesa las facturas reales cuando esta configurado.
+# Motor primario de extraccion: Gemma 4 local via Ollama (costo cero por
+# documento; requiere `ollama pull gemma4:12b` en la maquina que sirve).
+# Google Document AI queda como fallback pago opcional.
 streamlit>=1.36
 pandas>=2.0
 reportlab>=4.0
 pdfplumber>=0.11
 pypdf>=4.0
+pypdfium2>=4.0          # render de paginas a imagen para Gemma 4 (vision)
 google-cloud-documentai>=3.6,<4

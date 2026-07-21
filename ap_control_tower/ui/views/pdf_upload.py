@@ -15,7 +15,8 @@ from io import StringIO
 import pandas as pd
 import streamlit as st
 
-from ...extraction.document_ai import extract_uploaded_document, is_document_ai_configured
+from ...extraction.document_ai import is_document_ai_configured
+from ...extraction.gemma import extract_uploaded_document, is_gemma_configured
 from ...extraction.schema import FIELD_ORDER
 from ..theme import badge
 
@@ -49,6 +50,11 @@ TYPE_LABELS = {
     "invoice": ("Factura fiscal", "info"),
     "proforma_or_advance_request": ("Proforma / anticipo", "flag"),
     "other": ("OC / otro documento", "mut"),
+}
+
+ENGINE_LABELS = {
+    "gemma4_local_ollama": "Gemma 4 local",
+    "google_document_ai_invoice_parser": "Document AI",
 }
 
 
@@ -122,7 +128,7 @@ def _render_detail(results) -> None:
             st.html(
                 f"{badge(label, kind)} &nbsp; "
                 f"{badge('confianza ' + str(r.confidence), 'ok' if not r.warnings else 'flag')} &nbsp; "
-                f"{badge('Document AI' if r.engine == 'google_document_ai_invoice_parser' else 'motor local', 'info' if r.engine == 'google_document_ai_invoice_parser' else 'mut')}"
+                f"{badge(ENGINE_LABELS.get(r.engine, 'motor local'), 'info' if r.engine in ENGINE_LABELS else 'mut')}"
                 f"<div style='margin-top:8px;color:#5A6572;font-size:13px;'>"
                 f"{r.pages} pagina(s) · {r.text_chars} caracteres extraidos"
                 f"{('<br><b>Revision:</b> ' + ' | '.join(r.warnings)) if r.warnings else ''}"
@@ -162,13 +168,16 @@ def render() -> None:
     st.markdown("## PoC documentos reales")
     st.html(
         "<div class='apct-card'><b>Carga viva de facturas y órdenes de compra.</b><br>"
-        "<span style='color:#5A6572;'>Los PDFs se procesan en memoria durante la sesión. "
-        "Las facturas se envían a Google Document AI dentro del proyecto cloud de la demo. "
+        "<span style='color:#5A6572;'>Los PDFs se procesan en memoria durante la sesión con "
+        "Gemma 4 corriendo en infraestructura propia (costo cero por documento). Document AI "
+        "se usa solo como fallback pago para documentos que no validan limpio. "
         "La app no guarda una copia local ni modifica la corrida sintética.</span></div>",
     )
 
+    if not is_gemma_configured():
+        st.warning("Gemma 4 está desactivado (GEMMA_DISABLED). Se usará el flujo Document AI.")
     if not is_document_ai_configured():
-        st.warning("Document AI no está configurado. Las facturas quedarán marcadas para revisión.")
+        st.info("Document AI no está configurado: sin fallback pago, los documentos con avisos quedan a revisión.")
 
     uploaded = st.file_uploader(
         "PDFs de factura / OC",

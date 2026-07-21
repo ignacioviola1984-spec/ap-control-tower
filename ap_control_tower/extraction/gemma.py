@@ -15,6 +15,8 @@ Configuracion (variables de entorno):
     GEMMA_RENDER_DPI  default 180          (subir a 220 con escaneos flojos)
     GEMMA_MAX_PAGES   default 5
     GEMMA_TIMEOUT     default 600 (segundos)
+    GEMMA_NUM_CTX     default 16384 (el default de Ollama, 4096, trunca el
+                      prompt + imagen y el modelo devuelve todo null)
     GEMMA_DISABLED    definirla (cualquier valor) desactiva el motor
 """
 
@@ -58,6 +60,7 @@ class GemmaConfig:
     dpi: int
     max_pages: int
     timeout: int
+    num_ctx: int
 
     @classmethod
     def from_env(cls) -> "GemmaConfig | None":
@@ -69,6 +72,7 @@ class GemmaConfig:
             dpi=int(os.getenv("GEMMA_RENDER_DPI", "180")),
             max_pages=int(os.getenv("GEMMA_MAX_PAGES", "5")),
             timeout=int(os.getenv("GEMMA_TIMEOUT", "600")),
+            num_ctx=int(os.getenv("GEMMA_NUM_CTX", "16384")),
         )
 
 
@@ -131,7 +135,7 @@ def _call_ollama(images: list[str], config: GemmaConfig) -> dict:
         "model": config.model,
         "stream": False,
         "format": output_schema(),           # structured output: la respuesta ES el JSON
-        "options": {"temperature": 0},
+        "options": {"temperature": 0, "num_ctx": config.num_ctx},
         "messages": [{"role": "user", "content": prompt, "images": images}],
     }
     request = urllib.request.Request(

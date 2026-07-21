@@ -24,6 +24,7 @@ from .banking import (
 )
 from .pdf_poc import PdfText, PocResult, extract_document, read_pdf_bytes
 from .schema import validate_document
+from .tax_id import tax_id_warning
 
 
 ENGINE_NAME = "google_document_ai_invoice_parser"
@@ -527,6 +528,13 @@ def _validate_invoice(doc: dict, text: str, confidences: dict[str, Decimal]) -> 
     if account and re.sub(r"\D", "", account).isdigit() and len(re.sub(r"\D", "", account)) == 20 \
             and not is_valid_spanish_ccc(account):
         warnings.append("CCC espanol con digitos de control invalidos")
+
+    # Un identificador fiscal con un caracter cambiado pasa cualquier revision
+    # visual y termina en un pago mal imputado: tiene que saltar solo.
+    for tax_field in ("proveedor_tax_id", "cliente_tax_id"):
+        tax_warning = tax_id_warning(tax_field, doc.get(tax_field))
+        if tax_warning:
+            warnings.append(tax_warning)
 
     low = [
         field for field in INVOICE_CRITICAL_FIELDS

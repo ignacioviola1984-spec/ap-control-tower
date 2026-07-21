@@ -36,7 +36,7 @@ def entity(entity_type: str, mention: str, normalized: str | None = None, confid
 class DocumentAIAdapterTests(unittest.TestCase):
     def test_maps_invoice_layout_and_banking_fields(self):
         text = """Aurora, Soluciones Digitales para Empresas S.L.L.
-CIF B12345678
+CIF B12345674
 CLIENTE: Meridia Consulting S.L.U. - CIF B00000000
 FACTURA F100
 FECHA: 06/05/2026
@@ -56,7 +56,7 @@ BIC CAIXESBBXXX
                 entity("invoice_id", "F100"),
                 entity("invoice_date", "06/05/2026", "2026-05-06"),
                 entity("supplier_name", "Soluciones Digitales, S.L.L.", confidence=0.78),
-                entity("supplier_tax_id", "B12345678"),
+                entity("supplier_tax_id", "B12345674"),
                 entity("receiver_name", "Meridia Consulting S.L.U."),
                 entity("receiver_tax_id", "B00000000"),
                 entity("currency", "€", "EUR"),
@@ -173,7 +173,7 @@ Base imponible 36,68 EUR
 Impuesto 7,70 EUR
 Total 44,38 EUR
 Numero de cuenta: ****************107 3717
-SERVICIOS VERDES UNA TINTA S.L.U. N.I.F: B12345678
+SERVICIOS VERDES UNA TINTA S.L.U. N.I.F: B12345674
 """
         document = SimpleNamespace(
             text=text,
@@ -182,7 +182,7 @@ SERVICIOS VERDES UNA TINTA S.L.U. N.I.F: B12345678
                 entity("invoice_id", "FV-1"),
                 entity("invoice_date", "05/05/2026", "2026-05-05"),
                 entity("supplier_name", "grupo"),
-                entity("supplier_tax_id", "B12345678"),
+                entity("supplier_tax_id", "B12345674"),
                 entity("currency", "EUR", "EUR"),
                 entity("net_amount", "36,68", "36.68"),
                 entity("total_tax_amount", "7,70", "7.70"),

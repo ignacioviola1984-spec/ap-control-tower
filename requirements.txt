@@ -1,7 +1,8 @@
 # El motor y los evals usan solo la libreria estandar (Python 3.11+).
 # La UI usa streamlit + pandas; reportlab genera el PDF de auditoria local.
-# Motor primario de extraccion: Gemma 4 local via Ollama (costo cero por
-# documento; requiere `ollama pull gemma4:12b` en la maquina que sirve).
+# Motor primario de extraccion: Gemma local via Ollama (costo cero por
+# documento; requiere `ollama pull gemma3:4b` en la maquina que sirve).
+# gemma4 esta rota en Ollama 0.32.1: ver la nota en extraction/gemma.py.
 # Google Document AI queda como fallback pago opcional.
 streamlit>=1.36
 pandas>=2.0

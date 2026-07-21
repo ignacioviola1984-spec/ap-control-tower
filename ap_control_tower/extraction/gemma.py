@@ -11,13 +11,40 @@ el prompt, asi que no puede driftear.
 
 Configuracion (variables de entorno):
     OLLAMA_URL        default http://localhost:11434
-    GEMMA_MODEL       default gemma4:12b   (con GPU de 24GB: gemma4:26b)
+    GEMMA_MODEL       default gemma3:4b    (ver nota sobre gemma4 abajo)
     GEMMA_RENDER_DPI  default 180          (subir a 220 con escaneos flojos)
     GEMMA_MAX_PAGES   default 5
     GEMMA_TIMEOUT     default 600 (segundos)
     GEMMA_NUM_CTX     default 16384 (el default de Ollama, 4096, trunca el
                       prompt + imagen y el modelo devuelve todo null)
     GEMMA_DISABLED    definirla (cualquier valor) desactiva el motor
+
+NOTA (2026-07-21): el default es gemma3:4b, no gemma4, porque la familia
+gemma4 esta rota en Ollama 0.32.1. Medido en esta maquina, misma imagen
+(factura sintetica A4 renderizada a 180 DPI) para todos los modelos:
+
+    gemma3:4b          transcribe perfecto, 21 s, ~256 tokens de imagen
+    qwen2.5vl:3b       transcribe perfecto, 39 s, ~3900 tokens de imagen
+    gemma4:e2b         carga pero NO lee la imagen: devuelve alucinaciones
+                       ("un formulario o tabla con muchas filas y columnas"
+                       para una imagen de 3 lineas), pese a que /api/show
+                       declara la capability "vision". Con el prompt de
+                       extraccion eso da todos los campos en null, que es la
+                       respuesta correcta de la regla anti-alucinacion.
+    gemma4:e4b-it-qat  ni siquiera carga; el llama-server muere con
+                       GGML_ASSERT(n_inputs < GGML_SCHED_MAX_SPLIT_INPUTS)
+                       failed, tambien en peticiones de texto solo.
+    gemma4:12b         sin medir (>10 min por factura sin GPU).
+
+Descartado como causa del all-null de gemma4:e2b: num_ctx (falla igual con
+8192 y con 16384), el JSON schema en "format" (falla igual sin el y con
+prompt minimo) y la resolucion (falla igual con recorte y a 300 DPI; subir
+el DPI no cambia nada porque la imagen se reescala al mismo tile). El
+adaptador no tenia ningun bug: el modelo simplemente no ve la imagen.
+
+Reevaluar gemma4 cuando Ollama actualice el soporte: alcanza con volver a
+correr el smoke con GEMMA_MODEL=gemma4:e4b-it-qat. ENGINE_NAME se mantiene
+para no romper el mapeo de la UI ni las salidas ya generadas.
 """
 
 from __future__ import annotations
@@ -68,7 +95,7 @@ class GemmaConfig:
             return None
         return cls(
             url=os.getenv("OLLAMA_URL", "http://localhost:11434").rstrip("/"),
-            model=os.getenv("GEMMA_MODEL", "gemma4:12b"),
+            model=os.getenv("GEMMA_MODEL", "gemma3:4b"),
             dpi=int(os.getenv("GEMMA_RENDER_DPI", "180")),
             max_pages=int(os.getenv("GEMMA_MAX_PAGES", "5")),
             timeout=int(os.getenv("GEMMA_TIMEOUT", "600")),

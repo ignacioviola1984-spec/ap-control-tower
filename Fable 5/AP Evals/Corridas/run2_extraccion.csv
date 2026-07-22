@@ -1,0 +1,110 @@
+﻿archivo,tipo documental,proveedor,tax ID proveedor,número,fecha de emisión,vencimiento,moneda,importe neto,tipo IVA,importe IVA,importe total,referencia OC,ruta PO/non-PO,confianza,estado,advertencias
+02. REMOTE 2026-05-Invoice-050IN26048878-Brand up slu,invoice,Remote Europe Holding BV,***********B01,050IN26048878,2026-05-01,2026-05-15,EUR,14234.03,0,0.00,14234.03,,non-PO,0.88,Procesado,baja confianza en: importe_neto
+03. CABIFY invoice-ESP26F98358,invoice,"Cabify España, S.L.U",********823,ESP26F98358,2026-05-01,2026-04-30,EUR,303.99,10,30.40,334.39,,non-PO,0.86,Procesado,
+04. GESMAR P-07-2026 BMC,proforma_or_advance_request,GESMAR GESTIÓN Y MARKETING S.L (Sociedad Unipersonal),******583,,2026-05-04,,EUR,,,,1320.00,,non-PO,1.0,Revisar campos,
+04. Orden de Compra EURE 1583 - PRETEST QUAL. POPEYES. Gesmar Incent,other,GESMAR,,,2026-05-05,,EUR,,,,1320.00,EURE 1583,PO,1.0,Documento no reconocido,
+05. DYNATA ES01-ARIV-0010205,invoice,Dynata Global Spain S.L.U,******348,ES01-ARIV-0010205,2026-04-30,,EUR,17410.00,21,3656.10,21066.10,,non-PO,0.84,Procesado,baja confianza en: cliente_nombre
+06. OPEN ENDS Facture_000178_OPENENDS_INSIGHT_BRAND_UP_SLU,invoice,SASU OPEN-ENDS INSIGHT,**********621,178,2026-05-05,,EUR,4200.00,0,0.00,4200.00,,non-PO,0.87,Procesado,
+06. Orden de Compra EUBR 1529 - MUSHU. Judit.,other,JUDIT AUZIOL - OPEN ENDS,,,2026-05-05,,EUR,,,,4200.00,EUBR 1529,PO,1.0,Documento no reconocido,
+07. ECOTISA Factura_FV_2026_05_000945,invoice,ECOTISA UNA TINTA DE IMPRESION S.L.U,******448,FV/2026/05/000945,2026-05-05,2026-05-05,EUR,36.68,21,7.70,44.38,PV892828,PO,0.87,Procesado,
+08. REDECOM F057BrandUP,invoice,"Redecom, Soluciones Informáticas para Empresas S.L.L",******428,F057,2026-05-06,,EUR,1217.14,21,255.60,1472.74,,non-PO,0.94,Procesado,
+09. REDECOM SL F056BMC_M365_SL,invoice,"Redecom, Soluciones Informáticas para Empresas S.L.L",******428,F056,2026-05-06,,EUR,118.08,21,24.80,142.88,,non-PO,0.94,Procesado,
+10. REDECOM EMEA F055BMC_M365_EMEA,invoice,"Redecom, Soluciones Informáticas para Empresas S.L.L",******428,F055,2026-05-06,,EUR,161.96,21,34.01,195.97,,non-PO,0.94,Procesado,
+GD-101,invoice,Servicios Alcor SL,******111,AL-2026-0101,2026-06-02,2026-07-02,EUR,950.00,21,199.50,1149.50,,non-PO,0.88,Procesado,hay datos bancarios visibles pero no se pudieron estructurar
+GD-102,invoice,Insumos Bravo SA,******222,BR-88712,2026-06-03,2026-07-03,EUR,4200.00,21,882.00,5082.00,PO-2026-201,PO,0.86,Procesado,hay datos bancarios visibles pero no se pudieron estructurar | baja confianza en: cliente_nombre
+GD-103,invoice,Catering Delta SL,******333,CD/2026/077,2026-06-04,2026-06-19,EUR,310.40,10,31.04,341.44,,non-PO,0.91,Procesado,hay datos bancarios visibles pero no se pudieron estructurar
+GD-104,invoice,Logistica Echo SL,******444,LE-2026-3401,2026-06-05,2026-07-05,GBP,1800.00,21,378.00,2178.00,PO-2026-202,PO,0.83,Procesado,baja confianza en: cliente_nombre
+GD-105,invoice,Estudio Foxtrot SLP,******555,EF-2026-045,2026-06-08,2026-07-08,EUR,2500.00,21,525.00,3025.00,,non-PO,0.87,Revisar campos,hay datos bancarios visibles pero no se pudieron estructurar | baja confianza en: cliente_nombre
+GD-106,invoice,Estudio Foxtrot SLP,******555,EF-2026-045,2026-06-10,2026-07-08,EUR,2500.00,21,525.00,3025.00,,non-PO,0.87,Revisar campos,hay datos bancarios visibles pero no se pudieron estructurar | baja confianza en: cliente_nombre
+GD-107,invoice,Estudio Foxtrot SLP,******555,EF-2026-046,2026-06-11,2026-07-11,EUR,2500.01,21,525.00,3025.01,,non-PO,0.83,Procesado,"hay datos bancarios visibles pero no se pudieron estructurar | baja confianza en: numero_factura, cliente_nombre"
+GD-108,invoice,Estudio Foxtrot SLP,******555,EF-2026-045,2026-06-12,2026-07-08,EUR,2500.00,21,525.00,3025.00,,non-PO,0.83,Revisar campos,hay datos bancarios visibles pero no se pudieron estructurar | baja confianza en: importe_neto
+GD-109,invoice,Nubia Cloud Services SL,******783,NB-26-0701,2026-06-15,2026-07-15,EUR,7719.01,21,1620.99,9340.00,PO-2026-117,PO,0.84,Procesado,hay datos bancarios visibles pero no se pudieron estructurar | baja confianza en: cliente_nombre
+GD-110,invoice,Nubia Cloud Services SL,******783,NB-26-0702,2026-06-16,2026-07-16,EUR,1200.00,21,252.00,1452.00,PO-2026-117,PO,0.85,Procesado,hay datos bancarios visibles pero no se pudieron estructurar | baja confianza en: cliente_nombre
+GD-111,invoice,TalentBridge Seleccion SL,******666,TB-260140,2026-06-17,2026-07-17,EUR,6198.35,21,1301.65,7500.00,PO-2026-999,PO,0.9,Procesado,hay datos bancarios visibles pero no se pudieron estructurar
+GD-112,invoice,TalentBridge Seleccion SL,******666,TB-260141,2026-06-18,2026-07-18,EUR,3000.00,21,630.00,3630.00,PO-2026-203,PO,0.85,Procesado,hay datos bancarios visibles pero no se pudieron estructurar | baja confianza en: cliente_nombre
+GD-113,invoice,Mobiliario Golf SL,******777,MG-2026-0201,2026-06-19,2026-07-19,EUR,5082.64,21,1067.35,6149.99,PO-2026-204,PO,0.87,Procesado,hay datos bancarios visibles pero no se pudieron estructurar | baja confianza en: cliente_nombre
+GD-114,invoice,Mobiliario Golf SL,******777,MG-2026-0202,2026-06-20,2026-07-20,EUR,4020.00,21,844.20,4864.20,PO-2026-205,PO,0.87,Procesado,hay datos bancarios visibles pero no se pudieron estructurar | baja confianza en: cliente_nombre
+GD-115,invoice,Facturar a: Meridia Consulting SL,******000,HN-2026-001,2026-06-22,2026-07-22,EUR,890.00,21,186.90,1076.90,,non-PO,0.9,Revisar campos,el proveedor extraido coincide con la empresa propia: posible confusion emisor/receptor | hay datos bancarios visibles pero no se pudieron estructurar
+GD-116,proforma_or_advance_request,"Facturar a: Meridia Consulting SL · NIF B00000000 · Paseo Imaginario 123, 28000 Madrid",******888,,2026-06-23,,EUR,,0,0.00,5000.00,,non-PO,1.0,Revisar campos,
+GD-117,invoice,Lima Suscripciones SL,******999,LS-2026-0500,2026-06-24,,EUR,180.00,21,37.80,217.80,,non-PO,0.91,Procesado,
+GD-118,invoice,Meridia Advisory Mexico SA,******001,MX-2026-0701,2026-06-25,2026-07-25,USD,5600.00,0,0.00,5600.00,PO-2026-206,PO,0.74,Procesado,"baja confianza en: numero_factura, cliente_nombre, importe_iva"
+GD-119,invoice,Servicios Alcor SL,******111,NC-2026-0012,2026-06-26,,EUR,-250.00,21,-52.50,-302.50,,non-PO,0.78,Procesado,"hay datos bancarios visibles pero no se pudieron estructurar | baja confianza en: numero_factura, cliente_nombre, importe_iva"
+GD-120,proforma_or_advance_request,"Facturar a: Meridia Consulting SL · NIF B00000000 · Paseo Imaginario 123, 28000 Madrid",******212,,2026-06-27,,EUR,,21,2099.79,12098.79,,non-PO,1.0,Revisar campos,
+GD-121,invoice,"Quebec & Asociados, S.L.U",******313,Q/26-77-A,2026-06-29,2026-07-29,EUR,1450.75,21,304.66,1755.41,,non-PO,0.8,Procesado,"hay datos bancarios visibles pero no se pudieron estructurar | baja confianza en: numero_factura, cliente_nombre"
+GD-122,invoice,Romeo Servicios Integrales SL,******414,RSI-2026-000123,2026-06-30,2026-08-29,EUR,12345.67,21,2592.59,14938.26,,non-PO,0.85,Procesado,hay datos bancarios visibles pero no se pudieron estructurar | baja confianza en: cliente_nombre
+GD-011,invoice,Bradley-Andrade,******194,97159829,2015-09-18,,USD,889.20,10,88.92,978.12,,non-PO,0.82,Procesado,"baja confianza en: importe_neto, importe_iva"
+GD-012,invoice,"Hopkins & Sons, Inc.",******223,13194726,2021-05-29,,USD,581.93,10,58.19,640.12,,non-PO,0.81,Procesado,"baja confianza en: proveedor_nombre_comercial, importe_neto"
+GD-013,invoice,Trujillo-Hunt,******540,62517865,2015-06-02,,USD,8.50,10,0.85,9.35,,non-PO,0.83,Procesado,"baja confianza en: importe_iva, moneda"
+GD-014,invoice,Nichols-Barajas,******813,56014042,2014-10-01,,USD,59.50,10,5.95,65.45,,non-PO,0.84,Procesado,baja confianza en: importe_neto
+GD-015,invoice,Smith-Cook,******124,16662010,2016-08-28,,USD,2053.73,10,205.37,2259.10,,non-PO,0.78,Procesado,"baja confianza en: importe_neto, importe_iva"
+GD-016,invoice,Kaiser,******083,27543706,2020-07-20,,USD,44364.64,10,4436.46,48801.10,,non-PO,0.84,Procesado,baja confianza en: importe_iva
+GD-017,invoice,Smith Ltd,******743,26343874,2013-07-17,,USD,3172.99,10,317.30,3490.29,,non-PO,0.83,Procesado,baja confianza en: importe_iva
+GD-018,invoice,"Gregory, Patterson and Fischer",******606,12222347,2017-03-18,,AUD,123.75,10,12.38,136.13,,non-PO,0.77,Revisar campos,"baja confianza en: importe_neto, importe_iva"
+GD-019,invoice,"Gordon, Alvarado and Jones",******794,25698672,2015-08-01,,USD,115.45,10,11.55,127.00,,non-PO,0.78,Procesado,"baja confianza en: proveedor_nombre_comercial, importe_neto, importe_iva"
+GD-020,invoice,Rodriguez-Jackson,******151,24048799,2014-05-21,,USD,4.95,10,0.50,5.45,,non-PO,0.83,Procesado,baja confianza en: proveedor_nombre_comercial
+GD-021,invoice,"Potts, Reed and Miller",******781,72455228,2021-05-11,,USD,1959.98,10,196.00,2155.98,,non-PO,0.78,Procesado,"baja confianza en: proveedor_nombre_comercial, importe_neto"
+GD-022,invoice,Conley Ltd,******417,58478169,2016-07-04,,USD,11147.25,10,1114.73,12261.98,,non-PO,0.85,Procesado,baja confianza en: importe_iva
+GD-023,invoice,Stone-Waller,******683,90508672,2020-04-16,,USD,6411.35,10,641.14,7052.49,,non-PO,0.77,Procesado,"baja confianza en: importe_neto, importe_iva"
+GD-024,invoice,Jackson Ltd,******938,96051364,2020-04-28,,USD,143572.15,10,14357.22,157929.37,,non-PO,0.81,Procesado,baja confianza en: importe_iva
+GD-025,invoice,Pierce PLC,******796,67856369,2020-05-27,,USD,4502.56,10,450.26,4952.82,,non-PO,0.83,Procesado,baja confianza en: importe_iva
+GD-026,invoice,Spence-Castro,******671,69934544,2014-04-17,,USD,39.96,10,4.00,43.96,,non-PO,0.84,Procesado,baja confianza en: importe_neto
+GD-027,invoice,Whitaker Ltd,******965,23152691,2015-08-01,,USD,4348.82,10,434.88,4783.70,,non-PO,0.79,Procesado,"baja confianza en: importe_neto, importe_iva"
+GD-028,invoice,"Hernandez, Coleman and Alvarado",******495,14878236,2015-04-26,,USD,516.81,10,51.68,568.49,,non-PO,0.79,Procesado,"baja confianza en: proveedor_nombre_comercial, importe_neto, importe_iva"
+GD-029,invoice,Byrd PLC,******541,84777898,2017-06-02,,USD,286.02,10,28.60,314.62,,non-PO,0.84,Procesado,"baja confianza en: importe_neto, importe_iva"
+GD-030,invoice,Estrada and Sons,******874,57338979,2021-05-10,,USD,13717.81,10,1371.78,15089.59,,non-PO,0.79,Procesado,"baja confianza en: proveedor_nombre_comercial, importe_iva"
+GD-031,invoice,"Nelson, Bird and Mendoza",******964,54394190,2021-02-23,,USD,3359.94,10,335.99,3695.93,,non-PO,0.77,Procesado,"baja confianza en: proveedor_nombre_comercial, importe_neto, importe_iva"
+GD-032,invoice,Hays-McDonald Farm,******086,77404624,2014-10-20,,USD,8687.80,10,868.78,9556.58,,non-PO,0.8,Procesado,"baja confianza en: importe_neto, importe_iva"
+GD-033,invoice,"George, Casey and Harris",******965,32830026,2014-12-20,,USD,1036.58,10,103.66,1140.24,,non-PO,0.78,Procesado,"baja confianza en: proveedor_nombre_comercial, importe_neto, importe_iva"
+GD-034,invoice,"Velasquez, Ward and Ballard",******484,71748307,2011-12-24,,USD,1433.55,10,143.35,1576.90,,non-PO,0.78,Procesado,"baja confianza en: proveedor_nombre_comercial, importe_neto, importe_iva"
+GD-035,invoice,Wilkerson Ltd,******699,17619666,2020-03-09,,USD,37654.00,10,3765.40,41419.40,,non-PO,0.87,Procesado,
+GD-036,invoice,Clay-Koch,******800,12681565,2015-07-09,,USD,3991.91,10,399.19,4391.10,,non-PO,0.8,Procesado,"baja confianza en: importe_neto, importe_iva"
+GD-037,invoice,"Kaufman, Cooper and Young",******845,65321852,2021-04-11,,USD,194.76,10,19.48,214.24,,non-PO,0.86,Procesado,baja confianza en: importe_neto
+GD-038,invoice,Lawson & Sons,******473,16220332,2017-05-15,,USD,62853.39,10,6285.34,69138.73,,non-PO,0.84,Procesado,
+GD-039,invoice,Chang-Cooper,******770,90446683,2016-02-11,,USD,196.97,10,19.70,216.67,,non-PO,0.82,Procesado,baja confianza en: importe_neto
+GD-040,invoice,Evans LLC,******054,53339803,2018-09-11,,USD,15300.00,10,1530.00,16830.00,,non-PO,0.86,Procesado,baja confianza en: importe_iva
+GD-041,invoice,Oliver and Sons,******422,76588527,2018-11-21,,USD,679.96,10,68.00,747.96,,non-PO,0.8,Procesado,"baja confianza en: importe_neto, importe_iva"
+GD-042,invoice,Decker PLC,******031,97511742,2016-04-07,,USD,4314.93,10,431.49,4746.42,,non-PO,0.77,Procesado,"baja confianza en: importe_neto, importe_iva"
+GD-043,invoice,Rivera-Thompson,******956,79128264,2014-12-31,,USD,348.16,10,34.82,382.98,,non-PO,0.81,Procesado,"baja confianza en: importe_neto, importe_iva"
+GD-044,invoice,Gibson Ltd,******128,67583819,2012-06-01,,USD,889.67,10,88.97,978.64,,non-PO,0.86,Procesado,baja confianza en: importe_neto
+GD-045,invoice,Mcgrath-Ruiz,******645,18001573,2012-12-30,,USD,100.97,10,10.10,111.07,,non-PO,0.76,Procesado,"baja confianza en: proveedor_nombre_comercial, importe_neto, importe_iva"
+GD-046,invoice,Lyons-Murphy,******218,56513760,2011-10-25,,USD,6464.00,10,646.40,7110.40,,non-PO,0.81,Procesado,baja confianza en: importe_neto
+GD-047,invoice,Dunn-Campbell,******578,38870308,2019-08-01,,USD,298.94,10,29.89,328.83,,non-PO,0.8,Procesado,"baja confianza en: proveedor_nombre_comercial, importe_neto"
+GD-048,invoice,Smith Ltd,******010,37999492,2017-10-22,,USD,4499.25,10,449.93,4949.18,,non-PO,0.81,Procesado,"baja confianza en: importe_neto, importe_iva"
+GD-049,invoice,Martinez-Ramirez,******596,75367021,2018-11-12,,USD,33319.74,10,3331.97,36651.71,,non-PO,0.86,Procesado,
+GD-050,invoice,"Young, Owens and Hall",******473,76903393,2012-07-24,,USD,4754.91,10,475.49,5230.40,,non-PO,0.75,Procesado,"baja confianza en: proveedor_nombre_comercial, importe_neto, importe_iva"
+GD-051,invoice,"Adkins, Campbell and Butler",******876,18531177,2015-04-30,,USD,222.91,10,22.29,245.20,,non-PO,0.79,Procesado,"baja confianza en: proveedor_nombre_comercial, importe_neto"
+GD-052,invoice,Payne-Davis,******670,65095335,2017-02-15,,USD,42645.83,10,4264.58,46910.41,,non-PO,0.8,Procesado,"baja confianza en: proveedor_nombre_comercial, importe_iva"
+GD-053,invoice,Crawford-Byrd,******588,76658127,2011-10-23,,USD,570.91,10,57.09,628.00,,non-PO,0.8,Procesado,"baja confianza en: proveedor_nombre_comercial, importe_neto"
+GD-054,invoice,"Zuniga, Short and Jensen",******764,64281058,2019-11-08,,USD,14014.99,10,1401.50,15416.49,,non-PO,0.8,Procesado,"baja confianza en: proveedor_nombre_comercial, importe_iva"
+GD-055,invoice,Soto and Sons,******829,64125453,2013-03-25,,USD,269.92,10,26.99,296.91,,non-PO,0.82,Procesado,"baja confianza en: importe_neto, importe_iva"
+GD-056,invoice,"Jimenez, Cummings and Ross",******703,84635791,2020-04-17,,USD,319.96,10,32.00,351.96,,non-PO,0.82,Procesado,"baja confianza en: importe_neto, importe_iva"
+GD-057,invoice,Cruz PLC,******203,94404257,2013-07-03,,USD,126.27,10,12.63,138.90,,non-PO,0.8,Procesado,"baja confianza en: proveedor_nombre_comercial, importe_neto"
+GD-058,invoice,Jackson-Johnson,******229,49106170,2013-04-30,,USD,8096.15,10,809.62,8905.77,,non-PO,0.78,Procesado,"baja confianza en: importe_neto, importe_iva"
+GD-059,invoice,"Campbell, Mathis and Johnson",******983,32131502,2019-02-26,,USD,6036.43,10,603.64,6640.07,,non-PO,0.81,Procesado,baja confianza en: importe_iva
+GD-060,invoice,Huerta Ltd,******411,34528548,2015-11-02,,USD,729.75,10,72.98,802.73,,non-PO,0.76,Revisar campos,"proveedor y cliente no pueden ser la misma entidad | baja confianza en: proveedor_nombre_comercial, importe_neto"
+GD-061,invoice,Jones and Sons,******583,12007995,2012-04-08,,USD,20.00,10,2.00,22.00,,non-PO,0.82,Procesado,baja confianza en: importe_neto
+GD-062,invoice,Pace-Baker,******920,34977445,2011-12-04,,USD,13722.57,10,1372.26,15094.83,,non-PO,0.81,Procesado,"baja confianza en: proveedor_nombre_comercial, importe_iva"
+GD-063,invoice,"Booth, Weber and Wall",******421,29086575,2020-08-07,,CAD,15567.65,10,1556.77,17124.42,,non-PO,0.8,Procesado,"baja confianza en: proveedor_nombre_comercial, importe_iva"
+GD-064,invoice,Cooper Group,******390,52093915,2017-08-29,,USD,1565.81,10,156.58,1722.39,,non-PO,0.8,Procesado,"baja confianza en: importe_neto, importe_iva"
+GD-065,invoice,Baird,******999,97675851,2016-05-25,,USD,140.67,10,14.07,154.74,,non-PO,0.81,Procesado,baja confianza en: importe_neto
+GD-066,invoice,Johnson-Cain,******573,52060328,2019-10-11,,USD,161.00,10,16.10,177.10,,non-PO,0.81,Procesado,"baja confianza en: importe_neto, importe_iva"
+GD-067,invoice,"Baker, Michael and Martin",******797,36279024,2014-08-18,,USD,1141.06,10,114.11,1255.17,,non-PO,0.78,Procesado,"baja confianza en: importe_neto, importe_iva"
+GD-068,invoice,Adams-Johnson,******081,64770456,2011-10-13,,USD,2135.48,10,213.55,2349.03,,non-PO,0.74,Procesado,"baja confianza en: proveedor_nombre_comercial, importe_neto, importe_iva"
+GD-069,invoice,Jones Ltd,******389,61942465,2012-08-27,,USD,40.00,10,4.00,44.00,,non-PO,0.84,Procesado,baja confianza en: importe_neto
+GD-070,invoice,Barker-Fletcher,******841,62788012,2013-03-12,,USD,199.90,10,19.99,219.89,,non-PO,0.81,Procesado,"baja confianza en: proveedor_nombre_comercial, importe_neto"
+GD-071,invoice,Grant and Sons,******951,87428284,2015-06-17,,USD,19.56,10,1.96,21.52,,non-PO,0.79,Procesado,"baja confianza en: proveedor_nombre_comercial, importe_neto"
+GD-072,invoice,Cox,******062,75299595,2011-06-03,,USD,247.86,10,24.79,272.65,,non-PO,0.81,Procesado,"baja confianza en: proveedor_nombre_comercial, importe_neto"
+GD-073,invoice,Moore Ltd,******223,26307902,2015-05-10,,CAD,94.60,10,9.46,104.06,,non-PO,0.84,Procesado,baja confianza en: importe_neto
+GD-074,invoice,Freeman and Sons,******676,77833987,2013-05-20,,USD,117.75,10,11.78,129.53,,non-PO,0.81,Procesado,baja confianza en: importe_neto
+GD-075,invoice,Carter Inc,******247,61669642,2013-11-12,,USD,137.62,10,13.76,151.38,,non-PO,0.78,Procesado,"baja confianza en: proveedor_nombre_comercial, importe_neto, importe_iva"
+GD-076,invoice,Cruz-Carter,******436,35593328,2011-06-08,,USD,2731.78,10,273.18,3004.96,,non-PO,0.72,Procesado,"baja confianza en: proveedor_nombre_comercial, importe_neto, importe_iva"
+GD-077,invoice,"Burns, King and Serrano",******891,34967709,2018-01-16,,USD,499.98,10,50.00,549.98,,non-PO,0.74,Procesado,"baja confianza en: proveedor_nombre_comercial, importe_neto, importe_iva"
+GD-078,invoice,Cooper-Fox,******434,32530472,2015-08-27,,USD,170.00,10,17.00,187.00,,non-PO,0.8,Procesado,"baja confianza en: importe_neto, importe_iva"
+GD-079,invoice,Gonzales-Faulkner,******738,61874671,2018-07-26,,USD,284.48,10,28.45,312.93,,non-PO,0.78,Procesado,"baja confianza en: importe_neto, importe_iva"
+GD-080,invoice,Myers Inc,******221,62256280,2020-11-08,,USD,2700.00,10,270.00,2970.00,,non-PO,0.8,Procesado,"baja confianza en: importe_neto, importe_iva"
+GD-081,invoice,"Moore, Gallagher and Villanueva",******459,25687531,2012-01-10,,USD,1125.00,10,112.50,1237.50,,non-PO,0.73,Procesado,"baja confianza en: proveedor_nombre_comercial, importe_neto, importe_iva"
+GD-082,invoice,Shepard PLC,******184,30885203,2020-03-28,,USD,322.79,10,32.28,355.07,,non-PO,0.84,Procesado,baja confianza en: importe_neto
+GD-083,invoice,"Long, Craig and Ford",******967,81384146,2015-01-24,,USD,324.25,10,32.43,356.68,,non-PO,0.79,Procesado,"baja confianza en: proveedor_nombre_comercial, importe_neto"
+GD-084,invoice,Martin-Butler,******430,42760323,2020-09-23,,USD,25329.96,10,2533.00,27862.96,,non-PO,0.86,Procesado,hay datos bancarios visibles pero no se pudieron estructurar
+GD-085,invoice,,******894,37959814,2013-07-12,,USD,6623.62,10,662.36,7285.98,,non-PO,0.71,Revisar campos,"campos criticos ausentes: proveedor_nombre_comercial | baja confianza en: importe_neto, importe_iva"
+GD-086,invoice,Johnson & Moore PA,******646,40949664,2020-05-12,,USD,382.95,10,38.30,421.25,,non-PO,0.81,Procesado,baja confianza en: importe_neto

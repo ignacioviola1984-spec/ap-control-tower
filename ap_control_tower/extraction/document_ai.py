@@ -504,6 +504,18 @@ def _validate_invoice(doc: dict, text: str, confidences: dict[str, Decimal]) -> 
     receiver = _fold(doc.get("cliente_nombre") or "")
     if supplier and receiver and supplier == receiver:
         warnings.append("proveedor y cliente no pueden ser la misma entidad")
+    # Confusión emisor/receptor: si el proveedor extraído es la propia empresa
+    # (el comprador), el extractor tomó el bloque "Facturar a" como emisor.
+    # run1 mostró este error con confianza 1.00, por eso no depende del score.
+    own_names = [
+        _fold(name.strip())
+        for name in os.getenv("AP_OWN_COMPANY_NAMES", "Meridia Consulting").split(",")
+        if name.strip()
+    ]
+    if supplier and any(own and own in supplier for own in own_names):
+        warnings.append(
+            "el proveedor extraido coincide con la empresa propia: "
+            "posible confusion emisor/receptor")
 
     try:
         net = Decimal(str(doc["importe_neto"]))

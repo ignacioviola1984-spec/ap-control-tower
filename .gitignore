@@ -50,3 +50,6 @@ desktop.ini
 # OneDrive / Office temporales
 ~$*
 *.tmp
+
+# Local Netlify folder
+.netlify

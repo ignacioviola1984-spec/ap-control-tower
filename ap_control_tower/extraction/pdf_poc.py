@@ -595,6 +595,11 @@ def _extract_references(doc: dict, text: str) -> None:
     po = _first_regex((
         r"\b(?:PO|P\.O\.|OC|Orden de Compra|Purchase Order|Pedido)\s*(?:number|no\.?|n[ºo.]*)?\s*[:#-]?\s*([A-Z]{0,5}[- ]?\d{3,}[A-Z0-9-]*)",
         r"\b(?:Orden de Compra|Purchase Order)\s+([A-Z]{2,5}\s*\d{3,}[A-Z0-9-]*)",
+        # Formato de referencia de pedido observado en run1 (2026-07-14):
+        # letras + numero/anio, p. ej. ABC07/2026. Las referencias ORD-… de
+        # contrato de proyecto NO van acá: son project_reference
+        # (ver test_contract_project_reference_is_not_promoted_to_po).
+        r"\b(?:Ref(?:erencia)?\.?|Nuestra ref\.?)\s*[:#-]?\s*([A-Z]{2,6}\s?\d{1,4}/\d{2,4})",
     ), text)
     if po:
         doc["po_reference"] = re.sub(r"\s+", " ", po).strip()

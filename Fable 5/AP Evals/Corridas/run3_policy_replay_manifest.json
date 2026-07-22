@@ -1,0 +1,168 @@
+{
+  "run_id": "run3-policy-replay",
+  "status": "completed_with_declared_limitations",
+  "created_at_utc": "2026-07-16T12:53:20+00:00",
+  "execution": {
+    "mode": "offline_policy_replay",
+    "document_ai_calls": 0,
+    "pdfs_opened": 0,
+    "cloud_services_called": []
+  },
+  "scope": {
+    "golden_documents": 106,
+    "formal_routing_documents": 96,
+    "out_of_scope_extraction_rows": [
+      "02. REMOTE 2026-05-Invoice-050IN26048878-Brand up slu",
+      "04. Orden de Compra EURE 1583 - PRETEST QUAL. POPEYES. Gesmar Incent",
+      "06. Orden de Compra EUBR 1529 - MUSHU. Judit."
+    ]
+  },
+  "inputs": {
+    "golden": {
+      "path": "Fable 5\\AP Evals\\Golden\\golden_dataset_v1.0.xlsx",
+      "version": "v1.0 corregido",
+      "sha256": "0291f0a34dbe3ae72380e5c5989a6a1062b09fc8dd8cabe927845c847e4cd944"
+    },
+    "run2_extraction": {
+      "path": "Fable 5\\AP Evals\\Corridas\\run2_extraccion.csv",
+      "sha256": "483734977dcb51fee5fb3ded7facec4197da077bd10d31e0553b5628daaece28"
+    }
+  },
+  "code": {
+    "git_commit": "8fc27fd6dd804745012adeaba0e8f7ea9166e0b7",
+    "git_dirty": true,
+    "workflow_path": "ap_control_tower/ui/trial/workflow.py",
+    "workflow_sha256": "1521ced381328ca76b57961d848d407e6be28c8942ae5d58da071957b30c534c"
+  },
+  "metrics": {
+    "run2_reconstructed": {
+      "scope_documents": 96,
+      "tp": 3,
+      "fp": 4,
+      "fn": 1,
+      "tn": 88,
+      "routing_accuracy_pct": 94.8,
+      "review_precision_pct": 42.9,
+      "review_recall_pct": 75.0
+    },
+    "run3_policy_replay": {
+      "scope_documents": 96,
+      "tp": 4,
+      "fp": 3,
+      "fn": 0,
+      "tn": 89,
+      "routing_accuracy_pct": 96.9,
+      "review_precision_pct": 57.1,
+      "review_recall_pct": 100.0
+    },
+    "run2_review_count": 10,
+    "run3_review_count": 11,
+    "run2_review_rate_pct": 9.4,
+    "run3_review_rate_pct": 10.4
+  },
+  "route_changes": [
+    {
+      "doc_id": "GD-018",
+      "run2": "revision_humana",
+      "run3": "en_lote",
+      "expected": "en_lote",
+      "interpretation": "libera un falso positivo de run2"
+    },
+    {
+      "doc_id": "GD-107",
+      "run2": "en_lote",
+      "run3": "revision_humana",
+      "expected": "bloqueada",
+      "interpretation": "el fix detecta el casi-duplicado C2"
+    },
+    {
+      "doc_id": "GD-119",
+      "run2": "en_lote",
+      "run3": "revision_humana",
+      "expected": "revision_humana",
+      "interpretation": "el fix recupera el falso negativo de run2"
+    }
+  ],
+  "duplicate_control": {
+    "expected_blocked_ids": [
+      "GD-106",
+      "GD-107",
+      "GD-108"
+    ],
+    "detected_expected_ids": [
+      "GD-106",
+      "GD-107",
+      "GD-108"
+    ],
+    "all_flagged_ids": [
+      "GD-105",
+      "GD-106",
+      "GD-107",
+      "GD-108"
+    ]
+  },
+  "not_evaluable_offline": {
+    "C6_DATOS_BANCARIOS": [
+      "GD-109",
+      "GD-110"
+    ],
+    "C3_AUTORIZACION_OC": [
+      "GD-111",
+      "GD-112"
+    ],
+    "C5_MATCH": [
+      "GD-113"
+    ],
+    "specialized_routes": [
+      "GD-116",
+      "GD-117"
+    ]
+  },
+  "limitations": [
+    "No reevalua la extraccion ni cambios de Document AI.",
+    "El CSV run2 no exporta IBAN completo ni estado/maestro de OC.",
+    "No permite afirmar cero escapes para todos los controles C2-C9.",
+    "La confianza persistida es agregada, no por campo."
+  ],
+  "commercial_evidence": {
+    "defensible_claims": [
+      "La politica actual fue reejecutada sobre 106 extracciones persistidas sin costo cloud.",
+      "La exactitud de ruteo del alcance comparable sube de 94.8% a 96.9%.",
+      "El recall de derivacion vuelve de 75.0% a 100.0%, sin falsos negativos en 96 casos formales.",
+      "Los fixes de casi-duplicado y nota de credito corrigen GD-107 y GD-119."
+    ],
+    "claims_not_supported_yet": [
+      "No revalida la exactitud de Document AI.",
+      "No demuestra integraciones productivas con Zoho o Sage.",
+      "No permite afirmar cero escapes para todos los controles C2-C9."
+    ]
+  },
+  "smoke_plan": {
+    "status": "deferred_until_zoho_sage_integrations",
+    "decision": "No ejecutar ahora: el costo no agrega evidencia comercial material antes de conectar los maestros externos.",
+    "entry_conditions": [
+      "Adaptadores Zoho/Sage conectados al circuito evaluable.",
+      "Maestros de proveedores, OC y datos bancarios disponibles con tratamiento seguro.",
+      "Version desplegable vinculada a un commit limpio.",
+      "Matriz de aceptacion acordada para C3, C5, C6 y rutas especializadas."
+    ],
+    "documents": 15,
+    "doc_ids": [
+      "GD-001",
+      "GD-105",
+      "GD-106",
+      "GD-107",
+      "GD-108",
+      "GD-109",
+      "GD-110",
+      "GD-111",
+      "GD-112",
+      "GD-113",
+      "GD-114",
+      "GD-116",
+      "GD-117",
+      "GD-118",
+      "GD-119"
+    ]
+  }
+}

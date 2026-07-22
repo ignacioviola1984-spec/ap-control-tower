@@ -1,0 +1,437 @@
+{"kind":"deck","id":"pr/rvj4hg","name":"Deck"}
+{"kind":"layout","layoutId":"/ppt/slideMasters/slideMaster1.xml","name":"Master","type":"master"}
+{"kind":"layout","layoutId":"/ppt/slideLayouts/slideLayout1.xml","name":"Title Slide","type":"title"}
+{"kind":"slide","id":"sl/y90nupkv","slide":1,"title":"PROPUESTA INTERNA · AP → CFO OFFICE","textShapes":7}
+{"kind":"shape","id":"sh/vmdcj2xw","slide":1,"name":"cover-accent-line","bbox":[64,54,94,5]}
+{"kind":"textbox","id":"sh/547294r6","slide":1,"name":"cover-kicker","text":"PROPUESTA INTERNA · AP → CFO OFFICE","textPreview":"PROPUESTA INTERNA · AP → CFO OFFICE","textChars":35,"textLines":1,"bbox":[64,78,380,28]}
+{"kind":"textbox","id":"sh/k3yl0zql","slide":1,"name":"cover-title","text":"AP Control Tower","textPreview":"AP Control Tower","textChars":16,"textLines":1,"bbox":[64,148,560,90]}
+{"kind":"textbox","id":"sh/7qp4be9c","slide":1,"name":"cover-thesis","text":"Control antes del pago. Base para una operación financiera conectada.","textPreview":"Control antes del pago. Base para una operación financiera conectada.","textChars":69,"textLines":1,"bbox":[64,270,535,150]}
+{"kind":"textbox","id":"sh/65g3298r","slide":1,"name":"cover-sub","text":"Primera implementación sobre el circuito actual: Gmail como entrada principal, integración progresiva y decisión humana preservada.","textPreview":"Primera implementación sobre el circuito actual: Gmail como entrada principal, integración progresiva y decisión humana preservada.","textChars":131,"textLines":1,"bbox":[64,458,520,100]}
+{"kind":"textbox","id":"sh/ts7md4r2","slide":1,"name":"cover-meta","text":"Producto casi listo · integración y aceptación por validar","textPreview":"Producto casi listo · integración y aceptación por validar","textChars":58,"textLines":1,"bbox":[64,614,520,28]}
+{"kind":"shape","id":"sh/sryl4zqx","slide":1,"name":"cover-image-frame","bbox":[660,88,556,520]}
+{"kind":"shape","id":"sh/utg3698n","slide":1,"name":"cover-product-mask","bbox":[692,444,492,30]}
+{"kind":"textbox","id":"sh/wn6dc7eh","slide":1,"name":"footer-note-1","text":"AP Control Tower · primera implementación → CFO Office","textPreview":"AP Control Tower · primera implementación → CFO Office","textChars":54,"textLines":1,"bbox":[64,678,980,20]}
+{"kind":"textbox","id":"sh/hofulsf2","slide":1,"name":"footer-page-1","text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[1160,676,56,20]}
+{"kind":"image","id":"im/bmxw3ido","slide":1,"name":"","geometry":"roundRect","bbox":[692,220,492,250]}
+{"kind":"notes","id":"nt/y90nupkv","slide":1,"text":""}
+{"kind":"slide","id":"sl/hwbqtkby","slide":2,"title":"PUNTO DE PARTIDA · OPERACIÓN ACTUAL","textShapes":21}
+{"kind":"textbox","id":"sh/u94fqp4n","slide":2,"name":"eyebrow-2","text":"PUNTO DE PARTIDA · OPERACIÓN ACTUAL","textPreview":"PUNTO DE PARTIDA · OPERACIÓN ACTUAL","textChars":35,"textLines":1,"bbox":[64,38,420,24]}
+{"kind":"textbox","id":"sh/9072xkry","slide":2,"name":"title-2","text":"Gmail inicia el proceso; la fragmentación aparece después de recibir la factura.","textPreview":"Gmail inicia el proceso; la fragmentación aparece después de recibir la factura.","textChars":80,"textLines":1,"bbox":[64,75,1152,92]}
+{"kind":"shape","id":"sh/ozy1ofad","slide":2,"name":"title-rule-2","bbox":[64,190,1152,1]}
+{"kind":"textbox","id":"sh/b29kza94","slide":2,"name":"problem-thesis","text":"El volumen actual es manejable, pero evidencia, datos y decisiones pasan por varias personas y herramientas antes del pago.","textPreview":"El volumen actual es manejable, pero evidencia, datos y decisiones pasan por varias personas y herramientas antes del pago.","textChars":123,"textLines":1,"bbox":[64,250,420,150]}
+{"kind":"textbox","id":"sh/a10jqpsj","slide":2,"name":"problem-consequence","text":"La oportunidad es controlar mejor sin forzar un cambio brusco del circuito ni quitar autoridad al equipo.","textPreview":"La oportunidad es controlar mejor sin forzar un cambio brusco del circuito ni quitar autoridad al equipo.","textChars":105,"textLines":1,"bbox":[64,460,405,88]}
+{"kind":"textbox","id":"sh/x4r21kru","slide":2,"name":"problem-n-0","text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[548,242,42,24]}
+{"kind":"textbox","id":"sh/w3i1sfa9","slide":2,"name":"problem-title-0","text":"Facturas por Gmail","textPreview":"Facturas por Gmail","textChars":18,"textLines":1,"bbox":[606,242,278,30]}
+{"kind":"textbox","id":"sh/r65knqtk","slide":2,"name":"problem-body-0","text":"Entrada principal actual y punto natural para iniciar la integración.","textPreview":"Entrada principal actual y punto natural para iniciar la integración.","textChars":69,"textLines":1,"bbox":[896,242,320,48]}
+{"kind":"shape","id":"sh/q5wjelsz","slide":2,"name":"problem-rule-0","bbox":[548,303,668,1]}
+{"kind":"textbox","id":"sh/ove9o7yd","slide":2,"name":"problem-n-1","text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[548,320,42,24]}
+{"kind":"textbox","id":"sh/9wnqhczy","slide":2,"name":"problem-title-1","text":"Descarga y revisión manual","textPreview":"Descarga y revisión manual","textChars":26,"textLines":1,"bbox":[606,320,278,30]}
+{"kind":"textbox","id":"sh/mtwrmxg7","slide":2,"name":"problem-body-1","text":"Cada documento exige lectura, búsqueda y clasificación.","textPreview":"Cada documento exige lectura, búsqueda y clasificación.","textChars":55,"textLines":1,"bbox":[896,320,320,48]}
+{"kind":"shape","id":"sh/nu58f2hs","slide":2,"name":"problem-rule-1","bbox":[548,381,668,1]}
+{"kind":"textbox","id":"sh/wjy9sry9","slide":2,"name":"problem-n-2","text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[548,398,42,24]}
+{"kind":"textbox","id":"sh/xk7qlczu","slide":2,"name":"problem-title-2","text":"Recarga en Sage y Excel","textPreview":"Recarga en Sage y Excel","textChars":23,"textLines":1,"bbox":[606,398,278,30]}
+{"kind":"textbox","id":"sh/ahwrqhgj","slide":2,"name":"problem-body-2","text":"Los datos se trasladan entre herramientas con validaciones manuales.","textPreview":"Los datos se trasladan entre herramientas con validaciones manuales.","textChars":68,"textLines":1,"bbox":[896,398,320,48]}
+{"kind":"shape","id":"sh/bip8jmho","slide":2,"name":"problem-rule-2","bbox":[548,459,668,1]}
+{"kind":"textbox","id":"sh/cnupgny5","slide":2,"name":"problem-n-3","text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[548,476,42,24]}
+{"kind":"textbox","id":"sh/do3q9szq","slide":2,"name":"problem-title-3","text":"Aprobaciones por mensajes","textPreview":"Aprobaciones por mensajes","textChars":25,"textLines":1,"bbox":[606,476,278,30]}
+{"kind":"textbox","id":"sh/t8byxkn2","slide":2,"name":"problem-body-3","text":"Excepciones y decisiones quedan repartidas entre conversaciones.","textPreview":"Excepciones y decisiones quedan repartidas entre conversaciones.","textChars":64,"textLines":1,"bbox":[896,476,320,48]}
+{"kind":"shape","id":"sh/s72xofmh","slide":2,"name":"problem-rule-3","bbox":[548,537,668,1]}
+{"kind":"textbox","id":"sh/76twva5c","slide":2,"name":"problem-n-4","text":"05","textPreview":"05","textChars":2,"textLines":1,"bbox":[548,554,42,24]}
+{"kind":"textbox","id":"sh/65kfmpor","slide":2,"name":"problem-title-4","text":"Preparación para Banco Sabadell","textPreview":"Preparación para Banco Sabadell","textChars":31,"textLines":1,"bbox":[606,554,278,30]}
+{"kind":"textbox","id":"sh/hcvy14ne","slide":2,"name":"problem-body-4","text":"El control final ocurre cerca del pago y la evidencia se reconstruye.","textPreview":"El control final ocurre cerca del pago y la evidencia se reconstruye.","textChars":69,"textLines":1,"bbox":[896,554,320,48]}
+{"kind":"textbox","id":"sh/gbmxszmt","slide":2,"name":"footer-note-2","text":"AP Control Tower · primera implementación → CFO Office","textPreview":"AP Control Tower · primera implementación → CFO Office","textChars":54,"textLines":1,"bbox":[64,678,980,20]}
+{"kind":"textbox","id":"sh/fadgzu58","slide":2,"name":"footer-page-2","text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[1160,676,56,20]}
+{"kind":"notes","id":"nt/hwbqtkby","slide":2,"text":""}
+{"kind":"slide","id":"sl/ofy9wn61","slide":3,"title":"AS-IS MAPEADO","textShapes":20}
+{"kind":"textbox","id":"sh/sfix03y9","slide":3,"name":"eyebrow-7","text":"AS-IS MAPEADO","textPreview":"AS-IS MAPEADO","textChars":13,"textLines":1,"bbox":[64,38,420,24]}
+{"kind":"textbox","id":"sh/cza94vmx","slide":3,"name":"title-7","text":"La oportunidad nace de la fragmentación, no de un volumen extremo.","textPreview":"La oportunidad nace de la fragmentación, no de un volumen extremo.","textChars":66,"textLines":1,"bbox":[64,75,1152,92]}
+{"kind":"textbox","id":"sh/d0jax03i","slide":3,"name":"subtitle-7","text":"Baseline observado del circuito actual; no es una estimación de ahorro ni una promesa de producto.","textPreview":"Baseline observado del circuito actual; no es una estimación de ahorro ni una promesa de producto.","textChars":98,"textLines":1,"bbox":[64,166,1110,52]}
+{"kind":"shape","id":"sh/298ryl4v","slide":3,"name":"title-rule-7","bbox":[64,226,1152,1]}
+{"kind":"shape","id":"sh/3ah8rqlg","slide":3,"name":"evidence-1-surface","bbox":[64,270,266,150]}
+{"kind":"textbox","id":"sh/obq90bml","slide":3,"name":"evidence-1-value","text":"~35","textPreview":"~35","textChars":3,"textLines":1,"bbox":[84,294,226,58]}
+{"kind":"textbox","id":"sh/pcjqtg36","slide":3,"name":"evidence-1-label","text":"facturas por mes","textPreview":"facturas por mes","textChars":16,"textLines":1,"bbox":[84,361,226,38]}
+{"kind":"shape","id":"sh/m5cra54z","slide":3,"name":"evidence-2-surface","bbox":[350,270,266,150]}
+{"kind":"textbox","id":"sh/n6ls3alk","slide":3,"name":"evidence-2-value","text":"30","textPreview":"30","textChars":2,"textLines":1,"bbox":[370,294,226,58]}
+{"kind":"textbox","id":"sh/n2l4fq98","slide":3,"name":"evidence-2-label","text":"pasos manuales mapeados","textPreview":"pasos manuales mapeados","textChars":23,"textLines":1,"bbox":[370,361,226,38]}
+{"kind":"shape","id":"sh/m1c3mlsn","slide":3,"name":"evidence-3-surface","bbox":[636,270,266,150]}
+{"kind":"textbox","id":"sh/943mhgre","slide":3,"name":"evidence-3-value","text":"2–4","textPreview":"2–4","textChars":3,"textLines":1,"bbox":[656,294,226,58]}
+{"kind":"textbox","id":"sh/83ulovat","slide":3,"name":"evidence-3-label","text":"personas por circuito","textPreview":"personas por circuito","textChars":21,"textLines":1,"bbox":[656,361,226,38]}
+{"kind":"shape","id":"sh/v6l4jq94","slide":3,"name":"evidence-4-surface","bbox":[922,270,294,150]}
+{"kind":"textbox","id":"sh/a5c3ql8z","slide":3,"name":"evidence-4-value","text":"5","textPreview":"5","textChars":1,"textLines":1,"bbox":[942,294,254,58]}
+{"kind":"textbox","id":"sh/x8nml0ra","slide":3,"name":"evidence-4-label","text":"sistemas o canales","textPreview":"sistemas o canales","textChars":18,"textLines":1,"bbox":[942,361,254,38]}
+{"kind":"textbox","id":"sh/w7ulsvqp","slide":3,"name":"proof-title-0","text":"Gmail","textPreview":"Gmail","textChars":5,"textLines":1,"bbox":[64,480,340,30]}
+{"kind":"textbox","id":"sh/ja54na9g","slide":3,"name":"proof-body-0","text":"Entrada principal actual.","textPreview":"Entrada principal actual.","textChars":25,"textLines":1,"bbox":[64,528,340,50]}
+{"kind":"textbox","id":"sh/i9w3u58v","slide":3,"name":"proof-title-1","text":"Sage + Excel","textPreview":"Sage + Excel","textChars":12,"textLines":1,"bbox":[452,480,340,30]}
+{"kind":"textbox","id":"sh/e10f2twf","slide":3,"name":"proof-body-1","text":"Recarga y validación manual.","textPreview":"Recarga y validación manual.","textChars":28,"textLines":1,"bbox":[452,528,340,50]}
+{"kind":"textbox","id":"sh/f29gbyx0","slide":3,"name":"proof-title-2","text":"Banco Sabadell","textPreview":"Banco Sabadell","textChars":14,"textLines":1,"bbox":[840,480,340,30]}
+{"kind":"textbox","id":"sh/03ix43e5","slide":3,"name":"proof-body-2","text":"Preparación del pago semanal.","textPreview":"Preparación del pago semanal.","textChars":29,"textLines":1,"bbox":[840,528,340,50]}
+{"kind":"textbox","id":"sh/14ryd8fq","slide":3,"name":"proof-link","text":"Baseline para validar durante integration readiness","textPreview":"Baseline para validar durante integration readiness","textChars":51,"textLines":1,"bbox":[64,617,500,26]}
+{"kind":"textbox","id":"sh/6d0fytg3","slide":3,"name":"footer-note-7","text":"AP Control Tower · primera implementación → CFO Office","textPreview":"AP Control Tower · primera implementación → CFO Office","textChars":54,"textLines":1,"bbox":[64,678,980,20]}
+{"kind":"textbox","id":"sh/re9g7yxo","slide":3,"name":"footer-page-7","text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[1160,676,56,20]}
+{"kind":"notes","id":"nt/ofy9wn61","slide":3,"text":""}
+{"kind":"slide","id":"sl/jyx0ra1s","slide":4,"title":"POR QUÉ AP CONTROL TOWER","textShapes":14}
+{"kind":"textbox","id":"sh/v6tsv2xo","slide":4,"name":"eyebrow-3","text":"POR QUÉ AP CONTROL TOWER","textPreview":"POR QUÉ AP CONTROL TOWER","textChars":24,"textLines":1,"bbox":[64,38,420,24]}
+{"kind":"textbox","id":"sh/1cj2d8b6","slide":4,"name":"title-3","text":"Leer la factura es un paso; el valor está en gobernar lo que sucede después.","textPreview":"Leer la factura es un paso; el valor está en gobernar lo que sucede después.","textChars":76,"textLines":1,"bbox":[64,75,1152,92]}
+{"kind":"shape","id":"sh/0ba143al","slide":4,"name":"title-rule-3","bbox":[64,190,1152,1]}
+{"kind":"textbox","id":"sh/rm1k7yt4","slide":4,"name":"value-n-0","text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[64,268,58,28]}
+{"kind":"textbox","id":"sh/ql8jytsj","slide":4,"name":"value-title-0","text":"Evidencia","textPreview":"Evidencia","textChars":9,"textLines":1,"bbox":[64,314,330,64]}
+{"kind":"textbox","id":"sh/doj29oba","slide":4,"name":"value-body-0","text":"Cada dato conserva vínculo con el documento fuente. Los campos inciertos se muestran para revisión, no se ocultan.","textPreview":"Cada dato conserva vínculo con el documento fuente. Los campos inciertos se muestran para revisión, no se ocultan.","textChars":114,"textLines":1,"bbox":[64,397,330,135]}
+{"kind":"textbox","id":"sh/sna103ap","slide":4,"name":"value-n-1","text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[452,268,58,28]}
+{"kind":"textbox","id":"sh/3ihk3et8","slide":4,"name":"value-title-1","text":"Decisión","textPreview":"Decisión","textChars":8,"textLines":1,"bbox":[452,314,330,64]}
+{"kind":"textbox","id":"sh/ih8ju9sn","slide":4,"name":"value-body-1","text":"Routing, reglas y excepciones convierten documentos dispersos en una cola de trabajo priorizada y explicable.","textPreview":"Routing, reglas y excepciones convierten documentos dispersos en una cola de trabajo priorizada y explicable.","textChars":109,"textLines":1,"bbox":[452,397,330,135]}
+{"kind":"textbox","id":"sh/kbm987y5","slide":4,"name":"value-n-2","text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[840,268,58,28]}
+{"kind":"textbox","id":"sh/5cva1cfq","slide":4,"name":"value-title-2","text":"Control","textPreview":"Control","textChars":7,"textLines":1,"bbox":[840,314,330,64]}
+{"kind":"textbox","id":"sh/i94r6xgz","slide":4,"name":"value-body-2","text":"Maker–checker, aprobación humana y audit trail gobiernan la propuesta antes de cualquier movimiento de dinero.","textPreview":"Maker–checker, aprobación humana y audit trail gobiernan la propuesta antes de cualquier movimiento de dinero.","textChars":110,"textLines":1,"bbox":[840,397,330,135]}
+{"kind":"shape","id":"sh/jadsz2xk","slide":4,"name":"value-bottom-rule","bbox":[64,570,1152,1]}
+{"kind":"textbox","id":"sh/w72947yt","slide":4,"name":"human-gate-claim","text":"AP no es solo captura documental: es un problema de control previo al pago.","textPreview":"AP no es solo captura documental: es un problema de control previo al pago.","textChars":75,"textLines":1,"bbox":[64,595,1080,42]}
+{"kind":"textbox","id":"sh/x8vaxsfe","slide":4,"name":"footer-note-3","text":"AP Control Tower · primera implementación → CFO Office","textPreview":"AP Control Tower · primera implementación → CFO Office","textChars":54,"textLines":1,"bbox":[64,678,980,20]}
+{"kind":"textbox","id":"sh/a5kr2xg3","slide":4,"name":"footer-page-3","text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[1160,676,56,20]}
+{"kind":"notes","id":"nt/jyx0ra1s","slide":4,"text":""}
+{"kind":"slide","id":"sl/i107q5of","slide":5,"title":"AP CONTROL TOWER · FLUJO END-TO-END","textShapes":37}
+{"kind":"textbox","id":"sh/0r6h8z6x","slide":5,"name":"eyebrow-4","text":"AP CONTROL TOWER · FLUJO END-TO-END","textPreview":"AP CONTROL TOWER · FLUJO END-TO-END","textChars":35,"textLines":1,"bbox":[64,38,420,24]}
+{"kind":"textbox","id":"sh/dgbulwnm","slide":5,"name":"title-4","text":"De la factura recibida a una obligación aprobada y auditable.","textPreview":"De la factura recibida a una obligación aprobada y auditable.","textChars":61,"textLines":1,"bbox":[64,75,1152,92]}
+{"kind":"shape","id":"sh/cf2tcr61","slide":5,"name":"title-rule-4","bbox":[64,190,1152,1]}
+{"kind":"shape","id":"sh/z2tcnm5s","slide":5,"name":"flow-top-connector-0","bbox":[328,315,32,2]}
+{"kind":"shape","id":"sh/yhkbe1o7","slide":5,"name":"flow-top-connector-1","bbox":[624,315,32,2]}
+{"kind":"shape","id":"sh/l4bupwny","slide":5,"name":"flow-top-connector-2","bbox":[920,315,32,2]}
+{"kind":"shape","id":"sh/032tgr6d","slide":5,"name":"flow-turn-down","bbox":[1084,372,2,0]}
+{"kind":"shape","id":"sh/n6dcr65o","slide":5,"name":"flow-bottom-connector-0","bbox":[328,505,32,2]}
+{"kind":"shape","id":"sh/m5kbi1oj","slide":5,"name":"flow-bottom-connector-1","bbox":[624,505,32,2]}
+{"kind":"shape","id":"sh/w32dkbuh","slide":5,"name":"flow-bottom-connector-2","bbox":[920,505,32,2]}
+{"kind":"shape","id":"sh/x4vedgvm","slide":5,"name":"top-0-box","bbox":[64,260,264,112]}
+{"kind":"textbox","id":"sh/ahkvi1cb","slide":5,"name":"top-0-n","text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[80,274,34,22]}
+{"kind":"textbox","id":"sh/v2twb6dw","slide":5,"name":"top-0-title","text":"Intake","textPreview":"Intake","textChars":6,"textLines":1,"bbox":[80,302,232,28]}
+{"kind":"textbox","id":"sh/k7mxovud","slide":5,"name":"top-0-detail","text":"Gmail read-only o PDF","textPreview":"Gmail read-only o PDF","textChars":21,"textLines":1,"bbox":[80,334,232,23]}
+{"kind":"shape","id":"sh/58vehgvy","slide":5,"name":"top-1-box","bbox":[360,260,264,112]}
+{"kind":"textbox","id":"sh/i54fmlc7","slide":5,"name":"top-1-n","text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[376,274,34,22]}
+{"kind":"textbox","id":"sh/j6dwfqds","slide":5,"name":"top-1-title","text":"Extracción","textPreview":"Extracción","textChars":10,"textLines":1,"bbox":[376,302,232,28]}
+{"kind":"textbox","id":"sh/sb6xsvu9","slide":5,"name":"top-1-detail","text":"Document AI + evidencia","textPreview":"Document AI + evidencia","textChars":23,"textLines":1,"bbox":[376,334,232,23]}
+{"kind":"shape","id":"sh/tcfel0vu","slide":5,"name":"top-2-box","bbox":[656,260,264,112]}
+{"kind":"textbox","id":"sh/hgrmpwj2","slide":5,"name":"top-2-n","text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[672,274,34,22]}
+{"kind":"textbox","id":"sh/gfi5grih","slide":5,"name":"top-2-title","text":"Routing","textPreview":"Routing","textChars":7,"textLines":1,"bbox":[672,302,232,28]}
+{"kind":"textbox","id":"sh/fe94nm1w","slide":5,"name":"top-2-detail","text":"PO · non-PO · anticipos","textPreview":"PO · non-PO · anticipos","textChars":23,"textLines":1,"bbox":[672,334,232,23]}
+{"kind":"shape","id":"sh/ud0ne10b","slide":5,"name":"top-3-box","bbox":[952,260,264,112]}
+{"kind":"textbox","id":"sh/pkr6tgjy","slide":5,"name":"top-3-n","text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[968,274,34,22]}
+{"kind":"textbox","id":"sh/4ji5kbid","slide":5,"name":"top-3-title","text":"Controles","textPreview":"Controles","textChars":9,"textLines":1,"bbox":[968,302,232,28]}
+{"kind":"textbox","id":"sh/3i94r61s","slide":5,"name":"top-3-detail","text":"Reglas + hard/soft flags","textPreview":"Reglas + hard/soft flags","textChars":24,"textLines":1,"bbox":[968,334,232,23]}
+{"kind":"shape","id":"sh/2h0ni107","slide":5,"name":"bottom-0-box","bbox":[64,450,264,112]}
+{"kind":"textbox","id":"sh/5o7mhcju","slide":5,"name":"bottom-0-n","text":"08","textPreview":"08","textChars":2,"textLines":1,"bbox":[80,464,34,22]}
+{"kind":"textbox","id":"sh/kny587i9","slide":5,"name":"bottom-0-title","text":"Cierre","textPreview":"Cierre","textChars":6,"textLines":1,"bbox":[80,492,232,28]}
+{"kind":"textbox","id":"sh/atcjidg7","slide":5,"name":"bottom-0-detail","text":"Obligación + audit trail","textPreview":"Obligación + audit trail","textChars":24,"textLines":1,"bbox":[80,524,232,23]}
+{"kind":"shape","id":"sh/vu5kbihc","slide":5,"name":"bottom-1-box","bbox":[360,450,264,112]}
+{"kind":"textbox","id":"sh/wve1knyx","slide":5,"name":"bottom-1-n","text":"07","textPreview":"07","textChars":2,"textLines":1,"bbox":[376,464,34,22]}
+{"kind":"textbox","id":"sh/xwn2dszi","slide":5,"name":"bottom-1-title","text":"Aprobación","textPreview":"Aprobación","textChars":10,"textLines":1,"bbox":[376,492,232,28]}
+{"kind":"textbox","id":"sh/ihw3mxg3","slide":5,"name":"bottom-1-detail","text":"Human gate obligatorio","textPreview":"Human gate obligatorio","textChars":22,"textLines":1,"bbox":[376,524,232,23]}
+{"kind":"shape","id":"sh/ji5kf2ho","slide":5,"name":"bottom-2-box","bbox":[656,450,264,112]}
+{"kind":"textbox","id":"sh/kjelony9","slide":5,"name":"bottom-2-n","text":"06","textPreview":"06","textChars":2,"textLines":1,"bbox":[672,464,34,22]}
+{"kind":"textbox","id":"sh/5kn2hszu","slide":5,"name":"bottom-2-title","text":"Maker–checker","textPreview":"Maker–checker","textChars":13,"textLines":1,"bbox":[672,492,232,28]}
+{"kind":"textbox","id":"sh/e1sjatgz","slide":5,"name":"bottom-2-detail","text":"Doble validación","textPreview":"Doble validación","textChars":16,"textLines":1,"bbox":[672,524,232,23]}
+{"kind":"shape","id":"sh/zmlk3yhk","slide":5,"name":"bottom-3-box","bbox":[952,450,264,112]}
+{"kind":"textbox","id":"sh/fid07u98","slide":5,"name":"bottom-3-n","text":"05","textPreview":"05","textChars":2,"textLines":1,"bbox":[968,464,34,22]}
+{"kind":"textbox","id":"sh/ehkzepsn","slide":5,"name":"bottom-3-title","text":"Revisión","textPreview":"Revisión","textChars":8,"textLines":1,"bbox":[968,492,232,28]}
+{"kind":"textbox","id":"sh/1kvi94re","slide":5,"name":"bottom-3-detail","text":"Solo campos inciertos","textPreview":"Solo campos inciertos","textChars":21,"textLines":1,"bbox":[968,524,232,23]}
+{"kind":"textbox","id":"sh/gjmhgzqt","slide":5,"name":"flow-top-arrow-0","text":"→","textPreview":"→","textChars":1,"textLines":1,"bbox":[334,299,20,30]}
+{"kind":"textbox","id":"sh/3md0bu94","slide":5,"name":"flow-bottom-arrow-0","text":"←","textPreview":"←","textChars":1,"textLines":1,"bbox":[334,489,20,30]}
+{"kind":"textbox","id":"sh/2l4zip8j","slide":5,"name":"flow-top-arrow-1","text":"→","textPreview":"→","textChars":1,"textLines":1,"bbox":[630,299,20,30]}
+{"kind":"textbox","id":"sh/povid4ra","slide":5,"name":"flow-bottom-arrow-1","text":"←","textPreview":"←","textChars":1,"textLines":1,"bbox":[630,489,20,30]}
+{"kind":"textbox","id":"sh/onmhkzqp","slide":5,"name":"flow-top-arrow-2","text":"→","textPreview":"→","textChars":1,"textLines":1,"bbox":[926,299,20,30]}
+{"kind":"textbox","id":"sh/bqx0fe9g","slide":5,"name":"flow-bottom-arrow-2","text":"←","textPreview":"←","textChars":1,"textLines":1,"bbox":[926,489,20,30]}
+{"kind":"textbox","id":"sh/qp4jm98v","slide":5,"name":"flow-down-arrow","text":"↓","textPreview":"↓","textChars":1,"textLines":1,"bbox":[1074,395,22,30]}
+{"kind":"textbox","id":"sh/8f6hcj6t","slide":5,"name":"flow-automation-label","text":"AUTOMATIZACIÓN, EVIDENCIA Y CONTROL","textPreview":"AUTOMATIZACIÓN, EVIDENCIA Y CONTROL","textChars":35,"textLines":1,"bbox":[64,229,500,20]}
+{"kind":"textbox","id":"sh/9gfy5o7e","slide":5,"name":"flow-governance-label","text":"GOBIERNO Y DECISIÓN HUMANA","textPreview":"GOBIERNO Y DECISIÓN HUMANA","textChars":26,"textLines":1,"bbox":[64,419,500,20]}
+{"kind":"textbox","id":"sh/mdoza9o3","slide":5,"name":"footer-note-4","text":"AP Control Tower · primera implementación → CFO Office","textPreview":"AP Control Tower · primera implementación → CFO Office","textChars":54,"textLines":1,"bbox":[64,678,980,20]}
+{"kind":"textbox","id":"sh/nexg3epo","slide":5,"name":"footer-page-4","text":"05","textPreview":"05","textChars":2,"textLines":1,"bbox":[1160,676,56,20]}
+{"kind":"notes","id":"nt/i107q5of","slide":5,"text":""}
+{"kind":"slide","id":"sl/x8f69ofe","slide":6,"title":"AUTORIDAD HUMANA","textShapes":14}
+{"kind":"textbox","id":"sh/i54bylor","slide":6,"name":"eyebrow-3","text":"AUTORIDAD HUMANA","textPreview":"AUTORIDAD HUMANA","textChars":16,"textLines":1,"bbox":[64,38,420,24]}
+{"kind":"textbox","id":"sh/yhg7epsj","slide":6,"name":"title-3","text":"El sistema prepara la decisión; las personas conservan la autoridad.","textPreview":"El sistema prepara la decisión; las personas conservan la autoridad.","textChars":68,"textLines":1,"bbox":[64,75,1152,92]}
+{"kind":"shape","id":"sh/zi98nu94","slide":6,"name":"title-rule-3","bbox":[64,190,1152,1]}
+{"kind":"textbox","id":"sh/87ipkzal","slide":6,"name":"value-n-0","text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[64,268,58,28]}
+{"kind":"textbox","id":"sh/98rqt4r6","slide":6,"name":"value-title-0","text":"Sistema","textPreview":"Sistema","textChars":7,"textLines":1,"bbox":[64,314,330,64]}
+{"kind":"textbox","id":"sh/ml07i9sv","slide":6,"name":"value-body-0","text":"Lee, normaliza, busca evidencia, aplica reglas y propone una ruta. No aprueba ni ejecuta pagos.","textPreview":"Lee, normaliza, busca evidencia, aplica reglas y propone una ruta. No aprueba ni ejecuta pagos.","textChars":95,"textLines":1,"bbox":[64,397,330,135]}
+{"kind":"textbox","id":"sh/7m98ru9g","slide":6,"name":"value-n-1","text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[452,268,58,28]}
+{"kind":"textbox","id":"sh/oryp8fah","slide":6,"name":"value-title-1","text":"Revisor","textPreview":"Revisor","textChars":7,"textLines":1,"bbox":[452,314,330,64]}
+{"kind":"textbox","id":"sh/pc76hkr2","slide":6,"name":"value-body-1","text":"Resuelve datos inciertos y excepciones con documento, motivo y trazabilidad visibles.","textPreview":"Resuelve datos inciertos y excepciones con documento, motivo y trazabilidad visibles.","textChars":85,"textLines":1,"bbox":[452,397,330,135]}
+{"kind":"textbox","id":"sh/h4bupgn6","slide":6,"name":"value-n-2","text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[840,268,58,28]}
+{"kind":"textbox","id":"sh/w32twb6l","slide":6,"name":"value-title-2","text":"Aprobador","textPreview":"Aprobador","textChars":9,"textLines":1,"bbox":[840,314,330,64]}
+{"kind":"textbox","id":"sh/v2tcn650","slide":6,"name":"value-body-2","text":"Acepta o rechaza la obligación según políticas, segregación de funciones y nivel de autoridad.","textPreview":"Acepta o rechaza la obligación según políticas, segregación de funciones y nivel de autoridad.","textChars":94,"textLines":1,"bbox":[840,397,330,135]}
+{"kind":"shape","id":"sh/u1kbu1ov","slide":6,"name":"value-bottom-rule","bbox":[64,570,1152,1]}
+{"kind":"textbox","id":"sh/5svutgni","slide":6,"name":"human-gate-claim","text":"Límite operativo: no booking y no payment execution sin aprobación humana.","textPreview":"Límite operativo: no booking y no payment execution sin aprobación humana.","textChars":74,"textLines":1,"bbox":[64,595,1080,42]}
+{"kind":"textbox","id":"sh/47mt0b6x","slide":6,"name":"footer-note-3","text":"AP Control Tower · primera implementación → CFO Office","textPreview":"AP Control Tower · primera implementación → CFO Office","textChars":54,"textLines":1,"bbox":[64,678,980,20]}
+{"kind":"textbox","id":"sh/j6dcr65c","slide":6,"name":"footer-page-3","text":"06","textPreview":"06","textChars":2,"textLines":1,"bbox":[1160,676,56,20]}
+{"kind":"notes","id":"nt/x8f69ofe","slide":6,"text":""}
+{"kind":"slide","id":"sl/gnmp4jqx","slide":7,"title":"CONTROLES ANTES DEL PAGO","textShapes":23}
+{"kind":"textbox","id":"sh/f6xkvq5c","slide":7,"name":"eyebrow-6","text":"CONTROLES ANTES DEL PAGO","textPreview":"CONTROLES ANTES DEL PAGO","textChars":24,"textLines":1,"bbox":[64,38,420,24]}
+{"kind":"textbox","id":"sh/cb2tkvap","slide":7,"name":"title-6","text":"Cobertura útil hoy; evidencia adicional cuando se conecten los maestros del cliente.","textPreview":"Cobertura útil hoy; evidencia adicional cuando se conecten los maestros del cliente.","textChars":84,"textLines":1,"bbox":[64,75,1152,92]}
+{"kind":"shape","id":"sh/dcbud0ra","slide":7,"name":"title-rule-6","bbox":[64,190,1152,1]}
+{"kind":"textbox","id":"sh/ydkbm5sv","slide":7,"name":"case-n-0","text":"01 · LIVE","textPreview":"01 · LIVE","textChars":9,"textLines":1,"bbox":[64,260,40,24]}
+{"kind":"textbox","id":"sh/zedcfa9g","slide":7,"name":"case-title-0","text":"Duplicados y casi-duplicados","textPreview":"Duplicados y casi-duplicados","textChars":28,"textLines":1,"bbox":[126,260,440,32]}
+{"kind":"textbox","id":"sh/kzmdova1","slide":7,"name":"case-body-0","text":"Proveedor, número, importe y proximidad temporal.","textPreview":"Proveedor, número, importe y proximidad temporal.","textChars":49,"textLines":1,"bbox":[126,304,470,48]}
+{"kind":"shape","id":"sh/l0vuh0rm","slide":7,"name":"case-rule-0","bbox":[64,358,520,1]}
+{"kind":"textbox","id":"sh/eh0ba1sr","slide":7,"name":"case-n-1","text":"02 · LIVE","textPreview":"02 · LIVE","textChars":9,"textLines":1,"bbox":[64,376,40,24]}
+{"kind":"textbox","id":"sh/fi9c369c","slide":7,"name":"case-title-1","text":"Notas de crédito","textPreview":"Notas de crédito","textChars":16,"textLines":1,"bbox":[126,376,440,32]}
+{"kind":"textbox","id":"sh/baxkjqlk","slide":7,"name":"case-body-1","text":"Clasificación separada y tratamiento gobernado.","textPreview":"Clasificación separada y tratamiento gobernado.","textChars":47,"textLines":1,"bbox":[126,420,470,48]}
+{"kind":"shape","id":"sh/a9ojq5kz","slide":7,"name":"case-rule-1","bbox":[64,474,520,1]}
+{"kind":"textbox","id":"sh/xcz2l03q","slide":7,"name":"case-n-2","text":"03 · LIVE","textPreview":"03 · LIVE","textChars":9,"textLines":1,"bbox":[64,492,40,24]}
+{"kind":"textbox","id":"sh/cbq1sv25","slide":7,"name":"case-title-2","text":"Gate humano","textPreview":"Gate humano","textChars":11,"textLines":1,"bbox":[126,492,440,32]}
+{"kind":"textbox","id":"sh/n6x0fqlo","slide":7,"name":"case-body-2","text":"La propuesta no se convierte sola en pago.","textPreview":"La propuesta no se convierte sola en pago.","textChars":42,"textLines":1,"bbox":[126,536,470,48]}
+{"kind":"textbox","id":"sh/25ojml43","slide":7,"name":"case-n-3","text":"04 · ERP","textPreview":"04 · ERP","textChars":8,"textLines":1,"bbox":[660,260,40,24]}
+{"kind":"textbox","id":"sh/p8fih03e","slide":7,"name":"case-title-3","text":"Maestro de proveedores","textPreview":"Maestro de proveedores","textChars":22,"textLines":1,"bbox":[722,260,440,32]}
+{"kind":"textbox","id":"sh/o761ov2t","slide":7,"name":"case-body-3","text":"Alta, estado y cambios contrastados con el sistema fuente.","textPreview":"Alta, estado y cambios contrastados con el sistema fuente.","textChars":58,"textLines":1,"bbox":[722,304,470,48]}
+{"kind":"shape","id":"sh/f2d0b6lc","slide":7,"name":"case-rule-3","bbox":[660,358,520,1]}
+{"kind":"textbox","id":"sh/eh4jil4r","slide":7,"name":"case-n-4","text":"05 · ERP","textPreview":"05 · ERP","textChars":8,"textLines":1,"bbox":[660,376,40,24]}
+{"kind":"textbox","id":"sh/id4ju1oz","slide":7,"name":"case-title-4","text":"PO y autorizaciones","textPreview":"PO y autorizaciones","textChars":19,"textLines":1,"bbox":[722,376,440,32]}
+{"kind":"textbox","id":"sh/jedkn654","slide":7,"name":"case-body-4","text":"Match, saldo y ruta de aprobación contra ERP.","textPreview":"Match, saldo y ruta de aprobación contra ERP.","textChars":45,"textLines":1,"bbox":[722,420,470,48]}
+{"kind":"shape","id":"sh/4fm1wb6p","slide":7,"name":"case-rule-4","bbox":[660,474,520,1]}
+{"kind":"textbox","id":"sh/50v2pgna","slide":7,"name":"case-n-5","text":"06 · BANCO","textPreview":"06 · BANCO","textChars":10,"textLines":1,"bbox":[660,492,40,24]}
+{"kind":"textbox","id":"sh/q143ylov","slide":7,"name":"case-title-5","text":"IBAN y datos bancarios","textPreview":"IBAN y datos bancarios","textChars":22,"textLines":1,"bbox":[722,492,440,32]}
+{"kind":"textbox","id":"sh/r2dkrq5g","slide":7,"name":"case-body-5","text":"Comparación independiente contra el maestro válido.","textPreview":"Comparación independiente contra el maestro válido.","textChars":51,"textLines":1,"bbox":[722,536,470,48]}
+{"kind":"textbox","id":"sh/s3ml0v61","slide":7,"name":"cases-close","text":"“Live” indica evidencia disponible en el PoC; “Integración” depende de datos maestros del cliente.","textPreview":"“Live” indica evidencia disponible en el PoC; “Integración” depende de datos maestros del cliente.","textChars":98,"textLines":1,"bbox":[64,622,1110,34]}
+{"kind":"textbox","id":"sh/d4f2t0nm","slide":7,"name":"footer-note-6","text":"AP Control Tower · primera implementación → CFO Office","textPreview":"AP Control Tower · primera implementación → CFO Office","textChars":54,"textLines":1,"bbox":[64,678,980,20]}
+{"kind":"textbox","id":"sh/e5o32lor","slide":7,"name":"footer-page-6","text":"07","textPreview":"07","textChars":2,"textLines":1,"bbox":[1160,676,56,20]}
+{"kind":"notes","id":"nt/gnmp4jqx","slide":7,"text":""}
+{"kind":"slide","id":"sl/fu1gfa1s","slide":8,"title":"VALIDACIÓN DEL PRODUCTO","textShapes":16}
+{"kind":"textbox","id":"sh/lgbepgvm","slide":8,"name":"eyebrow-5","text":"VALIDACIÓN DEL PRODUCTO","textPreview":"VALIDACIÓN DEL PRODUCTO","textChars":23,"textLines":1,"bbox":[64,38,420,24]}
+{"kind":"textbox","id":"sh/18byd4zy","slide":8,"name":"title-5","text":"Demo y PoC responden preguntas distintas antes de integrar.","textPreview":"Demo y PoC responden preguntas distintas antes de integrar.","textChars":59,"textLines":1,"bbox":[64,75,1152,92]}
+{"kind":"shape","id":"sh/g72x4zyd","slide":8,"name":"title-rule-5","bbox":[64,190,1152,1]}
+{"kind":"textbox","id":"sh/ri9g7uhw","slide":8,"name":"demo-index","text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[64,252,40,24]}
+{"kind":"textbox","id":"sh/6h0fypgb","slide":8,"name":"demo-title","text":"Demo guiada","textPreview":"Demo guiada","textChars":11,"textLines":1,"bbox":[64,292,480,52]}
+{"kind":"textbox","id":"sh/tkby9kzm","slide":8,"name":"demo-question","text":"¿Cómo funciona el circuito completo?","textPreview":"¿Cómo funciona el circuito completo?","textChars":36,"textLines":1,"bbox":[64,360,480,36]}
+{"kind":"textbox","id":"sh/sjix0zy1","slide":8,"name":"demo-body","text":"Recorre intake, controles, excepciones, maker–checker, aprobación humana y audit trail sobre un mes sintético.","textPreview":"Recorre intake, controles, excepciones, maker–checker, aprobación humana y audit trail sobre un mes sintético.","textChars":110,"textLines":1,"bbox":[64,414,470,90]}
+{"kind":"textbox","id":"sh/je9g3ahk","slide":8,"name":"demo-for","text":"Ideal para Finanzas, Operaciones, Tesorería, Riesgo y Auditoría.","textPreview":"Ideal para Finanzas, Operaciones, Tesorería, Riesgo y Auditoría.","textChars":64,"textLines":1,"bbox":[64,525,470,56]}
+{"kind":"textbox","id":"sh/id0fu50z","slide":8,"name":"demo-link","text":"Abrir demo guiada ↗","textPreview":"Abrir demo guiada ↗","textChars":19,"textLines":1,"bbox":[64,604,360,30]}
+{"kind":"shape","id":"sh/o7ydoret","slide":8,"name":"demo-poc-divider","bbox":[620,250,1,380]}
+{"kind":"textbox","id":"sh/98rehwve","slide":8,"name":"poc-index","text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[676,252,40,24]}
+{"kind":"textbox","id":"sh/m5gvmhwn","slide":8,"name":"poc-title","text":"PoC con documentos","textPreview":"PoC con documentos","textChars":18,"textLines":1,"bbox":[676,292,500,52]}
+{"kind":"textbox","id":"sh/n6pwfmd8","slide":8,"name":"poc-question","text":"¿Cómo responde ante facturas reales?","textPreview":"¿Cómo responde ante facturas reales?","textChars":36,"textLines":1,"bbox":[676,360,500,36]}
+{"kind":"textbox","id":"sh/0jydkreh","slide":8,"name":"poc-body","text":"Permite cargar documentos, observar la extracción y revisar campos inciertos antes de una propuesta controlada.","textPreview":"Permite cargar documentos, observar la extracción y revisar campos inciertos antes de una propuesta controlada.","textChars":111,"textLines":1,"bbox":[676,414,500,90]}
+{"kind":"textbox","id":"sh/1k7edwv2","slide":8,"name":"poc-for","text":"Ideal para validar formatos, calidad de datos y rutas de excepción.","textPreview":"Ideal para validar formatos, calidad de datos y rutas de excepción.","textChars":67,"textLines":1,"bbox":[676,525,500,56]}
+{"kind":"textbox","id":"sh/ehgvihwr","slide":8,"name":"poc-link","text":"Abrir PoC con documentos ↗","textPreview":"Abrir PoC con documentos ↗","textChars":26,"textLines":1,"bbox":[676,604,400,30]}
+{"kind":"textbox","id":"sh/zipwbmdc","slide":8,"name":"footer-note-5","text":"AP Control Tower · primera implementación → CFO Office","textPreview":"AP Control Tower · primera implementación → CFO Office","textChars":54,"textLines":1,"bbox":[64,678,980,20]}
+{"kind":"textbox","id":"sh/kfixwbe1","slide":8,"name":"footer-page-5","text":"08","textPreview":"08","textChars":2,"textLines":1,"bbox":[1160,676,56,20]}
+{"kind":"notes","id":"nt/fu1gfa1s","slide":8,"text":""}
+{"kind":"slide","id":"sl/udsvah03","slide":9,"title":"CALIDAD MEDIDA · GOLDEN RECORDS","textShapes":20}
+{"kind":"textbox","id":"sh/va103ep4","slide":9,"name":"eyebrow-7","text":"CALIDAD MEDIDA · GOLDEN RECORDS","textPreview":"CALIDAD MEDIDA · GOLDEN RECORDS","textChars":31,"textLines":1,"bbox":[64,38,420,24]}
+{"kind":"textbox","id":"sh/1cfmhgne","slide":9,"name":"title-7","text":"La evidencia permite vender con precisión y mejorar con límites claros.","textPreview":"La evidencia permite vender con precisión y mejorar con límites claros.","textChars":71,"textLines":1,"bbox":[64,75,1152,92]}
+{"kind":"textbox","id":"sh/0b65obm9","slide":9,"name":"subtitle-7","text":"Run 2 mide extracción. Run 3 reutiliza esa extracción y revalida política, routing y revisión sin nuevas llamadas a Document AI.","textPreview":"Run 2 mide extracción. Run 3 reutiliza esa extracción y revalida política, routing y revisión sin nuevas llamadas a Document AI.","textChars":128,"textLines":1,"bbox":[64,166,1110,52]}
+{"kind":"shape","id":"sh/nex4jq5k","slide":9,"name":"title-rule-7","bbox":[64,226,1152,1]}
+{"kind":"shape","id":"sh/mdonql4z","slide":9,"name":"evidence-1-surface","bbox":[64,270,266,150]}
+{"kind":"textbox","id":"sh/9gzml0nq","slide":9,"name":"evidence-1-value","text":"106","textPreview":"106","textChars":3,"textLines":1,"bbox":[84,294,226,58]}
+{"kind":"textbox","id":"sh/ofq5svm5","slide":9,"name":"evidence-1-label","text":"documentos golden","textPreview":"documentos golden","textChars":17,"textLines":1,"bbox":[84,361,226,38]}
+{"kind":"shape","id":"sh/bih4na5w","slide":9,"name":"evidence-2-surface","bbox":[350,270,266,150]}
+{"kind":"textbox","id":"sh/ah8nu54b","slide":9,"name":"evidence-2-value","text":"96,2%","textPreview":"96,2%","textChars":5,"textLines":1,"bbox":[370,294,226,58]}
+{"kind":"textbox","id":"sh/oza1gfyh","slide":9,"name":"evidence-2-label","text":"accuracy extracción · run 2","textPreview":"accuracy extracción · run 2","textChars":27,"textLines":1,"bbox":[370,361,226,38]}
+{"kind":"shape","id":"sh/p0ji9kf2","slide":9,"name":"evidence-3-surface","bbox":[636,270,266,150]}
+{"kind":"textbox","id":"sh/2xsjepgb","slide":9,"name":"evidence-3-value","text":"96,9%","textPreview":"96,9%","textChars":5,"textLines":1,"bbox":[656,294,226,58]}
+{"kind":"textbox","id":"sh/3y107axw","slide":9,"name":"evidence-3-label","text":"accuracy routing · run 3","textPreview":"accuracy routing · run 3","textChars":24,"textLines":1,"bbox":[656,361,226,38]}
+{"kind":"shape","id":"sh/cnu1kzyd","slide":9,"name":"evidence-4-surface","bbox":[922,270,294,150]}
+{"kind":"textbox","id":"sh/do3id4fy","slide":9,"name":"evidence-4-value","text":"100%","textPreview":"100%","textChars":4,"textLines":1,"bbox":[942,294,254,58]}
+{"kind":"textbox","id":"sh/qlcjipgn","slide":9,"name":"evidence-4-label","text":"review recall · 96 docs","textPreview":"review recall · 96 docs","textChars":23,"textLines":1,"bbox":[942,361,254,38]}
+{"kind":"textbox","id":"sh/bml0buxs","slide":9,"name":"proof-title-0","text":"Correcciones verificadas","textPreview":"Correcciones verificadas","textChars":24,"textLines":1,"bbox":[64,480,340,30]}
+{"kind":"textbox","id":"sh/0ru1ozyp","slide":9,"name":"proof-body-0","text":"Casi-duplicados y notas de crédito.","textPreview":"Casi-duplicados y notas de crédito.","textChars":35,"textLines":1,"bbox":[64,528,340,50]}
+{"kind":"textbox","id":"sh/lsn2h4fa","slide":9,"name":"proof-title-1","text":"Replay eficiente","textPreview":"Replay eficiente","textChars":16,"textLines":1,"bbox":[452,480,340,30]}
+{"kind":"textbox","id":"sh/98ji147e","slide":9,"name":"proof-body-1","text":"0 llamadas a Document AI en run 3.","textPreview":"0 llamadas a Document AI en run 3.","textChars":34,"textLines":1,"bbox":[452,528,340,50]}
+{"kind":"textbox","id":"sh/87a18zqt","slide":9,"name":"proof-title-2","text":"Límites explícitos","textPreview":"Límites explícitos","textChars":18,"textLines":1,"bbox":[840,480,340,30]}
+{"kind":"textbox","id":"sh/76h0zup8","slide":9,"name":"proof-body-2","text":"Maestros externos aún pendientes.","textPreview":"Maestros externos aún pendientes.","textChars":33,"textLines":1,"bbox":[840,528,340,50]}
+{"kind":"textbox","id":"sh/ml8j6p8n","slide":9,"name":"proof-link","text":"Abrir evidencia en vivo → PoC · Calidad medida (evals)","textPreview":"Abrir evidencia en vivo → PoC · Calidad medida (evals)","textChars":54,"textLines":1,"bbox":[64,617,500,26]}
+{"kind":"textbox","id":"sh/hcji5o7a","slide":9,"name":"footer-note-7","text":"Fuente: golden v1.0 · run 2 · run 3 offline policy replay","textPreview":"Fuente: golden v1.0 · run 2 · run 3 offline policy replay","textChars":57,"textLines":1,"bbox":[64,678,980,20]}
+{"kind":"textbox","id":"sh/wba1cjqp","slide":9,"name":"footer-page-7","text":"09","textPreview":"09","textChars":2,"textLines":1,"bbox":[1160,676,56,20]}
+{"kind":"notes","id":"nt/udsvah03","slide":9,"text":""}
+{"kind":"slide","id":"sl/m90b6t0r","slide":10,"title":"CASO DE NEGOCIO","textShapes":14}
+{"kind":"textbox","id":"sh/fapcz6ls","slide":10,"name":"eyebrow-3","text":"CASO DE NEGOCIO","textPreview":"CASO DE NEGOCIO","textChars":15,"textLines":1,"bbox":[64,38,420,24]}
+{"kind":"textbox","id":"sh/xc3mho32","slide":10,"name":"title-3","text":"El valor se calcula con datos del cliente, no con una promesa genérica.","textPreview":"El valor se calcula con datos del cliente, no con una promesa genérica.","textChars":71,"textLines":1,"bbox":[64,75,1152,92]}
+{"kind":"shape","id":"sh/cbu58j2h","slide":10,"name":"title-rule-3","bbox":[64,190,1152,1]}
+{"kind":"textbox","id":"sh/zelojyl8","slide":10,"name":"value-n-0","text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[64,268,58,28]}
+{"kind":"textbox","id":"sh/ydcnatkn","slide":10,"name":"value-title-0","text":"Capacidad recuperada","textPreview":"Capacidad recuperada","textChars":20,"textLines":1,"bbox":[64,314,330,64]}
+{"kind":"textbox","id":"sh/l036l83y","slide":10,"name":"value-body-0","text":"Horas hoy destinadas a descarga, recarga, búsqueda y seguimiento que pasan a excepciones de mayor valor.","textPreview":"Horas hoy destinadas a descarga, recarga, búsqueda y seguimiento que pasan a excepciones de mayor valor.","textChars":104,"textLines":1,"bbox":[64,397,330,135]}
+{"kind":"textbox","id":"sh/kzu5c32t","slide":10,"name":"value-n-1","text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[452,268,58,28]}
+{"kind":"textbox","id":"sh/725onyl4","slide":10,"name":"value-title-1","text":"Excepciones evitadas","textPreview":"Excepciones evitadas","textChars":20,"textLines":1,"bbox":[452,314,330,64]}
+{"kind":"textbox","id":"sh/m1cnetkj","slide":10,"name":"value-body-1","text":"Duplicados, errores de routing y divergencias detectadas antes del lote de pago.","textPreview":"Duplicados, errores de routing y divergencias detectadas antes del lote de pago.","textChars":80,"textLines":1,"bbox":[452,397,330,135]}
+{"kind":"textbox","id":"sh/s7yt4b21","slide":10,"name":"value-n-2","text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[840,268,58,28]}
+{"kind":"textbox","id":"sh/d87uxg3m","slide":10,"name":"value-title-2","text":"Gobierno demostrable","textPreview":"Gobierno demostrable","textChars":20,"textLines":1,"bbox":[840,314,330,64]}
+{"kind":"textbox","id":"sh/q5gb21kb","slide":10,"name":"value-body-2","text":"Tiempo y esfuerzo de control, auditoría y reconstrucción de decisiones reducidos por evidencia nativa.","textPreview":"Tiempo y esfuerzo de control, auditoría y reconstrucción de decisiones reducidos por evidencia nativa.","textChars":102,"textLines":1,"bbox":[840,397,330,135]}
+{"kind":"shape","id":"sh/r6pcv6lw","slide":10,"name":"value-bottom-rule","bbox":[64,570,1152,1]}
+{"kind":"textbox","id":"sh/0bit8b2d","slide":10,"name":"human-gate-claim","text":"Discovery + muestra controlada = baseline, métricas de aceptación y business case del cliente.","textPreview":"Discovery + muestra controlada = baseline, métricas de aceptación y business case del cliente.","textChars":94,"textLines":1,"bbox":[64,595,1080,42]}
+{"kind":"textbox","id":"sh/1cru1g3y","slide":10,"name":"footer-note-3","text":"AP Control Tower · primera implementación → CFO Office","textPreview":"AP Control Tower · primera implementación → CFO Office","textChars":54,"textLines":1,"bbox":[64,678,980,20]}
+{"kind":"textbox","id":"sh/e9gb61k7","slide":10,"name":"footer-page-3","text":"10","textPreview":"10","textChars":2,"textLines":1,"bbox":[1160,676,56,20]}
+{"kind":"notes","id":"nt/m90b6t0r","slide":10,"text":""}
+{"kind":"slide","id":"sl/jetc3ut0","slide":11,"title":"PRIMERA IMPLEMENTACIÓN · INTEGRACIONES","textShapes":37}
+{"kind":"textbox","id":"sh/k7mpsfmd","slide":11,"name":"eyebrow-4","text":"PRIMERA IMPLEMENTACIÓN · INTEGRACIONES","textPreview":"PRIMERA IMPLEMENTACIÓN · INTEGRACIONES","textChars":38,"textLines":1,"bbox":[64,38,420,24]}
+{"kind":"textbox","id":"sh/xcryxg7y","slide":11,"name":"title-4","text":"Gmail sigue como entrada actual; Zoho puede complementar el input o el output.","textPreview":"Gmail sigue como entrada actual; Zoho puede complementar el input o el output.","textChars":78,"textLines":1,"bbox":[64,75,1152,92]}
+{"kind":"shape","id":"sh/wbih4b6d","slide":11,"name":"title-rule-4","bbox":[64,190,1152,1]}
+{"kind":"shape","id":"sh/n69grmpw","slide":11,"name":"flow-top-connector-0","bbox":[328,315,32,2]}
+{"kind":"shape","id":"sh/250zy18b","slide":11,"name":"flow-top-connector-1","bbox":[624,315,32,2]}
+{"kind":"shape","id":"sh/98rytw72","slide":11,"name":"flow-top-connector-2","bbox":[920,315,32,2]}
+{"kind":"shape","id":"sh/o7ih0r6h","slide":11,"name":"flow-turn-down","bbox":[1084,372,2,0]}
+{"kind":"shape","id":"sh/72t03qp0","slide":11,"name":"flow-bottom-connector-0","bbox":[328,505,32,2]}
+{"kind":"shape","id":"sh/61kzalof","slide":11,"name":"flow-bottom-connector-1","bbox":[624,505,32,2]}
+{"kind":"shape","id":"sh/ofqtgnyt","slide":11,"name":"flow-bottom-connector-2","bbox":[920,505,32,2]}
+{"kind":"shape","id":"sh/9gza9sze","slide":11,"name":"top-0-box","bbox":[64,260,264,112]}
+{"kind":"textbox","id":"sh/mdobedg3","slide":11,"name":"top-0-n","text":"01 · ACTUAL","textPreview":"01 · ACTUAL","textChars":11,"textLines":1,"bbox":[80,274,34,22]}
+{"kind":"textbox","id":"sh/nehs7iho","slide":11,"name":"top-0-title","text":"Gmail","textPreview":"Gmail","textChars":5,"textLines":1,"bbox":[80,302,232,28]}
+{"kind":"textbox","id":"sh/0b6tc3yx","slide":11,"name":"top-0-detail","text":"Entrada principal de facturas","textPreview":"Entrada principal de facturas","textChars":29,"textLines":1,"bbox":[80,334,232,23]}
+{"kind":"shape","id":"sh/1cfa58zi","slide":11,"name":"top-1-box","bbox":[360,260,264,112]}
+{"kind":"textbox","id":"sh/epobatgr","slide":11,"name":"top-1-n","text":"02 · INPUT","textPreview":"02 · INPUT","textChars":10,"textLines":1,"bbox":[376,274,34,22]}
+{"kind":"textbox","id":"sh/zaxs3yhc","slide":11,"name":"top-1-title","text":"Zoho · input","textPreview":"Zoho · input","textChars":12,"textLines":1,"bbox":[376,302,232,28]}
+{"kind":"textbox","id":"sh/cn6t83y1","slide":11,"name":"top-1-detail","text":"Recepción complementaria de emails","textPreview":"Recepción complementaria de emails","textChars":34,"textLines":1,"bbox":[376,334,232,23]}
+{"kind":"shape","id":"sh/dofa18z6","slide":11,"name":"top-2-box","bbox":[656,260,264,112]}
+{"kind":"textbox","id":"sh/tsnip0ny","slide":11,"name":"top-2-n","text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[672,274,34,22]}
+{"kind":"textbox","id":"sh/87ehgv6d","slide":11,"name":"top-2-title","text":"AP Control Tower","textPreview":"AP Control Tower","textChars":16,"textLines":1,"bbox":[672,302,232,28]}
+{"kind":"textbox","id":"sh/7650nq5s","slide":11,"name":"top-2-detail","text":"Evidencia + routing + controles","textPreview":"Evidencia + routing + controles","textChars":31,"textLines":1,"bbox":[672,334,232,23]}
+{"kind":"shape","id":"sh/65wzelo7","slide":11,"name":"top-3-box","bbox":[952,260,264,112]}
+{"kind":"textbox","id":"sh/l43ilgn2","slide":11,"name":"top-3-n","text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[968,274,34,22]}
+{"kind":"textbox","id":"sh/k3uhcb6h","slide":11,"name":"top-3-title","text":"Sage","textPreview":"Sage","textChars":4,"textLines":1,"bbox":[968,302,232,28]}
+{"kind":"textbox","id":"sh/j2lgjq5w","slide":11,"name":"top-3-detail","text":"ERP y maestros del circuito","textPreview":"ERP y maestros del circuito","textChars":27,"textLines":1,"bbox":[968,334,232,23]}
+{"kind":"shape","id":"sh/y1czalob","slide":11,"name":"bottom-0-box","bbox":[64,450,264,112]}
+{"kind":"textbox","id":"sh/p07ixkn6","slide":11,"name":"bottom-0-n","text":"08","textPreview":"08","textChars":2,"textLines":1,"bbox":[80,464,34,22]}
+{"kind":"textbox","id":"sh/4zyhofml","slide":11,"name":"bottom-0-title","text":"Audit trail","textPreview":"Audit trail","textChars":11,"textLines":1,"bbox":[80,492,232,28]}
+{"kind":"textbox","id":"sh/m58fih43","slide":11,"name":"bottom-0-detail","text":"Controles y decisiones verificables","textPreview":"Controles y decisiones verificables","textChars":35,"textLines":1,"bbox":[80,524,232,23]}
+{"kind":"shape","id":"sh/n61wbmlo","slide":11,"name":"bottom-1-box","bbox":[360,450,264,112]}
+{"kind":"textbox","id":"sh/o7axk7m9","slide":11,"name":"bottom-1-n","text":"07","textPreview":"07","textChars":2,"textLines":1,"bbox":[376,464,34,22]}
+{"kind":"textbox","id":"sh/98jedc3u","slide":11,"name":"bottom-1-title","text":"Banco Sabadell","textPreview":"Banco Sabadell","textChars":14,"textLines":1,"bbox":[376,492,232,28]}
+{"kind":"textbox","id":"sh/eh8fex47","slide":11,"name":"bottom-1-detail","text":"Propuesta; ejecución fuera del agente","textPreview":"Propuesta; ejecución fuera del agente","textChars":37,"textLines":1,"bbox":[376,524,232,23]}
+{"kind":"shape","id":"sh/z2hw72lc","slide":11,"name":"bottom-2-box","bbox":[656,450,264,112]}
+{"kind":"textbox","id":"sh/03qxg7mx","slide":11,"name":"bottom-2-n","text":"06 · OUTPUT","textPreview":"06 · OUTPUT","textChars":11,"textLines":1,"bbox":[672,464,34,22]}
+{"kind":"textbox","id":"sh/14ze9c3i","slide":11,"name":"bottom-2-title","text":"Zoho · output","textPreview":"Zoho · output","textChars":13,"textLines":1,"bbox":[672,492,232,28]}
+{"kind":"textbox","id":"sh/ydcfq1kb","slide":11,"name":"bottom-2-detail","text":"Repositorio del archivo de pagos","textPreview":"Repositorio del archivo de pagos","textChars":32,"textLines":1,"bbox":[672,524,232,23]}
+{"kind":"shape","id":"sh/jylwj6lw","slide":11,"name":"bottom-3-box","bbox":[952,450,264,112]}
+{"kind":"textbox","id":"sh/3qhsfypc","slide":11,"name":"bottom-3-n","text":"05","textPreview":"05","textChars":2,"textLines":1,"bbox":[968,464,34,22]}
+{"kind":"textbox","id":"sh/ip8bmtor","slide":11,"name":"bottom-3-title","text":"Aprobación humana","textPreview":"Aprobación humana","textChars":17,"textLines":1,"bbox":[968,492,232,28]}
+{"kind":"textbox","id":"sh/5sjah872","slide":11,"name":"bottom-3-detail","text":"Segregación + nivel de autoridad","textPreview":"Segregación + nivel de autoridad","textChars":32,"textLines":1,"bbox":[968,524,232,23]}
+{"kind":"textbox","id":"sh/4rato36h","slide":11,"name":"flow-top-arrow-0","text":"→","textPreview":"→","textChars":1,"textLines":1,"bbox":[334,299,20,30]}
+{"kind":"textbox","id":"sh/v2hsbyp0","slide":11,"name":"flow-bottom-arrow-0","text":"←","textPreview":"←","textChars":1,"textLines":1,"bbox":[334,489,20,30]}
+{"kind":"textbox","id":"sh/u18bit8f","slide":11,"name":"flow-top-arrow-1","text":"→","textPreview":"→","textChars":1,"textLines":1,"bbox":[630,299,20,30]}
+{"kind":"textbox","id":"sh/h4zado76","slide":11,"name":"flow-bottom-arrow-1","text":"←","textPreview":"←","textChars":1,"textLines":1,"bbox":[630,489,20,30]}
+{"kind":"textbox","id":"sh/g3qtkj6l","slide":11,"name":"flow-top-arrow-2","text":"→","textPreview":"→","textChars":1,"textLines":1,"bbox":[926,299,20,30]}
+{"kind":"textbox","id":"sh/fy1cnipk","slide":11,"name":"flow-bottom-arrow-2","text":"←","textPreview":"←","textChars":1,"textLines":1,"bbox":[926,489,20,30]}
+{"kind":"textbox","id":"sh/exsbudoz","slide":11,"name":"flow-down-arrow","text":"↓","textPreview":"↓","textChars":1,"textLines":1,"bbox":[1074,395,22,30]}
+{"kind":"textbox","id":"sh/c3mpof6h","slide":11,"name":"flow-automation-label","text":"DOS PATRONES OPCIONALES PARA ZOHO","textPreview":"DOS PATRONES OPCIONALES PARA ZOHO","textChars":33,"textLines":1,"bbox":[64,229,500,20]}
+{"kind":"textbox","id":"sh/x4vqhknm","slide":11,"name":"flow-governance-label","text":"CONTROL HUMANO PRESERVADO","textPreview":"CONTROL HUMANO PRESERVADO","textChars":25,"textLines":1,"bbox":[64,419,500,20]}
+{"kind":"textbox","id":"sh/a147m5ob","slide":11,"name":"footer-note-4","text":"AP Control Tower · primera implementación → CFO Office","textPreview":"AP Control Tower · primera implementación → CFO Office","textChars":54,"textLines":1,"bbox":[64,678,980,20]}
+{"kind":"textbox","id":"sh/b2d8fa5w","slide":11,"name":"footer-page-4","text":"11","textPreview":"11","textChars":2,"textLines":1,"bbox":[1160,676,56,20]}
+{"kind":"notes","id":"nt/jetc3ut0","slide":11,"text":""}
+{"kind":"slide","id":"sl/8f2psfyx","slide":12,"title":"CAMINO A LA PRIMERA IMPLEMENTACIÓN","textShapes":18}
+{"kind":"textbox","id":"sh/sfi58ryd","slide":12,"name":"eyebrow-9","text":"CAMINO A LA PRIMERA IMPLEMENTACIÓN","textPreview":"CAMINO A LA PRIMERA IMPLEMENTACIÓN","textChars":34,"textLines":1,"bbox":[64,38,420,24]}
+{"kind":"textbox","id":"sh/1gbm9s3a","slide":12,"name":"title-9","text":"Validar interfaces y controles antes de hablar de producción.","textPreview":"Validar interfaces y controles antes de hablar de producción.","textChars":61,"textLines":1,"bbox":[64,75,1152,92]}
+{"kind":"shape","id":"sh/0f2lgnmp","slide":12,"name":"title-rule-9","bbox":[64,190,1152,1]}
+{"kind":"shape","id":"sh/ra943il8","slide":12,"name":"timeline-main","bbox":[90,358,1100,2]}
+{"kind":"shape","id":"sh/q903ad4n","slide":12,"name":"timeline-dot-0","bbox":[90,348,20,20]}
+{"kind":"shape","id":"sh/dcbm583y","slide":12,"name":"timeline-dot-1","bbox":[385,348,20,20]}
+{"kind":"shape","id":"sh/sb2lcnmd","slide":12,"name":"timeline-dot-2","bbox":[680,348,20,20]}
+{"kind":"shape","id":"sh/b6d4f2lc","slide":12,"name":"timeline-dot-3","bbox":[975,348,20,20]}
+{"kind":"textbox","id":"sh/a543mx4r","slide":12,"name":"stage-1-n","text":"01 · readiness","textPreview":"01 · readiness","textChars":14,"textLines":1,"bbox":[90,205,46,26]}
+{"kind":"textbox","id":"sh/wvupgz6t","slide":12,"name":"stage-1-title","text":"Mapa técnico","textPreview":"Mapa técnico","textChars":12,"textLines":1,"bbox":[90,240,240,35]}
+{"kind":"textbox","id":"sh/xw3q94ne","slide":12,"name":"stage-1-body","text":"Accesos, formatos, responsables y restricciones de Gmail, Sage, Zoho y banco.","textPreview":"Accesos, formatos, responsables y restricciones de Gmail, Sage, Zoho y banco.","textChars":77,"textLines":1,"bbox":[90,287,240,70]}
+{"kind":"textbox","id":"sh/atc7epon","slide":12,"name":"stage-2-n","text":"02 · muestra","textPreview":"02 · muestra","textChars":12,"textLines":1,"bbox":[385,392,46,26]}
+{"kind":"textbox","id":"sh/bulo7u58","slide":12,"name":"stage-2-title","text":"Circuito Gmail","textPreview":"Circuito Gmail","textChars":14,"textLines":1,"bbox":[385,427,240,35]}
+{"kind":"textbox","id":"sh/orapcf6h","slide":12,"name":"stage-2-body","text":"Documentos representativos sin reprocesar masivamente el golden set.","textPreview":"Documentos representativos sin reprocesar masivamente el golden set.","textChars":68,"textLines":1,"bbox":[385,474,240,70]}
+{"kind":"textbox","id":"sh/9sj65kn2","slide":12,"name":"stage-3-n","text":"03 · interfaces","textPreview":"03 · interfaces","textChars":15,"textLines":1,"bbox":[680,205,46,26]}
+{"kind":"textbox","id":"sh/mps7a5or","slide":12,"name":"stage-3-title","text":"Diseño de integración","textPreview":"Diseño de integración","textChars":21,"textLines":1,"bbox":[680,240,240,35]}
+{"kind":"textbox","id":"sh/nq1o3a5w","slide":12,"name":"stage-3-body","text":"Contratos de datos, maestros, excepciones y segregación de funciones.","textPreview":"Contratos de datos, maestros, excepciones y segregación de funciones.","textChars":69,"textLines":1,"bbox":[680,287,240,70]}
+{"kind":"textbox","id":"sh/0nap8f6l","slide":12,"name":"stage-4-n","text":"04 · gate","textPreview":"04 · gate","textChars":9,"textLines":1,"bbox":[975,392,46,26]}
+{"kind":"textbox","id":"sh/1oj61kn6","slide":12,"name":"stage-4-title","text":"Decisión de despliegue","textPreview":"Decisión de despliegue","textChars":22,"textLines":1,"bbox":[975,427,240,35]}
+{"kind":"textbox","id":"sh/hkbm5wzu","slide":12,"name":"stage-4-body","text":"Criterios de éxito, seguridad, operación y soporte antes de producción.","textPreview":"Criterios de éxito, seguridad, operación y soporte antes de producción.","textChars":71,"textLines":1,"bbox":[975,474,240,70]}
+{"kind":"textbox","id":"sh/gj25cry9","slide":12,"name":"timeline-live","text":"Disponible hoy: demo + PoC + golden records + evals medidos","textPreview":"Disponible hoy: demo + PoC + golden records + evals medidos","textChars":59,"textLines":1,"bbox":[64,600,560,34]}
+{"kind":"textbox","id":"sh/fit436ho","slide":12,"name":"timeline-principle","text":"Siguiente hito: integration readiness; todavía no es una etapa piloto.","textPreview":"Siguiente hito: integration readiness; todavía no es una etapa piloto.","textChars":70,"textLines":1,"bbox":[710,600,506,34]}
+{"kind":"textbox","id":"sh/uh0na1g3","slide":12,"name":"footer-note-9","text":"AP Control Tower · primera implementación → CFO Office","textPreview":"AP Control Tower · primera implementación → CFO Office","textChars":54,"textLines":1,"bbox":[64,678,980,20]}
+{"kind":"textbox","id":"sh/tgrm1wzy","slide":12,"name":"footer-page-9","text":"12","textPreview":"12","textChars":2,"textLines":1,"bbox":[1160,676,56,20]}
+{"kind":"notes","id":"nt/8f2psfyx","slide":12,"text":""}
+{"kind":"slide","id":"sl/hgzapcr6","slide":13,"title":"CFO OFFICE · SHARED STATE","textShapes":23}
+{"kind":"textbox","id":"sh/9wjyp4bq","slide":13,"name":"eyebrow-6","text":"CFO OFFICE · SHARED STATE","textPreview":"CFO OFFICE · SHARED STATE","textChars":25,"textLines":1,"bbox":[64,38,420,24]}
+{"kind":"textbox","id":"sh/q50nydsj","slide":13,"name":"title-6","text":"AP crea los primeros objetos de un estado financiero compartido.","textPreview":"AP crea los primeros objetos de un estado financiero compartido.","textChars":64,"textLines":1,"bbox":[64,75,1152,92]}
+{"kind":"shape","id":"sh/bq9orito","slide":13,"name":"title-rule-6","bbox":[64,190,1152,1]}
+{"kind":"textbox","id":"sh/o3i5w3ad","slide":13,"name":"case-n-0","text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[64,260,40,24]}
+{"kind":"textbox","id":"sh/p4r6p8by","slide":13,"name":"case-title-0","text":"Proveedor","textPreview":"Proveedor","textChars":9,"textLines":1,"bbox":[126,260,440,32]}
+{"kind":"textbox","id":"sh/21gnuts7","slide":13,"name":"case-body-0","text":"Identidad, condiciones y maestro vigente.","textPreview":"Identidad, condiciones y maestro vigente.","textChars":41,"textLines":1,"bbox":[126,304,470,48]}
+{"kind":"shape","id":"sh/32ponyts","slide":13,"name":"case-rule-0","bbox":[64,358,520,1]}
+{"kind":"textbox","id":"sh/gzy5s3a1","slide":13,"name":"case-n-1","text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[64,376,40,24]}
+{"kind":"textbox","id":"sh/1076lobm","slide":13,"name":"case-title-1","text":"Factura","textPreview":"Factura","textChars":7,"textLines":1,"bbox":[126,376,440,32]}
+{"kind":"textbox","id":"sh/hcfy9k3u","slide":13,"name":"case-body-1","text":"Documento, campos, evidencia y estado.","textPreview":"Documento, campos, evidencia y estado.","textChars":38,"textLines":1,"bbox":[126,420,470,48]}
+{"kind":"shape","id":"sh/gb6x0zm9","slide":13,"name":"case-rule-1","bbox":[64,474,520,1]}
+{"kind":"textbox","id":"sh/vaxg7ulo","slide":13,"name":"case-n-2","text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[64,492,40,24]}
+{"kind":"textbox","id":"sh/u9ofyp43","slide":13,"name":"case-title-2","text":"PO o contrato","textPreview":"PO o contrato","textChars":13,"textLines":1,"bbox":[126,492,440,32]}
+{"kind":"textbox","id":"sh/t8fy5k3i","slide":13,"name":"case-body-2","text":"Compromiso, saldo y autorización.","textPreview":"Compromiso, saldo y autorización.","textChars":33,"textLines":1,"bbox":[126,536,470,48]}
+{"kind":"textbox","id":"sh/876xwfmx","slide":13,"name":"case-n-3","text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[660,260,40,24]}
+{"kind":"textbox","id":"sh/7mdg3als","slide":13,"name":"case-title-3","text":"Excepción","textPreview":"Excepción","textChars":9,"textLines":1,"bbox":[722,260,440,32]}
+{"kind":"textbox","id":"sh/6l4fu547","slide":13,"name":"case-body-3","text":"Motivo, responsable, decisión y timestamp.","textPreview":"Motivo, responsable, decisión y timestamp.","textChars":42,"textLines":1,"bbox":[722,304,470,48]}
+{"kind":"shape","id":"sh/lkvy103m","slide":13,"name":"case-rule-3","bbox":[660,358,520,1]}
+{"kind":"textbox","id":"sh/kjmxsfm1","slide":13,"name":"case-n-4","text":"05","textPreview":"05","textChars":2,"textLines":1,"bbox":[660,376,40,24]}
+{"kind":"textbox","id":"sh/cnqh8fux","slide":13,"name":"case-title-4","text":"Obligación de pago","textPreview":"Obligación de pago","textChars":18,"textLines":1,"bbox":[722,376,440,32]}
+{"kind":"textbox","id":"sh/xozyhkbi","slide":13,"name":"case-body-4","text":"Importe, vencimiento, aprobación y condición.","textPreview":"Importe, vencimiento, aprobación y condición.","textChars":45,"textLines":1,"bbox":[722,420,470,48]}
+{"kind":"shape","id":"sh/q18f65cr","slide":13,"name":"case-rule-4","bbox":[660,474,520,1]}
+{"kind":"textbox","id":"sh/bmhgfatc","slide":13,"name":"case-n-5","text":"06","textPreview":"06","textChars":2,"textLines":1,"bbox":[660,492,40,24]}
+{"kind":"textbox","id":"sh/oz6x4vul","slide":13,"name":"case-title-5","text":"Audit trail","textPreview":"Audit trail","textChars":11,"textLines":1,"bbox":[722,492,440,32]}
+{"kind":"textbox","id":"sh/p0zyd0b6","slide":13,"name":"case-body-5","text":"Controles, cambios y sign-offs encadenados.","textPreview":"Controles, cambios y sign-offs encadenados.","textChars":43,"textLines":1,"bbox":[722,536,470,48]}
+{"kind":"textbox","id":"sh/2xof2lcv","slide":13,"name":"cases-close","text":"El mismo estado se reutiliza en AR, cash, cierre, reporting y Board Pack.","textPreview":"El mismo estado se reutiliza en AR, cash, cierre, reporting y Board Pack.","textChars":73,"textLines":1,"bbox":[64,622,1110,34]}
+{"kind":"textbox","id":"sh/3yxgbqdg","slide":13,"name":"footer-note-6","text":"AP Control Tower · primera implementación → CFO Office","textPreview":"AP Control Tower · primera implementación → CFO Office","textChars":54,"textLines":1,"bbox":[64,678,980,20]}
+{"kind":"textbox","id":"sh/8vahgzu5","slide":13,"name":"footer-page-6","text":"13","textPreview":"13","textChars":2,"textLines":1,"bbox":[1160,676,56,20]}
+{"kind":"notes","id":"nt/hgzapcr6","slide":13,"text":""}
+{"kind":"slide","id":"sl/6lsnupw7","slide":14,"title":"VISIÓN CFO OFFICE · ROADMAP MODULAR","textShapes":37}
+{"kind":"textbox","id":"sh/0rq18zad","slide":14,"name":"eyebrow-4","text":"VISIÓN CFO OFFICE · ROADMAP MODULAR","textPreview":"VISIÓN CFO OFFICE · ROADMAP MODULAR","textChars":35,"textLines":1,"bbox":[64,38,420,24]}
+{"kind":"textbox","id":"sh/xc7eds76","slide":14,"name":"title-4","text":"Cada módulo suma valor sin reconstruir la base financiera.","textPreview":"Cada módulo suma valor sin reconstruir la base financiera.","textChars":58,"textLines":1,"bbox":[64,75,1152,92]}
+{"kind":"shape","id":"sh/wbydknq1","slide":14,"name":"title-rule-4","bbox":[64,190,1152,1]}
+{"kind":"shape","id":"sh/jepwf2pc","slide":14,"name":"flow-top-connector-0","bbox":[328,315,32,2]}
+{"kind":"shape","id":"sh/idgvmx8r","slide":14,"name":"flow-top-connector-1","bbox":[624,315,32,2]}
+{"kind":"shape","id":"sh/5grehs7i","slide":14,"name":"flow-top-connector-2","bbox":[920,315,32,2]}
+{"kind":"shape","id":"sh/kfidonqx","slide":14,"name":"flow-turn-down","bbox":[1084,372,2,0]}
+{"kind":"shape","id":"sh/zi5c3y98","slide":14,"name":"flow-bottom-connector-0","bbox":[328,505,32,2]}
+{"kind":"shape","id":"sh/ehwvat8n","slide":14,"name":"flow-bottom-connector-1","bbox":[624,505,32,2]}
+{"kind":"shape","id":"sh/c3e1gjyd","slide":14,"name":"flow-bottom-connector-2","bbox":[920,505,32,2]}
+{"kind":"shape","id":"sh/x4ni9ofy","slide":14,"name":"top-0-box","bbox":[64,260,264,112]}
+{"kind":"textbox","id":"sh/a1wze9g7","slide":14,"name":"top-0-n","text":"01 · AHORA","textPreview":"01 · AHORA","textChars":10,"textLines":1,"bbox":[80,274,34,22]}
+{"kind":"textbox","id":"sh/b2507exs","slide":14,"name":"top-0-title","text":"AP Control Tower","textPreview":"AP Control Tower","textChars":16,"textLines":1,"bbox":[80,302,232,28]}
+{"kind":"textbox","id":"sh/kre1k3y9","slide":14,"name":"top-0-detail","text":"Invoice → obligación gobernada","textPreview":"Invoice → obligación gobernada","textChars":30,"textLines":1,"bbox":[80,334,232,23]}
+{"kind":"shape","id":"sh/ls7idofu","slide":14,"name":"top-1-box","bbox":[360,260,264,112]}
+{"kind":"textbox","id":"sh/y5wjitgj","slide":14,"name":"top-1-n","text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[376,274,34,22]}
+{"kind":"textbox","id":"sh/z650byxo","slide":14,"name":"top-1-title","text":"AR / O2C","textPreview":"AR / O2C","textChars":8,"textLines":1,"bbox":[376,302,232,28]}
+{"kind":"textbox","id":"sh/0buh8zy5","slide":14,"name":"top-1-detail","text":"Billing → cobro → cash app","textPreview":"Billing → cobro → cash app","textChars":26,"textLines":1,"bbox":[376,334,232,23]}
+{"kind":"shape","id":"sh/1w3i14fq","slide":14,"name":"top-2-box","bbox":[656,260,264,112]}
+{"kind":"textbox","id":"sh/hsvy50re","slide":14,"name":"top-2-n","text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[672,274,34,22]}
+{"kind":"textbox","id":"sh/grmxwvqt","slide":14,"name":"top-2-title","text":"Cash & Treasury","textPreview":"Cash & Treasury","textChars":15,"textLines":1,"bbox":[672,302,232,28]}
+{"kind":"textbox","id":"sh/fqdg3q98","slide":14,"name":"top-2-detail","text":"Posición + forecast + propuestas","textPreview":"Posición + forecast + propuestas","textChars":32,"textLines":1,"bbox":[672,334,232,23]}
+{"kind":"shape","id":"sh/up4fal83","slide":14,"name":"top-3-box","bbox":[952,260,264,112]}
+{"kind":"textbox","id":"sh/pwvy90rq","slide":14,"name":"top-3-n","text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[968,274,34,22]}
+{"kind":"textbox","id":"sh/4vmh0vq5","slide":14,"name":"top-3-title","text":"Month-End Close","textPreview":"Month-End Close","textChars":15,"textLines":1,"bbox":[968,302,232,28]}
+{"kind":"textbox","id":"sh/3udg7q9k","slide":14,"name":"top-3-detail","text":"Record → close → reconcile","textPreview":"Record → close → reconcile","textChars":26,"textLines":1,"bbox":[968,334,232,23]}
+{"kind":"shape","id":"sh/2t4fyl8z","slide":14,"name":"bottom-0-box","bbox":[64,450,264,112]}
+{"kind":"textbox","id":"sh/d0fydk7m","slide":14,"name":"bottom-0-n","text":"08 · VISIÓN","textPreview":"08 · VISIÓN","textChars":11,"textLines":1,"bbox":[80,464,34,22]}
+{"kind":"textbox","id":"sh/cz6h4fq1","slide":14,"name":"bottom-0-title","text":"Governed Finance","textPreview":"Governed Finance","textChars":16,"textLines":1,"bbox":[80,492,232,28]}
+{"kind":"textbox","id":"sh/atg3idk7","slide":14,"name":"bottom-0-detail","text":"Shared state + audit trail","textPreview":"Shared state + audit trail","textChars":26,"textLines":1,"bbox":[80,524,232,23]}
+{"kind":"shape","id":"sh/bup4rils","slide":14,"name":"bottom-1-box","bbox":[360,450,264,112]}
+{"kind":"textbox","id":"sh/cvylkn2d","slide":14,"name":"bottom-1-n","text":"07","textPreview":"07","textChars":2,"textLines":1,"bbox":[376,464,34,22]}
+{"kind":"textbox","id":"sh/xw7mts3y","slide":14,"name":"bottom-1-title","text":"CFO Orchestrator","textPreview":"CFO Orchestrator","textChars":16,"textLines":1,"bbox":[376,492,232,28]}
+{"kind":"textbox","id":"sh/yxgnmxkj","slide":14,"name":"bottom-1-detail","text":"Analiza · controla · coordina","textPreview":"Analiza · controla · coordina","textChars":29,"textLines":1,"bbox":[376,524,232,23]}
+{"kind":"shape","id":"sh/jyp4fil4","slide":14,"name":"bottom-2-box","bbox":[656,450,264,112]}
+{"kind":"textbox","id":"sh/kzy5on2p","slide":14,"name":"bottom-2-n","text":"06","textPreview":"06","textChars":2,"textLines":1,"bbox":[672,464,34,22]}
+{"kind":"textbox","id":"sh/lkrmhsju","slide":14,"name":"bottom-2-title","text":"Board Pack","textPreview":"Board Pack","textChars":10,"textLines":1,"bbox":[672,492,232,28]}
+{"kind":"textbox","id":"sh/6l0nqxkf","slide":14,"name":"bottom-2-detail","text":"Narrativa + evidencia gobernada","textPreview":"Narrativa + evidencia gobernada","textChars":31,"textLines":1,"bbox":[672,524,232,23]}
+{"kind":"shape","id":"sh/7m94j210","slide":14,"name":"bottom-3-box","bbox":[952,450,264,112]}
+{"kind":"textbox","id":"sh/fi5432t4","slide":14,"name":"bottom-3-n","text":"05","textPreview":"05","textChars":2,"textLines":1,"bbox":[968,464,34,22]}
+{"kind":"textbox","id":"sh/uhw3axcj","slide":14,"name":"bottom-3-title","text":"Reporting","textPreview":"Reporting","textChars":9,"textLines":1,"bbox":[968,492,232,28]}
+{"kind":"textbox","id":"sh/h4nm5sba","slide":14,"name":"bottom-3-detail","text":"Estados + management view","textPreview":"Estados + management view","textChars":25,"textLines":1,"bbox":[968,524,232,23]}
+{"kind":"textbox","id":"sh/gjelc7up","slide":14,"name":"flow-top-arrow-0","text":"→","textPreview":"→","textChars":1,"textLines":1,"bbox":[334,299,20,30]}
+{"kind":"textbox","id":"sh/365472tg","slide":14,"name":"flow-bottom-arrow-0","text":"←","textPreview":"←","textChars":1,"textLines":1,"bbox":[334,489,20,30]}
+{"kind":"textbox","id":"sh/25w3excv","slide":14,"name":"flow-top-arrow-1","text":"→","textPreview":"→","textChars":1,"textLines":1,"bbox":[630,299,20,30]}
+{"kind":"textbox","id":"sh/p87m9cb6","slide":14,"name":"flow-bottom-arrow-1","text":"←","textPreview":"←","textChars":1,"textLines":1,"bbox":[630,489,20,30]}
+{"kind":"textbox","id":"sh/47y5g7u1","slide":14,"name":"flow-top-arrow-2","text":"→","textPreview":"→","textChars":1,"textLines":1,"bbox":[926,299,20,30]}
+{"kind":"textbox","id":"sh/jal4vidw","slide":14,"name":"flow-bottom-arrow-2","text":"←","textPreview":"←","textChars":1,"textLines":1,"bbox":[926,489,20,30]}
+{"kind":"textbox","id":"sh/i9c32dcr","slide":14,"name":"flow-down-arrow","text":"↓","textPreview":"↓","textChars":1,"textLines":1,"bbox":[1074,395,22,30]}
+{"kind":"textbox","id":"sh/ofq1cja9","slide":14,"name":"flow-automation-label","text":"VALOR MODULAR Y DATOS COMPARTIDOS","textPreview":"VALOR MODULAR Y DATOS COMPARTIDOS","textChars":33,"textLines":1,"bbox":[64,229,500,20]}
+{"kind":"textbox","id":"sh/9gji5oru","slide":14,"name":"flow-governance-label","text":"GOBIERNO END-TO-END","textPreview":"GOBIERNO END-TO-END","textChars":19,"textLines":1,"bbox":[64,419,500,20]}
+{"kind":"textbox","id":"sh/mt8ja9sj","slide":14,"name":"footer-note-4","text":"AP Control Tower · primera implementación → CFO Office","textPreview":"AP Control Tower · primera implementación → CFO Office","textChars":54,"textLines":1,"bbox":[64,678,980,20]}
+{"kind":"textbox","id":"sh/neh03eto","slide":14,"name":"footer-page-4","text":"14","textPreview":"14","textChars":2,"textLines":1,"bbox":[1160,676,56,20]}
+{"kind":"notes","id":"nt/6lsnupw7","slide":14,"text":""}
+{"kind":"slide","id":"sl/vaxsvy10","slide":15,"title":"PRÓXIMO PASO · PRIMERA IMPLEMENTACIÓN","textShapes":11}
+{"kind":"textbox","id":"sh/vqdsrqx4","slide":15,"name":"closing-kicker","text":"PRÓXIMO PASO · PRIMERA IMPLEMENTACIÓN","textPreview":"PRÓXIMO PASO · PRIMERA IMPLEMENTACIÓN","textChars":37,"textLines":1,"bbox":[64,48,430,28]}
+{"kind":"textbox","id":"sh/547mhg3m","slide":15,"name":"closing-title","text":"Empecemos con AP sobre el circuito actual","textPreview":"Empecemos con AP sobre el circuito actual","textChars":41,"textLines":1,"bbox":[64,128,1040,160]}
+{"kind":"textbox","id":"sh/k3y5ov21","slide":15,"name":"closing-sub","text":"Validemos Gmail, formatos, interfaces, controles y criterios de aceptación antes de decidir el despliegue productivo.","textPreview":"Validemos Gmail, formatos, interfaces, controles y criterios de aceptación antes de decidir el despliegue productivo.","textChars":117,"textLines":1,"bbox":[64,320,880,70]}
+{"kind":"shape","id":"sh/76p4jqls","slide":15,"name":"closing-rule","bbox":[64,430,1152,1]}
+{"kind":"textbox","id":"sh/65gnqlk7","slide":15,"name":"closing-demo","text":"Demo guiada: abrir experiencia ↗","textPreview":"Demo guiada: abrir experiencia ↗","textChars":32,"textLines":1,"bbox":[64,492,430,30]}
+{"kind":"textbox","id":"sh/t87ml0ji","slide":15,"name":"closing-poc","text":"PoC + evals: abrir evidencia ↗","textPreview":"PoC + evals: abrir evidencia ↗","textChars":30,"textLines":1,"bbox":[64,545,430,30]}
+{"kind":"textbox","id":"sh/s7y5sv2x","slide":15,"name":"closing-access","text":"Accesos protegidos · solicitar la clave al equipo fundador","textPreview":"Accesos protegidos · solicitar la clave al equipo fundador","textChars":58,"textLines":1,"bbox":[64,610,560,26]}
+{"kind":"textbox","id":"sh/na5476l8","slide":15,"name":"closing-contact-label","text":"DECISIÓN PROPUESTA","textPreview":"DECISIÓN PROPUESTA","textChars":18,"textLines":1,"bbox":[730,470,430,22]}
+{"kind":"textbox","id":"sh/m9c3e1kn","slide":15,"name":"closing-mariana","text":"Aprobar integration readiness","textPreview":"Aprobar integration readiness","textChars":29,"textLines":1,"bbox":[730,515,450,34]}
+{"kind":"textbox","id":"sh/wrm9kvep","slide":15,"name":"closing-nicolas","text":"Seleccionar muestra controlada","textPreview":"Seleccionar muestra controlada","textChars":30,"textLines":1,"bbox":[730,565,450,34]}
+{"kind":"textbox","id":"sh/hsvat0fa","slide":15,"name":"footer-note-10","text":"AP Control Tower · primera implementación → CFO Office","textPreview":"AP Control Tower · primera implementación → CFO Office","textChars":54,"textLines":1,"bbox":[64,678,980,20]}
+{"kind":"textbox","id":"sh/upkrilwj","slide":15,"name":"footer-page-10","text":"15","textPreview":"15","textChars":2,"textLines":1,"bbox":[1160,676,56,20]}
+{"kind":"notes","id":"nt/vaxsvy10","slide":15,"text":""}

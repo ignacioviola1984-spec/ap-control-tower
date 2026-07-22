@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow, noarchive, nosnippet">
+  <meta name="theme-color" content="#07111f">
+  <meta name="description" content="AP Control Tower: caso de negocio, flujo operativo, controles y acceso a la demo y al PoC.">
+  <title>AP Control Tower · Business Case</title>
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/site.js" defer></script>
+</head>
+<body>
+  <a class="skip-link" href="#contenido">Ir al contenido</a>
+
+  <header class="site-header">
+    <a class="brand" href="#top" aria-label="AP Control Tower, inicio">
+      <span class="brand-mark" aria-hidden="true">AP</span>
+      <span><strong>Control Tower</strong><small>Private Business Case</small></span>
+    </a>
+    <nav class="nav" aria-label="Navegación principal">
+      <a href="#business-case">Business Case</a>
+      <a href="#flujo">Flujo</a>
+      <a href="#evidencia">Evidencia</a>
+      <a href="#seguridad">Seguridad</a>
+      <a href="#arquitectura">Arquitectura</a>
+      <a class="nav-contact" href="#contactos">Contactar al equipo</a>
+    </nav>
+    <a class="button button-small button-ghost" href="#experiencia">Ver experiencia</a>
+  </header>
+
+  <main id="contenido">
+    <section class="hero section" id="top">
+      <div class="hero-copy reveal">
+        <p class="eyebrow"><span class="status-dot"></span> Working private PoC</p>
+        <h1>De 30 pasos manuales a un circuito de pagos <em>controlado y auditable.</em></h1>
+        <p class="hero-lede">AP Control Tower convierte documentos dispersos en una propuesta de pago gobernada: automatiza la lectura y los controles, concentra las excepciones y mantiene la decisión de liberar dinero en manos de una persona.</p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="https://ap-control-tower-597507822266.us-central1.run.app" target="_blank" rel="noopener">Abrir Demo <span aria-hidden="true">↗</span></a>
+          <a class="button button-secondary" href="https://ap-control-tower-trial-597507822266.us-central1.run.app" target="_blank" rel="noopener">Probar con facturas <span aria-hidden="true">↗</span></a>
+        </div>
+        <p class="access-note">Ambas experiencias están protegidas con contraseña. Solicitá la clave al equipo.</p>
+      </div>
+
+      <div class="hero-panel reveal" aria-label="Resumen del circuito AP">
+        <div class="panel-head">
+          <div><span class="window-dot"></span><span class="window-dot"></span><span class="window-dot"></span></div>
+          <span>CONTROLLED INVOICE RUN</span>
+        </div>
+        <div class="mini-flow">
+          <div class="mini-node"><span>01</span><strong>Intake</strong><small>Gmail · PDF</small></div>
+          <div class="mini-arrow">›</div>
+          <div class="mini-node"><span>02</span><strong>Extract</strong><small>Document AI</small></div>
+          <div class="mini-arrow">›</div>
+          <div class="mini-node"><span>03</span><strong>Control</strong><small>C0–C11</small></div>
+          <div class="mini-arrow">›</div>
+          <div class="mini-node is-human"><span>04</span><strong>Human gate</strong><small>Review · approve</small></div>
+        </div>
+        <div class="panel-metrics">
+          <div><span>Automatización</span><strong>Maker–checker</strong></div>
+          <div><span>Decisión final</span><strong>100% humana</strong></div>
+          <div><span>Evidencia</span><strong>Audit trail</strong></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="baseline section-tight" aria-labelledby="baseline-title">
+      <div class="section-intro reveal">
+        <p class="eyebrow">Punto de partida</p>
+        <h2 id="baseline-title">Una operación crítica sostenida por trabajo manual.</h2>
+        <p>Datos de un proceso AS-IS de referencia anonimizado. No son estimaciones del modelo.</p>
+      </div>
+      <div class="metric-strip reveal">
+        <article><strong>~35</strong><span>facturas por mes</span></article>
+        <article><strong>30</strong><span>pasos manuales end-to-end</span></article>
+        <article><strong>2–4</strong><span>personas involucradas</span></article>
+        <article><strong>5</strong><span>sistemas y canales</span></article>
+        <article><strong>Semanal</strong><span>frecuencia de pagos</span></article>
+      </div>
+      <div class="systems-line reveal" aria-label="Sistemas y canales actuales">
+        <span>Email</span><i>+</i><span>Gestor documental</span><i>+</i><span>Planilla de tesorería</span><i>+</i><span>ERP financiero</span><i>+</i><span>Banca electrónica</span>
+      </div>
+    </section>
+
+    <section class="section" id="business-case" aria-labelledby="business-title">
+      <div class="section-intro reveal">
+        <p class="eyebrow">Business Case</p>
+        <h2 id="business-title">El valor no es “procesar más rápido”. Es controlar mejor dónde se usa el tiempo.</h2>
+        <p>El sistema automatiza tareas repetibles y dirige la atención humana hacia datos faltantes, excepciones, fraude potencial y aprobación de pagos.</p>
+      </div>
+
+      <div class="value-grid">
+        <article class="value-card reveal">
+          <span class="value-num">01</span>
+          <h3>Capacidad operativa</h3>
+          <p>Menos lectura, recarga y búsqueda manual. El equipo trabaja sobre una cola priorizada, no sobre el 100% de las facturas.</p>
+        </article>
+        <article class="value-card reveal">
+          <span class="value-num">02</span>
+          <h3>Riesgo antes del pago</h3>
+          <p>Duplicados, desvíos contra OC, cambios de IBAN y diferencias cashflow–ERP se frenan antes de integrar un lote.</p>
+        </article>
+        <article class="value-card reveal">
+          <span class="value-num">03</span>
+          <h3>Gobierno y trazabilidad</h3>
+          <p>Cada control, corrección, sign-off y decisión queda asociado a evidencia, responsable y timestamp.</p>
+        </article>
+        <article class="value-card reveal">
+          <span class="value-num">04</span>
+          <h3>Escala sin perder control</h3>
+          <p>El motor aplica reglas explícitas y configurables; el gate humano continúa siendo obligatorio aun cuando crece el volumen.</p>
+        </article>
+      </div>
+
+      <div class="calculator reveal" aria-labelledby="calculator-title">
+        <div class="calculator-copy">
+          <p class="eyebrow">Calculador de oportunidad</p>
+          <h3 id="calculator-title">Modelá el caso con tus propios supuestos.</h3>
+          <p>Los valores iniciales son una hipótesis de trabajo visible y editable. La reducción de fraude, duplicados y pagos tardíos no está monetizada, por lo que el resultado es deliberadamente conservador.</p>
+          <div class="calculator-form">
+            <label>Facturas por mes<input id="invoices" type="number" min="1" step="1" value="35"></label>
+            <label>Minutos manuales por factura<input id="minutes" type="number" min="1" step="5" value="75"></label>
+            <label>Costo completo por hora (€)<input id="hourly-cost" type="number" min="1" step="1" value="35"></label>
+            <label>Trabajo automatizable (%)<input id="coverage" type="number" min="0" max="100" step="5" value="70"></label>
+            <label>Inversión inicial (€)<input id="investment" type="number" min="0" step="500" value="10000"></label>
+            <label>Costo operativo mensual (€)<input id="monthly-cost" type="number" min="0" step="50" value="250"></label>
+          </div>
+        </div>
+        <div class="calculator-results" aria-live="polite">
+          <div class="result-feature"><span>Beneficio neto anual estimado</span><strong id="annual-net">—</strong><small>valor de capacidad menos costo operativo</small></div>
+          <div class="result-row"><span>Horas recuperadas / mes</span><strong id="hours-saved">—</strong></div>
+          <div class="result-row"><span>Valor bruto anual</span><strong id="annual-gross">—</strong></div>
+          <div class="result-row"><span>Payback estimado</span><strong id="payback">—</strong></div>
+          <div class="result-row"><span>ROI a 3 años</span><strong id="roi-three-year">—</strong></div>
+          <p class="method-note">Modelo de capacidad, no cotización. Validar tiempos, costos e inversión durante el discovery.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="section flow-section" id="flujo" aria-labelledby="flow-title">
+      <div class="section-intro reveal">
+        <p class="eyebrow">Flujo del proyecto</p>
+        <h2 id="flow-title">Automatización hasta el límite correcto. Decisión humana donde importa.</h2>
+      </div>
+
+      <ol class="process-flow reveal">
+        <li>
+          <span class="step-number">01</span>
+          <div><small>Entrada</small><h3>Recepción</h3><p>Gmail read-only o carga manual de PDF. Hash del documento y registro de origen.</p><div class="chip-row"><span>Gmail</span><span>PDF</span><span>Read-only</span></div></div>
+        </li>
+        <li>
+          <span class="step-number">02</span>
+          <div><small>Document AI</small><h3>Lectura estructurada</h3><p>Clasifica el documento, extrae campos y conserva confianza y evidencia para revisión.</p><div class="chip-row"><span>OCR</span><span>29 campos</span><span>Anti-alucinación</span></div></div>
+        </li>
+        <li>
+          <span class="step-number">03</span>
+          <div><small>Routing</small><h3>Ruta operativa</h3><p>Separa factura, proforma y otros; luego distingue PO, non-PO, transferencia, SEPA y tarjeta.</p><div class="chip-row"><span>PO</span><span>Non-PO</span><span>Anticipos</span></div></div>
+        </li>
+        <li>
+          <span class="step-number">04</span>
+          <div><small>Control engine</small><h3>Controles C0–C11</h3><p>Completitud, duplicados, autorización, match, IVA, banco, conciliación y gobierno.</p><div class="chip-row"><span>Hard block</span><span>Soft flag</span><span>Evidence</span></div></div>
+        </li>
+        <li class="human-step">
+          <span class="step-number">05</span>
+          <div><small>Human in the loop</small><h3>Revisión focalizada</h3><p>El equipo confirma o corrige únicamente datos inciertos, non-PO y excepciones que requieren contexto.</p><div class="chip-row"><span>Nombre</span><span>Decisión</span><span>Timestamp</span></div></div>
+        </li>
+        <li>
+          <span class="step-number">06</span>
+          <div><small>Maker–checker</small><h3>Propuesta de pago</h3><p>Dos validadores independientes revisan factura y lote antes de enviarlo al gate.</p><div class="chip-row"><span>Checker A</span><span>Checker B</span><span>Revalidación</span></div></div>
+        </li>
+        <li class="human-step">
+          <span class="step-number">07</span>
+          <div><small>Human gate</small><h3>Aprobación de pagos</h3><p>El sistema no puede liberar dinero sin aprobación humana registrada. Rechazar devuelve el lote.</p><div class="chip-row"><span>Approve</span><span>Reject</span><span>No autopay</span></div></div>
+        </li>
+        <li>
+          <span class="step-number">08</span>
+          <div><small>Close &amp; learn</small><h3>Cierre auditable</h3><p>Conciliación contra pasivo, reporte de excepciones y audit trail encadenado exportable.</p><div class="chip-row"><span>Reconcile</span><span>CSV</span><span>Hash-chain</span></div></div>
+        </li>
+      </ol>
+    </section>
+
+    <section class="section" id="casos" aria-labelledby="cases-title">
+      <div class="section-intro reveal">
+        <p class="eyebrow">Casos de uso</p>
+        <h2 id="cases-title">Un mismo control tower para las excepciones que realmente aparecen en AP.</h2>
+      </div>
+      <div class="case-grid">
+        <article class="case-card reveal"><span class="case-icon">≡</span><h3>Duplicados y casi-duplicados</h3><p>Número, proveedor, importe y proximidad temporal para frenar reenvíos y variaciones sospechosas.</p></article>
+        <article class="case-card reveal"><span class="case-icon">⌁</span><h3>Cambio de IBAN</h3><p>Compara datos bancarios contra el maestro y bloquea transferencias con evidencia divergente.</p></article>
+        <article class="case-card reveal"><span class="case-icon">✓</span><h3>PO y non-PO</h3><p>Match y saldo para ruta PO; aprobador, centro de coste y soporte para non-PO gobernada.</p></article>
+        <article class="case-card reveal"><span class="case-icon">↗</span><h3>Proformas y anticipos</h3><p>Flujo separado que nunca entra al lote de facturas y alerta si falta la factura final.</p></article>
+        <article class="case-card reveal"><span class="case-icon">↻</span><h3>SEPA y tarjeta</h3><p>Valida mandato o crea tareas de conciliación posterior sin forzar esos pagos dentro del lote.</p></article>
+        <article class="case-card reveal"><span class="case-icon">±</span><h3>Cashflow vs. ERP</h3><p>Detecta diferencias antes del pago y evita que un error manual de Excel llegue al banco.</p></article>
+      </div>
+    </section>
+
+    <section class="section evidence-section" id="evidencia" aria-labelledby="evidence-title">
+      <div class="section-intro reveal">
+        <p class="eyebrow">Evidencia controlada</p>
+        <h2 id="evidence-title">La demo no promete: muestra el circuito funcionando.</h2>
+        <p>Resultados de una corrida sintética auditada de junio de 2026. Los importes ilustran comportamiento del sistema, no resultados históricos de un cliente.</p>
+      </div>
+      <div class="evidence-grid reveal">
+        <article><strong>42</strong><span>documentos procesados</span><small>36 base + 6 flujos reales</small></article>
+        <article><strong>28</strong><span>facturas pagables</span><small>en cuatro lotes semanales</small></article>
+        <article><strong>€98.859,85</strong><span>propuestos para pago</span><small>con doble sign-off</small></article>
+        <article class="risk"><strong>€42.057,30</strong><span>retenidos por controles</span><small>seis facturas bloqueadas</small></article>
+      </div>
+      <div class="evidence-notes reveal">
+        <div><strong>Posible fraude bancario detenido</strong><p>Un IBAN distinto del maestro fue bloqueado automáticamente antes del lote.</p></div>
+        <div><strong>Gate humano no salteable</strong><p>Las pruebas intentan liberar sin aprobación, sin sign-offs o sin nombre y exigen que el sistema lo impida.</p></div>
+        <div><strong>Trazabilidad completa</strong><p>Controles, evidencia, revisiones y decisiones quedan en una cadena de auditoría verificable.</p></div>
+      </div>
+    </section>
+
+    <section class="section security-section" id="seguridad" aria-labelledby="security-title">
+      <div class="section-intro reveal">
+        <p class="eyebrow">Seguridad de la información</p>
+        <h2 id="security-title">Tus documentos se procesan para tu operación. No para entrenar modelos de Google.</h2>
+        <p>El PoC combina decisiones de arquitectura propias con los compromisos contractuales y de seguridad de Google Cloud.</p>
+      </div>
+      <div class="security-lead reveal">
+        <div class="security-statement">
+          <span>Compromiso Document AI</span>
+          <blockquote>Google Cloud declara que no utiliza el contenido del cliente —incluidos documentos y predicciones— para entrenar sus modelos de Document AI.</blockquote>
+          <a href="https://docs.cloud.google.com/document-ai/docs/security" target="_blank" rel="noopener">Ver seguridad y uso de datos de Document AI ↗</a>
+        </div>
+        <div class="security-control">
+          <span>Configuración actual del PoC</span>
+          <strong>Procesamiento temporal, sin repositorio de PDFs.</strong>
+          <p>La aplicación procesa los documentos durante la sesión y no guarda una copia del PDF en una base de datos ni en un bucket. El sistema de archivos de Cloud Run opera en memoria y su contenido no persiste cuando la instancia se detiene.</p>
+          <a href="https://docs.cloud.google.com/run/docs/container-contract#file_system" target="_blank" rel="noopener">Ver contrato de ejecución de Cloud Run ↗</a>
+        </div>
+      </div>
+      <div class="security-grid reveal">
+        <article><span>01</span><h3>Datos bajo instrucciones</h3><p>Google procesa los datos del cliente para prestar, asegurar y monitorear los servicios contratados, de acuerdo con las instrucciones del cliente.</p><a href="https://cloud.google.com/terms/data-processing-addendum/" target="_blank" rel="noopener">Cloud Data Processing Addendum ↗</a></article>
+        <article><span>02</span><h3>Sin entrenamiento</h3><p>El contenido y las predicciones de Document AI no se incorporan al entrenamiento de los modelos de Google Cloud.</p><a href="https://docs.cloud.google.com/document-ai/docs/security" target="_blank" rel="noopener">Política de Document AI ↗</a></article>
+        <article><span>03</span><h3>Acceso restringido</h3><p>Demo y PoC requieren contraseña. Las credenciales se mantienen fuera del código y se administran mediante Secret Manager.</p><a href="https://cloud.google.com/security/products/secret-manager" target="_blank" rel="noopener">Google Secret Manager ↗</a></article>
+        <article><span>04</span><h3>Controles auditados</h3><p>Google Cloud documenta medidas de cifrado, aislamiento, control de acceso y auditorías independientes de seguridad y cumplimiento.</p><a href="https://docs.cloud.google.com/docs/security/overview/whitepaper" target="_blank" rel="noopener">Google Cloud Security Overview ↗</a></article>
+      </div>
+      <p class="security-disclaimer reveal">Alcance comercial: “sin persistencia” describe la configuración de esta aplicación. Google Cloud conserva los datos que correspondan para operar y proteger sus servicios conforme a sus términos y políticas aplicables.</p>
+    </section>
+
+    <section class="section" id="arquitectura" aria-labelledby="architecture-title">
+      <div class="section-intro reveal">
+        <p class="eyebrow">Arquitectura y herramientas</p>
+        <h2 id="architecture-title">Un PoC realista, diseñado para evolucionar sin rehacer el núcleo.</h2>
+      </div>
+      <div class="architecture-grid">
+        <article class="architecture-card is-live reveal">
+          <div class="architecture-head"><span>Disponible hoy</span><strong>Demo + PoC</strong></div>
+          <ul>
+            <li><b>Python + Decimal</b><span>Motor determinístico para dinero y reglas.</span></li>
+            <li><b>Google Document AI</b><span>Clasificación y extracción de facturas reales.</span></li>
+            <li><b>Streamlit</b><span>Experiencia de revisión, excepciones y aprobación.</span></li>
+            <li><b>Cloud Run + Docker</b><span>Servicio escalable a cero y despliegue reproducible.</span></li>
+            <li><b>Secret Manager</b><span>Contraseñas fuera de código e imagen.</span></li>
+            <li><b>Audit trail hash-chained</b><span>Evidencia cronológica y detección de manipulación.</span></li>
+          </ul>
+        </article>
+        <article class="architecture-card reveal">
+          <div class="architecture-head"><span>Siguiente fase</span><strong>Integración productiva</strong></div>
+          <ul>
+            <li><b>ERP financiero</b><span>Proveedores, pasivos, OC e imputación contable.</span></li>
+            <li><b>Gestor documental</b><span>Documentación y archivo operativo.</span></li>
+            <li><b>Planilla de tesorería</b><span>Conciliación pre-pago durante la transición.</span></li>
+            <li><b>Banca electrónica</b><span>Propuesta controlada; liberación siempre humana.</span></li>
+            <li><b>PostgreSQL opcional</b><span>Persistencia de corridas, resultados y decisiones.</span></li>
+            <li><b>API y workers</b><span>Procesamiento desacoplado para mayor volumen.</span></li>
+          </ul>
+          <p class="scope-note">Estas conexiones son alcance de integración, no se presentan como activas en el PoC.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="section principles" aria-labelledby="principles-title">
+      <div class="section-intro reveal">
+        <p class="eyebrow">Principios de control</p>
+        <h2 id="principles-title">Cuatro límites que el sistema no negocia.</h2>
+      </div>
+      <div class="principle-list reveal">
+        <article><span>01</span><h3>Sin evidencia, no avanza</h3><p>Las reglas hard bloquean y explican el motivo.</p></article>
+        <article><span>02</span><h3>Una proforma no es una factura</h3><p>Los anticipos mantienen un flujo propio.</p></article>
+        <article><span>03</span><h3>Corregir no equivale a pagar</h3><p>Toda modificación invalida sign-offs y obliga a revalidar.</p></article>
+        <article><span>04</span><h3>El dinero lo libera una persona</h3><p>No existe transición autónoma hacia el banco.</p></article>
+      </div>
+    </section>
+
+    <section class="section experience" id="experiencia" aria-labelledby="experience-title">
+      <div class="experience-copy reveal">
+        <p class="eyebrow">Ver para decidir</p>
+        <h2 id="experience-title">Dos formas de experimentar AP Control Tower.</h2>
+        <p>Recorré el mes sintético completo o probá la extracción y la revisión con documentos propios. Las dos experiencias comparten el mismo criterio: automatizar el trabajo, no la responsabilidad.</p>
+      </div>
+      <div class="experience-cards">
+        <a class="experience-card reveal" href="https://ap-control-tower-597507822266.us-central1.run.app" target="_blank" rel="noopener">
+          <span>01 · Demo guiada</span><h3>Recorré el circuito completo</h3><p>Corrida mensual, controles, excepciones, doble sign-off, gate humano, auditoría y caso de negocio.</p><strong>Abrir Demo ↗</strong>
+        </a>
+        <a class="experience-card reveal" href="https://ap-control-tower-trial-597507822266.us-central1.run.app" target="_blank" rel="noopener">
+          <span>02 · PoC con documentos</span><h3>Probalo con facturas reales</h3><p>Carga o intake, Document AI, resultados estructurados, revisión focalizada y propuesta de pago.</p><strong>Abrir PoC ↗</strong>
+        </a>
+      </div>
+      <div class="next-step reveal">
+        <div><small>Próximo paso recomendado</small><h3>Discovery de 90 minutos + muestra controlada de documentos</h3><p>Validamos volumen, tiempos, excepciones, sistemas fuente y controles prioritarios para convertir el calculador en un caso económico real.</p></div>
+        <a class="button button-primary" href="#contactos">Contactar al equipo</a>
+      </div>
+      <div class="commercial-contacts reveal" id="contactos" aria-labelledby="contacts-title">
+        <div><small>Contactos comerciales</small><h3 id="contacts-title">Conversemos sobre el caso de uso.</h3></div>
+        <div class="contact-links">
+          <a href="https://www.linkedin.com/in/ACoAAA0pGygBDxsieuNVAJ9SDPjnIPBfLUZdMjs?lipi=urn%3Ali%3Apage%3Ad_flagship3_messaging_conversation_detail%3BR6VirGSETdC2whWCh4UlVQ%3D%3D" target="_blank" rel="noopener"><span>Mariana Soledad Giordano</span><strong>Contactar por LinkedIn ↗</strong></a>
+          <a href="https://www.linkedin.com/in/ACoAAAbsP7AB-PCw0iKRDEU44Sl5i_1YrcU_SfE" target="_blank" rel="noopener"><span>Nicolas M Amato</span><strong>Contactar por LinkedIn ↗</strong></a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div><strong>AP Control Tower</strong><span>Business Case privado</span></div>
+    <div class="footer-actions"><button id="print-page" type="button">Guardar como PDF</button><a href="/?logout=1">Cerrar sesión</a></div>
+    <p>Documento comercial confidencial. Las métricas de la demo provienen de datos sintéticos; las estimaciones económicas requieren validación con datos del cliente.</p>
+  </footer>
+</body>
+</html>

@@ -12,6 +12,12 @@ hace SKIP sin SQLAlchemy.
     export AP_TEST_DATABASE_URL="postgresql+psycopg://ap:ap_dev_local@localhost:5432/ap_control_tower"
     python evals/test_analytics_views.py
 
+Contra una instancia compartida o productiva, omitir deliberadamente el ciclo
+destructivo downgrade/re-upgrade (el resto de las pruebas sigue corriendo con
+fixtures sinteticas que se eliminan al finalizar):
+
+    export AP_TEST_SKIP_DOWNGRADE=1
+
 Que prueba:
   1. Migracion: upgrade crea las 6 vistas con sus columnas; downgrade las quita
      y borra el esquema; re-upgrade vuelve a dejarlas (idempotente).
@@ -288,16 +294,21 @@ def _grant_sql(role: str) -> list[str]:
 def _drop_role(conn, role: str) -> None:
     """Elimina el rol de test de forma idempotente.
 
-    DROP ROLE falla con DependentObjectsStillExist mientras el rol conserve
-    privilegios (incluidos los EXECUTE sobre las funciones de analytics).
-    DROP OWNED BY los revoca todos en la base actual; el rol no posee objetos
-    propios porque nunca pudo crear ninguno.
+    Se revocan explicitamente los privilegios que concede `_grant_sql` antes
+    de DROP ROLE. Cloud SQL no permite a un CREATEROLE ejecutar DROP OWNED BY
+    otro rol si no tiene SET OPTION sobre el mismo, aun cuando lo haya creado.
+    El rol de eval nunca puede crear objetos, por lo que no hay ownership que
+    reasignar.
     """
     conn.exec_driver_sql(f"""
         DO $$
         BEGIN
             IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '{role}') THEN
-                EXECUTE 'DROP OWNED BY {role}';
+                EXECUTE 'REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA analytics FROM {role}';
+                EXECUTE 'REVOKE ALL PRIVILEGES ON ALL FUNCTIONS IN SCHEMA analytics FROM {role}';
+                EXECUTE 'REVOKE ALL PRIVILEGES ON SCHEMA analytics FROM {role}';
+                EXECUTE 'REVOKE ALL PRIVILEGES ON ALL TABLES IN SCHEMA public FROM {role}';
+                EXECUTE 'REVOKE ALL PRIVILEGES ON SCHEMA public FROM {role}';
                 EXECUTE 'DROP ROLE {role}';
             END IF;
         END $$
@@ -342,8 +353,10 @@ def _check_permissions(engine, url: str) -> None:
     try:
         # SELECT sobre las vistas: PERMITIDO
         with ro_engine.connect() as conn:
-            n = conn.execute(text("SELECT count(*) FROM analytics.v_documents")).scalar()
-            check(n == 3, f"el rol lee analytics.v_documents ({n} filas)")
+            n = conn.execute(text(
+                "SELECT count(*) FROM analytics.v_documents WHERE run_id = :run_id"
+            ), {"run_id": RUN_ID}).scalar()
+            check(n == 3, f"el rol lee los fixtures de analytics.v_documents ({n} filas)")
 
         # SELECT sobre tablas base: DENEGADO
         for tabla in ("trial_documents", "trial_runs"):
@@ -407,6 +420,9 @@ def main() -> int:
 
     from sqlalchemy import create_engine, text
 
+    skip_downgrade = os.environ.get("AP_TEST_SKIP_DOWNGRADE", "").strip().lower() \
+        in {"1", "true", "yes", "on"}
+
     print(f"== Vistas analytics contra {url.split('://')[0]} ==")
     engine = create_engine(url)
     try:
@@ -425,17 +441,20 @@ def main() -> int:
                   f"{view}: columnas exactas ({len(cols)})"
                   + (f" -- difieren: {cols ^ esperadas}" if cols != esperadas else ""))
 
-        _run_alembic(url, "-1")
-        with engine.connect() as conn:
-            existe = conn.execute(text(
-                "SELECT count(*) FROM information_schema.schemata "
-                "WHERE schema_name = 'analytics'")).scalar()
-        check(existe == 0, "downgrade -1 borra las vistas y el esquema analytics")
+        if skip_downgrade:
+            print("  SKIP  downgrade/re-upgrade omitido por AP_TEST_SKIP_DOWNGRADE")
+        else:
+            _run_alembic(url, "-1")
+            with engine.connect() as conn:
+                existe = conn.execute(text(
+                    "SELECT count(*) FROM information_schema.schemata "
+                    "WHERE schema_name = 'analytics'")).scalar()
+            check(existe == 0, "downgrade -1 borra las vistas y el esquema analytics")
 
-        _run_alembic(url, "head")
-        with engine.connect() as conn:
-            check(set(VISTAS) <= _views_present(conn),
-                  "re-upgrade vuelve a crear las vistas (migracion re-aplicable)")
+            _run_alembic(url, "head")
+            with engine.connect() as conn:
+                check(set(VISTAS) <= _views_present(conn),
+                      "re-upgrade vuelve a crear las vistas (migracion re-aplicable)")
 
         # -- 2. minimizacion: campos vetados no existen como columna
         print("== Minimizacion: campos vetados fuera de toda vista ==")

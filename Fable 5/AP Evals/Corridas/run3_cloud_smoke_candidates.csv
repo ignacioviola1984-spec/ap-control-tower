@@ -1,0 +1,16 @@
+﻿priority,doc_id,archivo_pdf,resultado_esperado,control_esperado,purpose
+1,GD-001,05. DYNATA ES01-ARIV-0010205.pdf,en_lote,,control negativo real; debe avanzar
+2,GD-105,GD-105.pdf,en_lote,,original del grupo; medir falso positivo del detector
+3,GD-106,GD-106.pdf,bloqueada,C2_DUPLICADOS,duplicado exacto C2
+4,GD-107,GD-107.pdf,bloqueada,C2_DUPLICADOS,casi-duplicado corregido C2
+5,GD-108,GD-108.pdf,bloqueada,C2_DUPLICADOS,duplicado con normalizacion C2
+6,GD-109,GD-109.pdf,bloqueada,C6_DATOS_BANCARIOS,IBAN completamente distinto C6
+7,GD-110,GD-110.pdf,bloqueada,C6_DATOS_BANCARIOS,IBAN con un digito alterado C6
+8,GD-111,GD-111.pdf,bloqueada,C3_AUTORIZACION_OC,OC inexistente C3
+9,GD-112,GD-112.pdf,bloqueada,C3_AUTORIZACION_OC,OC sin saldo C3
+10,GD-113,GD-113.pdf,bloqueada,C5_MATCH,match fuera de tolerancia C5
+11,GD-114,GD-114.pdf,en_lote,,match dentro de tolerancia; control negativo
+12,GD-116,GD-116.pdf,anticipo,C8_ANTICIPO_SIN_FACTURA_FINAL,proforma/anticipo C8
+13,GD-117,GD-117.pdf,conciliacion,,ruta de conciliacion
+14,GD-118,GD-118.pdf,en_lote,,intercompany que debe avanzar con flag
+15,GD-119,GD-119.pdf,revision_humana,,nota de credito corregida

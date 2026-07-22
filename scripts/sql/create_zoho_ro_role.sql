@@ -57,13 +57,38 @@ SELECT format(
 WHERE NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'zoho_analytics_ro')
 \gexec
 
--- Si ya existia: se re-alinean atributos y se rota la password.
+-- Si ya existia: se rotan la password y los atributos que Cloud SQL permite
+-- administrar a un rol con CREATEROLE. No se repiten NOSUPERUSER/NOCREATEDB/
+-- NOCREATEROLE/NOREPLICATION: PostgreSQL exige SUPERUSER para cambiar algunos
+-- de esos flags, aunque sea para desactivarlos. La validacion siguiente corta
+-- si el rol preexistente no cumple el perfil restringido.
 SELECT format(
     'ALTER ROLE zoho_analytics_ro LOGIN PASSWORD %L '
-    'NOSUPERUSER NOCREATEDB NOCREATEROLE NOINHERIT NOREPLICATION CONNECTION LIMIT 8',
+    'NOINHERIT CONNECTION LIMIT 8',
     :'zoho_password')
 WHERE EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'zoho_analytics_ro')
 \gexec
+
+DO $$
+DECLARE
+    role_is_restricted boolean;
+BEGIN
+    SELECT NOT rolsuper
+       AND NOT rolcreatedb
+       AND NOT rolcreaterole
+       AND NOT rolinherit
+       AND NOT rolreplication
+       AND rolcanlogin
+       AND rolconnlimit = 8
+      INTO role_is_restricted
+      FROM pg_roles
+     WHERE rolname = 'zoho_analytics_ro';
+
+    IF role_is_restricted IS DISTINCT FROM TRUE THEN
+        RAISE EXCEPTION
+            'zoho_analytics_ro existe con atributos incompatibles; requiere correccion por el administrador de Cloud SQL';
+    END IF;
+END $$;
 
 -- --------------------------------------------------------------------------
 -- 2. Quitar TODO primero. El rol arranca sin nada y solo se le da `analytics`.
@@ -136,6 +161,12 @@ REVOKE CREATE ON SCHEMA analytics FROM zoho_analytics_ro;
 --    SET ROLE falla, saltear esta seccion y verificar conectandose directamente
 --    con el rol (el runbook trae el comando).
 -- ============================================================================
+\if :{?verify_via_set_role}
+\else
+\set verify_via_set_role true
+\endif
+
+\if :verify_via_set_role
 SET ROLE zoho_analytics_ro;
 
 \echo '--- verificacion: identidad efectiva ---'
@@ -220,6 +251,9 @@ BEGIN
 END $$;
 
 RESET ROLE;
+\else
+\echo '--- verificacion SET ROLE omitida; validar con conexion directa como zoho_analytics_ro ---'
+\endif
 
 -- 4.6 Resumen de privilegios efectivos. Revisar a ojo: las tres primeras
 --     columnas deben dar true/false/false y ninguna tabla base debe listarse.

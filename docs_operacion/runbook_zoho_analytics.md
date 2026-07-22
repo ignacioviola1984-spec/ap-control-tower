@@ -20,6 +20,20 @@ comportamiento de nada de lo existente.
 | Evals de migración, enmascarado y permisos | Correrlos contra la instancia real |
 | — | Todo lo de Google Cloud y todo lo de la UI de Zoho |
 
+### Estado de la instancia del PoC — 16-07-2026
+
+- Migración `0006_analytics_views` aplicada; las 6 vistas están disponibles.
+- Rol `zoho_analytics_ro` creado con límite de 8 conexiones y validado por
+  conexión directa: lee `analytics` y no lee tablas base, no escribe ni crea.
+- Password almacenada en Google Secret Manager; no está en el repositorio.
+- IPs de Zoho Analytics EU autorizadas y SSL configurado como
+  `ENCRYPTED_ONLY`.
+- Evals de estructura, minimización, enmascarado, semántica y permisos: verdes
+  contra Cloud SQL. Smoke de ambos servicios Cloud Run: `200 / ok`, sin
+  reprocesar facturas.
+- **Pendiente manual:** crear/conectar el workspace en la cuenta Zoho EU del
+  cliente, seleccionar sólo `analytics` y programar la importación cada 3 h.
+
 ---
 
 ## 0. Modelo de exposición (leer antes de tocar nada)
@@ -117,6 +131,13 @@ unset ZOHO_PW
 El script termina con una sección de verificación que **debe** pasar: comprueba
 que el rol lee las vistas, que **no** puede leer las tablas base y que no puede
 escribir ni crear objetos. Si algo de eso falla, **no configures Zoho**.
+
+En Cloud SQL, un rol con `CREATEROLE` puede crear `zoho_analytics_ro` pero no
+necesariamente recibe `SET OPTION`; en ese caso la sección `SET ROLE` falla aun
+cuando los grants sean correctos. Repetí el script agregando
+`-v verify_via_set_role=false` y hacé obligatoriamente la comprobación manual
+del §5 mediante una conexión directa como `zoho_analytics_ro`. Esta opción sólo
+omite la auto-verificación: no cambia el perfil ni los grants.
 
 Detalles que el script resuelve y conviene conocer:
 
@@ -338,12 +359,17 @@ Todas viven en el esquema `analytics`. Columnas explícitas, sin `SELECT *`.
 ## 5. Verificación
 
 ```bash
-# Evals del entregable, contra la instancia real (o el Postgres de dev)
+# Evals completos contra un Postgres descartable de dev
 export AP_TEST_DATABASE_URL="postgresql+psycopg://${ADMIN_USER}:${ADMIN_PASSWORD}@${HOST}:5432/${DB_NAME}"
+python evals/test_analytics_views.py        # exit 0 = verde
+
+# Contra una instancia compartida/productiva: conserva el esquema y corre el
+# resto de las pruebas con fixtures sinteticos que se purgan al finalizar.
+export AP_TEST_SKIP_DOWNGRADE=1
 python evals/test_analytics_views.py        # exit 0 = verde
 ```
 
-Cubre: migración (upgrade / downgrade / re-upgrade), columnas exactas de las 6
+Cubre: migración (upgrade / downgrade / re-upgrade salvo en modo seguro), columnas exactas de las 6
 vistas, enmascarado de IBAN y tax_id **insertando valores completos directo en
 las tablas base**, ausencia de campos vetados, casts defensivos y permisos del
 rol de lectura.

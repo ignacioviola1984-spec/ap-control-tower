@@ -6,6 +6,7 @@ import os
 
 import streamlit as st
 
+from ..agent.config import admin_dashboard_enabled
 from .pilot_format import format_totals, totals_by_currency
 from .trial import session as sess
 
@@ -52,7 +53,16 @@ PAGES = [
 
 def _streamlit_pages() -> list:
     """Crea objetos de navegación dentro del contexto de cada ejecución."""
-    return [st.Page(**spec) for spec in PAGES]
+    specs = list(PAGES)
+    if admin_dashboard_enabled():
+        specs.append(
+            {
+                "page": "app_pages/admin_asistente.py",
+                "title": "Operación del asistente",
+                "icon": ":material/admin_panel_settings:",
+            }
+        )
+    return [st.Page(**spec) for spec in specs]
 
 
 @st.dialog(
@@ -99,6 +109,8 @@ def _confirm_close_session() -> None:
             sess.persist(active)
             sess.reset_session()
             st.session_state.pop("_pilot_preview_seeded", None)
+            st.session_state.pop("_ap_agent_conversations", None)
+            st.session_state.pop("_agent_admin_ok", None)
             st.session_state.pop("_auth_ok", None)
             st.rerun()
 

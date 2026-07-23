@@ -5,6 +5,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from .agent_panel import render_document_agent
 from .pilot_format import format_datetime, operational_summary
 from .pilot_pages_common import (
     active_session_or_resume,
@@ -225,4 +226,6 @@ def render_documents() -> None:
         st.caption("Seleccioná un documento para ver el detalle.")
         return
     selected = filtered[selected_rows[0]]
-    render_document_detail(active, result_by_id(active, selected["doc_id"]))
+    result = result_by_id(active, selected["doc_id"])
+    render_document_detail(active, result)
+    render_document_agent(active, result, page_key="documentos")

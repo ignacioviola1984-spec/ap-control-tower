@@ -5,6 +5,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from .agent_panel import render_document_agent
 from .pilot_format import (
     STATE_LABELS,
     format_amount,
@@ -223,6 +224,7 @@ def render_human_review() -> None:
     result = item["result"]
 
     render_document_detail(active, result)
+    render_document_agent(active, result, page_key="revision")
     st.subheader("Registrar revisión")
     if item["reasons"]:
         st.warning("Motivo de derivación: " + " · ".join(item["reasons"]))

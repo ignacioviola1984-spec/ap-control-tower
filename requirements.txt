@@ -8,3 +8,5 @@ reportlab>=4.0
 pdfplumber>=0.11
 pypdf>=4.0
 google-cloud-documentai>=3.6,<4
+# Asistente AP: Responses API + function calling. La clave se inyecta en runtime.
+openai>=1.99,<3

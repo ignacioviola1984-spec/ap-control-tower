@@ -66,6 +66,17 @@ DEFAULT_OWN_COMPANY_NAMES = (
     "Meridia Consulting",
 )
 DEFAULT_OWN_TAX_IDS = ("B85902583", "B86774718")
+#: Permite reponer el nombre del cliente cuando el documento trae el CIF propio
+#: pero no un nombre legible (p. ej. Telefónica escribe "Estimado cliente").
+DEFAULT_OWN_PARTY_BY_TAX_ID = {
+    "B85902583": "Brand Up",
+    "B86774718": "BMC Strategic Innovation Group",
+}
+#: Nombres de persona física usados como contacto, no como razón social.
+_PERSON_TITLE_RE = re.compile(
+    r"^(?:mr|mrs|ms|miss|sr|sra|srta|dr|dra|don|dona|d\.|d\.ª)\b\.?\s+",
+    re.IGNORECASE,
+)
 
 
 class NotInvoiceDocumentError(RuntimeError):
@@ -111,11 +122,33 @@ def _is_own_party(value: str | None) -> bool:
     )
 
 
+#: Formatos plausibles de identificador fiscal. Evita que un número cualquiera
+#: del documento (p. ej. el nº de transacción de Zoom) se cargue como CIF.
+_PLAUSIBLE_TAX_ID_RE = re.compile(
+    r"^(?:"
+    r"[A-Z]\d{7}[A-Z0-9]"        # CIF español: letra + 7 dígitos + control
+    r"|\d{8}[A-Z]"               # NIF español: 8 dígitos + letra
+    r"|\d{9}"                    # VAT sin prefijo de país (p. ej. UK)
+    r"|[A-Z]{2}[A-Z0-9]{8,12}"   # VAT intracomunitario con prefijo de país
+    r")$"
+)
+
+
+def _is_plausible_tax_id(value: str | None) -> bool:
+    compact = re.sub(r"\W", "", str(value or "")).upper().lstrip("0")
+    return bool(compact) and bool(_PLAUSIBLE_TAX_ID_RE.match(compact))
+
+
 def _tax_id_key(value: str | None) -> str:
     compact = re.sub(r"\W", "", value or "").upper()
     if compact.startswith("ES") and len(compact) == 11:
         compact = compact[2:]
-    return compact
+    # Algunos emisores (Telefónica) imprimen el CIF con ceros a la izquierda:
+    # "00B85902583". Sin normalizarlos, el CIF propio no se reconoce y la
+    # corrección emisor/receptor nunca se dispara. Se normaliza en ambos lados
+    # de la comparación, así que es seguro.
+    stripped = compact.lstrip("0")
+    return stripped or compact
 
 
 def _is_own_tax_id(value: str | None) -> bool:
@@ -182,7 +215,9 @@ def _best_entities(document: Any) -> dict[str, Any]:
 def _decimal_value(raw: str | None, *, rate: bool = False) -> str | None:
     if not raw:
         return None
-    value = re.sub(r"(?i)\b(?:EUR|USD|GBP)\b|[€$£%]", "", raw).strip()
+    # (?![A-Z]) permite despegar la moneda pegada al número ("EUR105.98") sin
+    # romper palabras como "EURO"; \b evita capturar dentro de otra palabra.
+    value = re.sub(r"(?i)\b(?:EUR|USD|GBP|CHF)(?![A-Z])|[€$£%]", "", raw).strip()
     value = re.sub(r"\s+", "", value)
     if not value:
         return None
@@ -193,6 +228,12 @@ def _decimal_value(raw: str | None, *, rate: bool = False) -> str | None:
             value = value.replace(",", "")
     elif "," in value:
         value = value.replace(".", "").replace(",", ".")
+    elif "." in value:
+        # Solo puntos agrupando de a 3: separador de miles europeo
+        # ("2.500" = dos mil quinientos, "1.234.567"), no decimales. Sin esto se
+        # leía 2.500 como 2,50: un factor 1000 en el importe a pagar.
+        if re.fullmatch(r"[-+]?\d{1,3}(?:\.\d{3})+", value):
+            value = value.replace(".", "")
     try:
         number = Decimal(value)
     except InvalidOperation:
@@ -275,16 +316,56 @@ def _labelled_party(text: str, label: str) -> str | None:
     return None
 
 
+#: Texto que aparece en facturas pero NUNCA es el nombre de una parte:
+#: etiquetas de formulario, saludos, sellos y avisos legales.
+_BAD_PARTY_TERMS = (
+    "bank account", "account holder", "numero factura", "factura a", "titular:",
+    "en cumplimiento", "accepts visa", "description", "vat no",
+    "estimado cliente", "estimado/a", "dear customer", "dear client",
+    "duplicado", "copia", "original", "plazo de pago", "forma de pago",
+    "condiciones de pago", "datos bancarios", "numero de cuenta",
+    "dirigir un escrito", "aviso legal", "registro mercantil",
+    "domiciliacion", "recibo domiciliado", "periodo de facturacion",
+)
+
+#: Solo la forma jurídica, sin nombre (p. ej. "SAS" cuando la marca está en un logo).
+_ONLY_LEGAL_FORM_RE = re.compile(
+    r"^(?:S\.?\s*A\.?\s*S\.?\s*U?|S\.?\s*L\.?\s*U?|S\.?\s*A\.?|B\.?\s*V\.?|"
+    r"LTD|LIMITED|GMBH|INC|LLC|SARL|SASU|N\.?\s*V\.?)\.?$",
+    re.IGNORECASE,
+)
+
+#: Dominio o URL suelta (p. ej. "areaclientes.orange.es").
+_URL_LIKE_RE = re.compile(r"^(?:https?://|www\.)|\.[a-z]{2,4}$", re.IGNORECASE)
+
+
 def _is_bad_party_name(value: str | None) -> bool:
     if not value:
         return True
-    folded = _fold(value)
-    return len(value) > 120 or folded in {
+    cleaned = value.strip()
+    folded = _fold(cleaned)
+    if len(cleaned) > 120:
+        return True
+    if folded in {
         "grupo", "numero de cliente", "cliente", "client", "supplier", "proveedor",
-    } or any(term in folded for term in (
-        "bank account", "account holder", "numero factura", "factura a", "titular:",
-        "en cumplimiento de lo establecido", "accepts visa", "description", "vat no",
-    ))
+    }:
+        return True
+    if any(term in folded for term in _BAD_PARTY_TERMS):
+        return True
+    # Solo forma jurídica: no identifica a nadie.
+    if _ONLY_LEGAL_FORM_RE.match(cleaned):
+        return True
+    # Persona de contacto ("Mrs Laura FEITO BARRIO"), no una razón social.
+    if _PERSON_TITLE_RE.match(cleaned):
+        return True
+    # URL/dominio suelto (sin espacios, para no descartar razones sociales).
+    if " " not in cleaned and _URL_LIKE_RE.search(cleaned):
+        return True
+    # Fragmento de frase: arranca en minúscula y trae varias palabras
+    # ("correspondiente factura. En cumplimiento...", "dirigir un escrito a...").
+    if cleaned[:1].islower() and len(cleaned.split()) >= 4:
+        return True
+    return False
 
 
 def _repair_party_roles(doc: dict, text: str, confidences: dict[str, Decimal]) -> None:
@@ -347,6 +428,38 @@ def _repair_party_roles(doc: dict, text: str, confidences: dict[str, Decimal]) -
             receiver = own_names[0]
     elif _is_own_party(original_supplier):
         receiver = original_supplier
+
+    # Si el nombre comercial sigue siendo inválido pero la razón social legal es
+    # buena, usar la razón social. Caso AMI: el comercial traía un fragmento de
+    # frase del texto legal mientras la razón social decía "AMI S.L." correcta.
+    if _is_bad_party_name(supplier) and legal and not _is_bad_party_name(legal) \
+            and not _is_own_party(legal):
+        supplier = legal
+
+    # Cliente sin nombre legible pero con el CIF propio presente en el documento
+    # (Telefónica escribe "Estimado cliente"): se repone desde el CIF, que SÍ es
+    # evidencia del documento. No se inventa nada.
+    if _is_bad_party_name(receiver) and receiver_tax and _is_own_tax_id(receiver_tax):
+        known = DEFAULT_OWN_PARTY_BY_TAX_ID.get(_tax_id_key(receiver_tax))
+        if known:
+            receiver = known
+
+    # Un identificador fiscal con formato implausible es un dato inventado
+    # (Zoom: se cargó el nº de transacción "P399851862" como CIF del proveedor).
+    # Vale más dejarlo vacío que afirmar un identificador falso.
+    if supplier_tax and not _is_plausible_tax_id(supplier_tax):
+        supplier_tax = None
+    if receiver_tax and not _is_plausible_tax_id(receiver_tax):
+        receiver_tax = None
+
+    # Red de seguridad: el proveedor NUNCA puede ser la empresa propia ni un
+    # nombre inválido. Si tras todas las reparaciones sigue siéndolo, es preferible
+    # dejarlo vacío (y que el control lo marque) antes que afirmar un dato falso
+    # —p. ej. cargar al cliente como proveedor, que puede desviar un pago—.
+    if _is_own_party(supplier) or _is_bad_party_name(supplier):
+        supplier = None
+    if legal and (_is_own_party(legal) or _is_bad_party_name(legal)):
+        legal = None
 
     doc["proveedor_nombre_comercial"] = supplier
     doc["proveedor_razon_social_legal"] = legal or supplier
@@ -607,6 +720,36 @@ def _payment_method(text: str, has_bank_details: bool = False) -> str:
     return "no_indicado"
 
 
+#: Estados miembro de la UE (sin GB: post-Brexit es extracomunitario).
+_EU_VAT_COUNTRIES = {
+    "AT", "BE", "BG", "CY", "CZ", "DE", "DK", "EE", "EL", "ES", "FI", "FR",
+    "GR", "HR", "HU", "IE", "IT", "LT", "LU", "LV", "MT", "NL", "PL", "PT",
+    "RO", "SE", "SI", "SK",
+}
+
+
+def _treatment_by_country(doc: dict) -> str | None:
+    """Deduce el tratamiento por el país del proveedor (VAT o IBAN).
+
+    Un proveedor extranjero no puede ser una operación "nacional": el caso belga
+    y el británico del lote de enero quedaban mal clasificados por no mirar el país.
+    """
+    for value, kind in (
+        (str(doc.get("proveedor_tax_id") or ""), "vat"),
+        (str(doc.get("iban") or ""), "iban"),
+    ):
+        compact = re.sub(r"\W", "", value).upper()
+        if len(compact) < 4 or not compact[:2].isalpha():
+            continue
+        country = compact[:2]
+        if country == "ES":
+            return None
+        if country in _EU_VAT_COUNTRIES:
+            return "intracomunitario_inversion_sujeto_pasivo"
+        return "extracomunitario"
+    return None
+
+
 def _tax_treatment(doc: dict, text: str) -> str | None:
     folded = _fold(text)
     if any(term in folded for term in (
@@ -616,6 +759,10 @@ def _tax_treatment(doc: dict, text: str) -> str | None:
         return "intracomunitario_inversion_sujeto_pasivo"
     if any(term in folded for term in ("exempt", "exento", "exonerado")):
         return "exento_otro"
+    # El país manda sobre la heurística de tasa: es evidencia más fuerte.
+    by_country = _treatment_by_country(doc)
+    if by_country:
+        return by_country
     try:
         rate = Decimal(str(doc.get("tipo_iva"))) if doc.get("tipo_iva") is not None else None
         tax = Decimal(str(doc.get("importe_iva"))) if doc.get("importe_iva") is not None else None
@@ -667,8 +814,12 @@ def _labelled_amount(
             folded = _fold(line)
             if label not in folded or any(item in folded for item in reject):
                 continue
+            # Separa la moneda pegada al número ("EUR105.98"): el token de
+            # importe exige que no venga precedido de letra/dígito, así que sin
+            # esto la línea "Invoice Total EUR105.98" no rendía ningún importe.
+            scan = re.sub(r"(?i)\b(EUR|USD|GBP|CHF)(?=\d)", r"\1 ", line)
             values = [
-                value for value in (_amount_token_value(match.group(0)) for match in _AMOUNT_TOKEN_RE.finditer(line))
+                value for value in (_amount_token_value(match.group(0)) for match in _AMOUNT_TOKEN_RE.finditer(scan))
                 if value is not None
             ]
             if values:
@@ -802,6 +953,36 @@ def refine_mapped_document(
     if (final_total is None or final_total == 0) and final_net is not None and final_net > 0:
         recomposed = final_net + (final_tax or Decimal("0"))
         doc["importe_total"] = f"{recomposed.quantize(Decimal('0.01'))}"
+
+    # Sin tipo de IVA declarado y con una terna que no cuadra, la partición
+    # neto/IVA no es fiable: el documento no desglosa impuestos (caso Field'N Feel,
+    # con inversión del sujeto pasivo, donde se inventó 2028 + 1814 para un total
+    # de 3836). Se toma neto = total e IVA = 0 en vez de fabricar un desglose.
+    _t = _money(doc.get("importe_total"))
+    _n = _money(doc.get("importe_neto"))
+    _i = _money(doc.get("importe_iva"))
+    # Con retención/IRPF el descuadre es ESPERADO (total = neto + IVA - retención)
+    # y NO significa que el desglose sea inventado: sin esta guarda se pisaba el
+    # neto correcto de una factura de autónomo con el total.
+    _has_retention = any(
+        term in folded for term in ("irpf", "retencion", "withholding", "a percibir")
+    )
+    if doc.get("tipo_iva") in (None, "") and not _has_retention \
+            and None not in (_t, _n, _i) and abs(_n + _i - _t) > Decimal("0.02"):
+        doc["importe_neto"] = f"{_t.quantize(Decimal('0.01'))}"
+        doc["importe_iva"] = "0.00"
+        doc["tipo_iva"] = "0"
+
+    # Vencimiento anterior a la emisión: imposible. Suele venir de haber tomado
+    # la fecha de operación o del período de servicio como si fuera vencimiento
+    # (caso Cabify: emisión 01/01/2026 con "vencimiento" 17/12/2025).
+    issue = str(doc.get("fecha_emision") or "")
+    due = str(doc.get("fecha_vencimiento_calculada") or "")
+    if issue and due and due < issue:
+        doc["fecha_vencimiento_calculada"] = None
+        doc["fecha_vencimiento_texto"] = None
+        confidences.pop("fecha_vencimiento_calculada", None)
+        confidences.pop("fecha_vencimiento_texto", None)
 
     _reconcile_tax(doc, text, confidences)
     doc["metodo_pago"] = _payment_method(text)

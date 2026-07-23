@@ -27,8 +27,8 @@ Repositorio **privado**. El material de referencia del proceso real vive en `doc
 | UI Streamlit unificada y operativa | Listo para revisión local |
 | Password gate server-side (`AP_SYSTEM_PASSWORD`) | Listo |
 | Dockerfile + .dockerignore (puerto por CLI/PORT, sin hardcodeo) | Build y smoke test verdes en Docker dentro de WSL |
-| Evals con contrato de exit code (20 grupos, incl. app, Document AI y Sage) | Verdes (exit 0) |
-| Maestro Sage (Fase 1.5): Tax ID, nombre normalizado, fuzzy seguro y auditoría | Listo; publicación controlada autorizada |
+| Evals con contrato de exit code (21 grupos, incl. app, Document AI, Sage y memoria histórica) | Verdes (exit 0) |
+| Maestro Sage (Fase 1.5): Tax ID, nombre normalizado, fuzzy seguro y auditoría | Función lista; validación real pausada hasta recibir el export correcto |
 | Ensayo humano + fixes | Listo |
 
 ## Cómo ejecutar la aplicación
@@ -174,6 +174,34 @@ rechaza. Se necesita el export de proveedores para la validación con datos
 reales. Operación, privacidad y rollback:
 `docs_operacion/runbook_sage_vendor_master.md`.
 
+## Memoria histórica de evidencia documental
+
+El corpus privado Q1-Q2 puede reforzar `proveedor_registro`,
+`periodo_servicio_desde`, `periodo_servicio_hasta` y `condiciones_pago` sin
+convertir una inferencia en dato maestro. La memoria SQLite se habilita de
+forma explícita y en modo de solo lectura:
+
+```bash
+export AP_EVIDENCE_MEMORY_PATH="/ruta/privada/historical_evidence.sqlite3"
+streamlit run app.py
+```
+
+Los valores verificados pueden corregir el mismo PDF por su hash. Entre
+documentos sólo se reutiliza un registro mercantil verificado, único y ligado
+por Tax ID exacto o nombre exacto normalizado. Los períodos de servicio y las
+condiciones de pago nunca se heredan de otra factura. La base está excluida de
+Git, Docker y Cloud Build; si la variable no existe, el runtime conserva el
+comportamiento anterior. Un hallazgo `model_corroborated` es una coincidencia
+exacta normalizada entre el extractor local y Google Document AI: puede
+completar únicamente ese mismo PDF por hash, nunca se propaga a otro documento
+y no se etiqueta como ground truth humano.
+
+Checkpoint vigente al 23/07/2026: la evaluación queda pausada hasta recibir el
+maestro correcto de proveedores. No se hará uptraining antes de reconciliar los
+154 nombres pendientes y volver a medir el pipeline híbrido. Estado, evidencia
+y secuencia de reanudación:
+`docs_operacion/checkpoint_espera_maestro_proveedores.md`.
+
 ## API interna opcional (Fase 4 · industrializacion)
 
 API HTTP **separada de la UI** (FastAPI) sobre la capa `app/`, para que ERP/
@@ -219,7 +247,7 @@ python -m ap_control_tower.dataset_builder
 python -m ap_control_tower.run_month
 
 # 3. Evals: exit 0 = verde, distinto de 0 = contrato roto
-python evals/run_evals.py            # 20 grupos (incluye app, Document AI y Sage)
+python evals/run_evals.py            # 21 grupos (incluye app, Document AI, Sage y memoria)
 python evals/run_evals.py --sin-app  # salta el grupo de arranque (CI sin GUI)
 
 # 4. (opcional) Regenerar las facturas visuales
@@ -348,7 +376,7 @@ ap_control_tower/
     state.py           # corrida y workflows en session_state
     views/             # inbox, detalle, excepciones, gate, auditoria, caso de negocio
 data/                  # dataset + expected + doc_previews (committeados)
-evals/run_evals.py     # exit 0/1 como contrato (20 grupos)
+evals/run_evals.py     # exit 0/1 como contrato (21 grupos)
 runs/                  # audit trails por corrida (gitignoreado)
 docs/                  # confidencial, gitignoreado, NUNCA commitear
 ```

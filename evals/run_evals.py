@@ -43,11 +43,14 @@ la intencion declarada del dataset, NUNCA de correr el motor). Verifica:
       degradacion segura al extractor local sin credenciales.
   20. Fase 1.5 Sage: import seguro del maestro, normalizacion de proveedor,
       Tax ID prioritario, fuzzy compartido, ambiguedad y FYI auditada.
+  21. Memoria historica: extraccion conservadora de registro, periodos y
+      condiciones de pago; correcciones por hash, herencia restringida y
+      ausencia de contaminacion entre facturas.
 
 Invariantes ademas de los originales: INVARIANTE-3, una proforma JAMAS puede
 aparecer en un lote de pago (grupo 4).
 
-Uso: python evals/run_evals.py            (20 grupos)
+Uso: python evals/run_evals.py            (21 grupos)
      python evals/run_evals.py --sin-app  (salta el grupo 14, p. ej. en CI sin GUI)
 """
 
@@ -650,6 +653,15 @@ def main() -> int:
     sage_result = unittest.TextTestRunner(verbosity=0).run(sage_suite)
     check(sage_result.wasSuccessful() and sage_result.testsRun >= 12,
           f"maestro Sage: {sage_result.testsRun} pruebas unitarias verdes")
+
+    print("== 21. Memoria historica y campos documentales ==")
+    historical_suite = unittest.TestSuite()
+    for test_module in ("evals.test_historical_fields", "evals.test_evidence_memory"):
+        historical_suite.addTests(
+            unittest.defaultTestLoader.loadTestsFromName(test_module))
+    historical_result = unittest.TextTestRunner(verbosity=0).run(historical_suite)
+    check(historical_result.wasSuccessful() and historical_result.testsRun >= 9,
+          f"memoria historica: {historical_result.testsRun} pruebas unitarias verdes")
 
     print()
     if failures:

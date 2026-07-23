@@ -1,6 +1,6 @@
 # Estado de preparación del piloto
 
-Fecha de corte: 22/07/2026
+Fecha de corte: 23/07/2026
 Producto: **Torre de Control para Cuentas a Pagar**
 Cliente: **Brand UP**
 
@@ -34,8 +34,10 @@ El proyecto **incluye Google Document AI Invoice Parser** mediante el adaptador
 esquema interno y, ante falta de configuración o indisponibilidad, la aplicación
 usa el motor local controlado y deriva a revisión cuando corresponde.
 
-La vista previa actual usa datos sintéticos y no prueba credenciales reales.
-Antes de desplegar se debe validar en el entorno de destino:
+La integración real fue validada con una corrida privada y autorizada de 50 PDF
+y 75 páginas, sin errores. Los documentos, respuestas y ground truth permanecen
+fuera de Git, Docker y Cloud Build. Antes de un nuevo despliegue se debe validar
+en el entorno de destino:
 
 1. proyecto, ubicación e identificador del processor;
 2. identidad de servicio y rol `roles/documentai.apiUser`;
@@ -46,7 +48,7 @@ Antes de desplegar se debe validar en el entorno de destino:
 
 | Verificación | Resultado |
 |---|---|
-| `evals/run_evals.py` | Verde: 20 grupos, motor, gates, confidencialidad, arranque, Document AI y Sage |
+| `evals/run_evals.py` | Verde: 21 grupos, motor, gates, confidencialidad, arranque, Document AI, Sage y memoria histórica |
 | `evals/test_app_modes.py` | Verde: wording, siete páginas, recorrido sintético y ambos entrypoints HTTP |
 | `evals/test_pilot_ui.py` | Verde: login, maker-checker, auditoría y enmascaramiento bancario |
 | `evals/test_sage_vendor_master.py` | Verde: import seguro, Tax ID, normalización, fuzzy, ambigüedad y FYI auditada |
@@ -66,6 +68,9 @@ Antes de desplegar se debe validar en el entorno de destino:
 - El archivo `output sage.xlsx` recibido corresponde a clientes, no a proveedores,
   y es rechazado de forma segura. Falta el export correcto de proveedores para
   validar la vinculación con datos reales.
+- La evaluación de extracción queda pausada hasta recibir ese maestro. No se
+  hará uptraining antes de reconciliar los 154 nombres pendientes y volver a
+  medir el sistema híbrido con un holdout independiente.
 - El wordmark Brand UP es tipográfico. Falta incorporar el activo oficial si el
   cliente entrega logo y lineamientos de marca.
 - El equipo de Cuentas a Pagar debe validar textos, prioridades, responsables,
@@ -84,3 +89,6 @@ Aprobación explícita recibida el 22/07/2026. Antes de publicar se debe repetir
 la batería completa, validar Document AI con la identidad de destino y confirmar
 que el contexto de build no contiene facturas, ground truth ni secretos. El
 rollback consiste en devolver el tráfico a la revisión anterior de Cloud Run.
+
+Checkpoint vigente:
+`docs_operacion/checkpoint_espera_maestro_proveedores.md`.

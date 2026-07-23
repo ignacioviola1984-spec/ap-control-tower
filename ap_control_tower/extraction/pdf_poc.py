@@ -23,6 +23,7 @@ from typing import Any
 
 from .banking import bank_evidence_present, extract_bank_details
 from .comparator import labels_template_row
+from .historical_fields import extract_historical_fields
 from .schema import FIELD_ORDER, compute_due_date, empty_document, validate_document
 
 
@@ -45,7 +46,6 @@ TAX_ID_RE = re.compile(
     rf"[ABCDEFGHJKLMNPQRSUVW]\d{{7}}[0-9A-J])\b",
     re.IGNORECASE,
 )
-REGISTRY_RE = re.compile(r"\b(?:KVK|RCS|REG(?:ISTRO)?\.?)\s*[:#]?\s*([A-Z0-9 .-]{4,24})", re.IGNORECASE)
 MONTHS = {
     "jan": 1, "january": 1, "enero": 1, "janvier": 1,
     "feb": 2, "february": 2, "febrero": 2, "fevrier": 2, "fevrier": 2,
@@ -80,6 +80,9 @@ class PocResult:
     document: dict[str, Any]
     engine: str = "local"
     field_confidences: dict[str, Decimal] = field(default_factory=dict)
+    #: Texto extraído del PDF, retenido en memoria para que el asistente pueda
+    #: responder sobre el contenido. El PDF binario nunca se envía a OpenAI.
+    source_text: str = ""
 
 
 def _fold(s: str) -> str:
@@ -369,9 +372,9 @@ def _extract_tax_ids(doc: dict, lines: list[str], text: str) -> None:
             if found:
                 doc["proveedor_tax_id"] = found[-1]
 
-    reg = REGISTRY_RE.search(text)
-    if reg:
-        doc["proveedor_registro"] = re.sub(r"\s+", " ", f"{reg.group(0)}").strip()
+    historical = extract_historical_fields(text)
+    if historical.proveedor_registro:
+        doc["proveedor_registro"] = historical.proveedor_registro.value
 
 
 def _classify(text: str, filename: str) -> str:
@@ -475,38 +478,23 @@ def _extract_dates(doc: dict, lines: list[str], text: str) -> None:
         doc["fecha_vencimiento_texto"] = due.isoformat()
         doc["fecha_vencimiento_calculada"] = due.isoformat()
 
-    terms = _first_regex((
-        r"(?im)^\s*(?:payment terms|condiciones(?: de pago)?|vencimiento|terms)\s*[:#-]?\s*(.+)$",
-    ), text, flags=0)
-    if terms:
-        doc["condiciones_pago"] = terms.strip()
+    historical = extract_historical_fields(text)
+    if historical.condiciones_pago:
+        terms = historical.condiciones_pago.value
+        doc["condiciones_pago"] = terms
         if doc["fecha_vencimiento_texto"] is None:
-            days = re.search(r"\b\d{1,3}\s*(?:days?|dias|d[ií]as)(?:\s*(?:end of month|fin de mes|f\.?f\.?))?\b", _fold(terms))
+            days = re.search(
+                r"\b\d{1,3}\s*(?:days?|dias|d[ií]as)(?:\s*(?:end of month|fin de mes|f\.?f\.?))?\b",
+                _fold(terms),
+            )
             if days:
                 doc["fecha_vencimiento_texto"] = days.group(0)
                 if doc["fecha_emision"]:
                     calculated = compute_due_date(days.group(0), date.fromisoformat(doc["fecha_emision"]))
                     doc["fecha_vencimiento_calculada"] = calculated.isoformat() if calculated else None
-
-    service = re.search(
-        r"\b([0-3]?\d[-/.][01]?\d[-/.](?:20)?\d{2})\s*(?:a|to|-)\s*([0-3]?\d[-/.][01]?\d[-/.](?:20)?\d{2})\b",
-        text,
-        re.IGNORECASE,
-    )
-    if service:
-        start, end = _parse_date_value(service.group(1)), _parse_date_value(service.group(2))
-        if start and end:
-            doc["periodo_servicio_desde"] = doc["periodo_servicio_desde"] or start.isoformat()
-            doc["periodo_servicio_hasta"] = doc["periodo_servicio_hasta"] or end.isoformat()
-
-    if doc["periodo_servicio_desde"] is None:
-        month_words = "|".join(sorted(MONTHS, key=len, reverse=True))
-        m = re.search(rf"\b(?:cuota|servicio|services?|periodo)?\s*({month_words})\s+(20\d{{2}})\b", _fold(text))
-        if m:
-            month, year = MONTHS[m.group(1)], int(m.group(2))
-            last = calendar.monthrange(year, month)[1]
-            doc["periodo_servicio_desde"] = date(year, month, 1).isoformat()
-            doc["periodo_servicio_hasta"] = date(year, month, last).isoformat()
+    if historical.periodo_servicio_desde and historical.periodo_servicio_hasta:
+        doc["periodo_servicio_desde"] = historical.periodo_servicio_desde.value
+        doc["periodo_servicio_hasta"] = historical.periodo_servicio_hasta.value
 
 
 def _extract_amounts(doc: dict, lines: list[str], text: str) -> None:

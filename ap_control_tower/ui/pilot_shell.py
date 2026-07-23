@@ -110,6 +110,7 @@ def _confirm_close_session() -> None:
             sess.reset_session()
             st.session_state.pop("_pilot_preview_seeded", None)
             st.session_state.pop("_ap_agent_conversations", None)
+            st.session_state.pop("_ap_pdf_blobs", None)
             st.session_state.pop("_agent_admin_ok", None)
             st.session_state.pop("_auth_ok", None)
             st.rerun()

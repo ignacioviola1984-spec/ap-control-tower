@@ -38,6 +38,7 @@ Proceso actual de Accounts Payable de la Consultora.png
 docker-compose.dev.yml
 config/persistence.env
 *.db
+*.sqlite3
 
 # API interna (Fase 4): dependencias fuera de la imagen de la demo.
 requirements-api.txt

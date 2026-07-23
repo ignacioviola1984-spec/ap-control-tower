@@ -66,6 +66,11 @@ def _process_and_store(files, canal: str) -> None:
             added = sess.add_document(
                 session, result, seconds,
                 file_hash=file_hash, source=canal)
+            if added:
+                # Bytes del PDF SOLO en memoria de sesión, para mostrarlo al
+                # revisor humano en el detalle. No se persiste ni se envía a OpenAI.
+                blobs = st.session_state.setdefault("_ap_pdf_blobs", {})
+                blobs[str(result.doc_id)] = data
             ok += int(added)
             omitted += int(not added)
         bar.progress(index / total, text=f"Procesado {index}/{total}: {name}")
@@ -83,12 +88,13 @@ def _process_and_store(files, canal: str) -> None:
             "Ya están disponibles en **Documentos**."
             + (" Los resultados quedaron guardados en el historial." if stored else "")
         )
-        if st.button(
-            "Abrir Documentos",
+        # page_link navega en el click directo; un st.button dentro de este bloque
+        # no re-ejecuta este código en el rerun, por eso antes no navegaba.
+        st.page_link(
+            "app_pages/documentos.py",
+            label="Abrir Documentos",
             icon=":material/description:",
-            key="_trial_open_documents_after_intake",
-        ):
-            st.switch_page("app_pages/documentos.py")
+        )
     elif omitted:
         sess.persist(session)
         st.info(f"{omitted} documento(s) ya estaban procesados en esta sesión; "

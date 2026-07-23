@@ -39,6 +39,7 @@ runs/
 tmp/
 *.db
 *.duckdb
+*.sqlite3
 
 # Tooling local (incluye password de ensayo local en launch.json)
 .claude/

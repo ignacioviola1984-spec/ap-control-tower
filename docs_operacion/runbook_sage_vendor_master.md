@@ -1,7 +1,8 @@
 # Runbook · maestro de proveedores Sage (Fase 1.5)
 
-Fecha: 22/07/2026
-Estado: listo para validación local; **no desplegado**.
+Fecha: 23/07/2026
+Estado: función lista; validación real **pausada hasta recibir el maestro de
+proveedores correcto**.
 
 ## Objetivo y alcance
 
@@ -72,8 +73,9 @@ registrada en la misma cadena de auditoría.
 2. En `Maestro de proveedores de Sage`, elegir el XLSX.
 3. Seleccionar `Validar y aplicar maestro`.
 4. Revisar el conteo de proveedores activos y la referencia hash mostrada.
-5. Cargar los PDF antes o después: aplicar el maestro reconcilia también los
-   documentos que ya estaban en la sesión.
+5. Como procedimiento operativo, cargar el maestro antes de subir nuevos PDF.
+   El sistema puede reconciliar documentos ya presentes en la sesión, pero esa
+   capacidad es de recuperación y no reemplaza el orden recomendado.
 6. Consultar `Documentos` para ver `Vinculación Sage`, motivos, FYI y auditoría.
 
 Al reanudar una sesión persistida se recuperan los matches ya auditados, pero
@@ -111,5 +113,9 @@ ambiguos, no encontrado, rechazo de export de clientes, privacidad y auditoría.
 No hay migración de base. Para desactivar la función, no cargar el maestro o
 finalizar la sesión. El comportamiento canónico previo continúa sin cambios.
 
-No ejecutar build, push, actualización de Cloud Run ni cambio de secretos hasta
-la aprobación explícita del cliente.
+La aprobación anterior no alcanza automáticamente a cambios posteriores a este
+checkpoint. Cualquier nuevo build, push, actualización de Cloud Run o cambio de
+secretos requiere confirmar el estado final después de incorporar el maestro.
+
+El checkpoint de evidencia y la secuencia acordada para reanudar están en
+`docs_operacion/checkpoint_espera_maestro_proveedores.md`.

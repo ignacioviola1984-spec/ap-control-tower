@@ -70,6 +70,19 @@ TOOL_SCHEMAS = [
         "strict": True,
         "parameters": _empty_parameters(),
     },
+    {
+        "type": "function",
+        "name": "get_document_text",
+        "description": (
+            "Devuelve el texto extraído del PDF del documento (identificadores "
+            "sensibles enmascarados), para responder preguntas sobre su contenido. "
+            "Es la transcripción del documento, no el PDF: usala para verificar "
+            "leyendas, líneas, importes o tipo documental. Puede estar vacío si el "
+            "documento no dejó texto legible."
+        ),
+        "strict": True,
+        "parameters": _empty_parameters(),
+    },
 ]
 
 
@@ -218,6 +231,20 @@ class ReadOnlyDocumentTools:
             "tax_id_confirmado": resolution.get("tax_id_confirmed"),
         }
 
+    def get_document_text(self) -> dict[str, Any]:
+        raw = getattr(self.result, "source_text", "") or ""
+        redacted = redact_text(raw, max_length=8000)
+        return {
+            "documento": self.doc_id,
+            "texto_disponible": bool(redacted),
+            "texto_documento": redacted or None,
+            "nota": (
+                "Transcripción del PDF con identificadores enmascarados. El PDF "
+                "binario no se envía al modelo. Si está vacío, el documento no "
+                "dejó texto legible y se debe revisar el original."
+            ),
+        }
+
     def dispatch(self, name: str, arguments: dict[str, Any] | None = None) -> str:
         if arguments:
             raise ValueError("Las tools del documento no aceptan argumentos.")
@@ -227,6 +254,7 @@ class ReadOnlyDocumentTools:
             "summarize_document_evidence": self.summarize_document_evidence,
             "suggest_reviewer_actions": self.suggest_reviewer_actions,
             "get_vendor_master_status": self.get_vendor_master_status,
+            "get_document_text": self.get_document_text,
         }
         function = functions.get(name)
         if function is None:

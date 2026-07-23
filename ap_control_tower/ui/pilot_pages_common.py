@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import base64
+
 import pandas as pd
 import streamlit as st
+import streamlit.components.v1 as components
 
 from ..persistence.masking import mask_account, mask_iban, mask_tax_id
 from .pilot_format import (
@@ -157,6 +160,37 @@ def safe_document_rows(active) -> list[dict]:
     return rows
 
 
+def _pdf_bytes_for(doc_id) -> bytes | None:
+    blobs = st.session_state.get("_ap_pdf_blobs") or {}
+    return blobs.get(str(doc_id))
+
+
+def render_pdf_viewer(result) -> None:
+    """Muestra el PDF original al revisor humano (bytes solo en memoria de sesión)."""
+    data = _pdf_bytes_for(result.doc_id)
+    if not data:
+        return
+    with st.expander("Ver PDF original", icon=":material/picture_as_pdf:"):
+        b64 = base64.b64encode(data).decode("ascii")
+        components.html(
+            f'<iframe title="PDF" src="data:application/pdf;base64,{b64}" '
+            'style="width:100%;height:640px;border:1px solid #d0d5dd;border-radius:8px;"></iframe>',
+            height=660,
+        )
+        st.download_button(
+            "Descargar PDF",
+            data=data,
+            file_name=f"{result.doc_id}.pdf",
+            mime="application/pdf",
+            icon=":material/download:",
+            key=f"_pdf_dl_{result.doc_id}",
+        )
+        st.caption(
+            "El PDF se muestra al revisor y se conserva solo en memoria de esta "
+            "sesión; no se envía a OpenAI ni se almacena."
+        )
+
+
 def render_document_detail(active, result) -> None:
     document = result.document
     duplicates = workflow.duplicate_doc_ids(active.results)
@@ -170,6 +204,7 @@ def render_document_detail(active, result) -> None:
         color=STATE_COLORS.get(state, "gray"),
         icon=":material/info:",
     )
+    render_pdf_viewer(result)
 
     identity, finance = st.columns(2, gap="medium")
     with identity.container(border=True, height="stretch"):

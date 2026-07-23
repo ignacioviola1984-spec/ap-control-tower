@@ -22,6 +22,7 @@ from .banking import (
     is_valid_iban,
     is_valid_spanish_ccc,
 )
+from .historical_fields import extract_historical_fields
 from .pdf_poc import PdfText, PocResult, extract_document, read_pdf_bytes
 from .schema import validate_document
 
@@ -686,6 +687,23 @@ def refine_mapped_document(
     local_document = local_document or {}
     _repair_party_roles(doc, text, confidences)
 
+    historical = extract_historical_fields(text)
+    doc["proveedor_registro"] = (
+        historical.proveedor_registro.value if historical.proveedor_registro else None
+    )
+    if historical.proveedor_registro:
+        confidences["proveedor_registro"] = Decimal(str(historical.proveedor_registro.confidence))
+    doc["condiciones_pago"] = (
+        historical.condiciones_pago.value if historical.condiciones_pago else None
+    )
+    if historical.condiciones_pago:
+        confidences["condiciones_pago"] = Decimal(str(historical.condiciones_pago.confidence))
+    if historical.periodo_servicio_desde and historical.periodo_servicio_hasta:
+        doc["periodo_servicio_desde"] = historical.periodo_servicio_desde.value
+        doc["periodo_servicio_hasta"] = historical.periodo_servicio_hasta.value
+        confidences["periodo_servicio_desde"] = Decimal(str(historical.periodo_servicio_desde.confidence))
+        confidences["periodo_servicio_hasta"] = Decimal(str(historical.periodo_servicio_hasta.confidence))
+
     # PO sólo con evidencia etiquetada explícitamente. El extractor local ya
     # implementa esa política; el entity parser suele promover referencias
     # genéricas o números de contrato a purchase_order.
@@ -696,8 +714,9 @@ def refine_mapped_document(
     current_total = _money(doc.get("importe_total"))
     strong_total = _labelled_amount(
         text,
-        ("total a pagar", "invoice total", "total factura", "amount due", "importe adeudado", "gross"),
-        reject=("subtotal", "total net", "total excl", "descuentos", "total a percibir"),
+        ("total a pagar", "invoice total", "total factura", "amount due", "importe adeudado", "gross",
+         "incl btw", "incl. btw", "inclusief btw", "totaal incl", "totaal"),
+        reject=("subtotal", "total net", "total excl", "excl btw", "excl. btw", "descuentos", "total a percibir"),
     )
     generic_total = _labelled_amount(
         text,
@@ -706,7 +725,9 @@ def refine_mapped_document(
     )
     labelled_net = _labelled_amount(
         text,
-        ("base imponible", "net amount", "importe neto", "total net", "total excl", "subtotal"),
+        ("base imponible", "net amount", "importe neto", "total net", "total excl", "subtotal",
+         "excl btw", "excl. btw", "exclusief btw", "excl vat", "netto", "bedrag excl"),
+        reject=("incl btw", "inclusief btw"),
         pick="first",
     )
     labelled_tax = _labelled_amount(
@@ -773,6 +794,15 @@ def refine_mapped_document(
                 doc["importe_neto"] = f"{expected_net:.2f}"
                 doc["importe_iva"] = f"{expected_tax:.2f}"
 
+    # Total 0/ausente pero con base e IVA extraídos: recomponer para no marcar
+    # falsamente "importe no positivo" ni retener la factura por un cero espurio.
+    final_total = _money(doc.get("importe_total"))
+    final_net = _money(doc.get("importe_neto"))
+    final_tax = _money(doc.get("importe_iva"))
+    if (final_total is None or final_total == 0) and final_net is not None and final_net > 0:
+        recomposed = final_net + (final_tax or Decimal("0"))
+        doc["importe_total"] = f"{recomposed.quantize(Decimal('0.01'))}"
+
     _reconcile_tax(doc, text, confidences)
     doc["metodo_pago"] = _payment_method(text)
     doc["tratamiento_iva"] = _tax_treatment(doc, text)
@@ -810,7 +840,20 @@ def _validate_invoice(doc: dict, text: str, confidences: dict[str, Decimal]) -> 
         tax = Decimal(str(doc["importe_iva"]))
         total = Decimal(str(doc["importe_total"]))
         if abs((net + tax) - total) > Decimal("0.02"):
-            warnings.append("base + IVA no coincide con el total")
+            # Un total MENOR que base+IVA suele explicarse por retención/IRPF o
+            # descuento (habitual en facturas de autónomos). En ese caso la
+            # identidad estricta no aplica y no es una inconsistencia real.
+            deduction = (net + tax) - total
+            folded_total = _fold(text)
+            has_deduction_note = any(
+                term in folded_total
+                for term in (
+                    "irpf", "retencion", "withholding", "descuento", "discount",
+                    "rappel", "bonificacion", "a percibir", "liquido",
+                )
+            )
+            if not (has_deduction_note and deduction > Decimal("0")):
+                warnings.append("base + IVA no coincide con el total")
     except (InvalidOperation, TypeError, KeyError):
         pass
 
@@ -976,6 +1019,8 @@ def extract_uploaded_document(filename: str, data: bytes) -> PocResult:
     """Classify locally, then route invoices through the managed parser."""
     local_pdf = read_pdf_bytes(filename, data)
     local_result = extract_document(local_pdf)
+    # Texto en memoria para el asistente (el PDF binario nunca sale del entorno).
+    local_result.source_text = local_pdf.text
     document_type = local_result.document["document_type"]
     folded_name = _fold(filename)
     explicit_non_invoice = document_type == "proforma_or_advance_request" or any(
@@ -1007,6 +1052,7 @@ def extract_uploaded_document(filename: str, data: bytes) -> PocResult:
             local_result.document,
             managed_result.field_confidences,
         )
+        managed_result.source_text = local_pdf.text
         return managed_result
     except NotInvoiceDocumentError:
         return local_result

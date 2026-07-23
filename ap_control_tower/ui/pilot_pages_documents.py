@@ -213,7 +213,7 @@ def render_documents() -> None:
         width="stretch",
         height=360,
         on_select="rerun",
-        selection_mode="single-row-required",
+        selection_mode="single-row",
         selection_default={"selection": {"rows": [0]}},
         key="documents_list",
         column_config={

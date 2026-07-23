@@ -1,48 +1,55 @@
-# AP Control Tower
+# Torre de Control para Cuentas a Pagar
 
-Sistema de agentes maker-checker para el proceso de Cuentas a Pagar (AP/P2P) de una consultora.
-Demo comercial cuyo tablero AP corre localmente y sin credenciales, con datos
-sinteticos. La vista opcional de documentos reales usa Google Document AI y,
-cuando esta configurada, envia los PDFs cargados al proyecto cloud de la demo.
+Aplicación piloto para la operación de Cuentas a Pagar de **Brand UP**. Reúne
+ingreso documental, extracción, controles, revisión humana, propuesta de pago,
+auditoría e indicadores en una única experiencia Streamlit.
 
-> **El sistema se auto-bloquea ante alertas. La aprobación para liberar dinero es siempre humana.**
+El rediseño completó la revisión local y recibió aprobación explícita para su
+publicación controlada el 22/07/2026. El despliegue conserva secretos, identidad
+de servicio y límites de escalado del servicio existente.
+
+Las decisiones de revisión y de propuesta de pago permanecen separadas. Una
+aprobación en esta aplicación incorpora documentos a una propuesta controlada;
+no contabiliza, no genera un archivo bancario y no libera dinero.
 
 Cada etapa tiene un agente *maker* que produce y un agente *checker* independiente que valida contra reglas explicitas. Los controles que bloquean son automaticos: la factura que falla queda en la cola de excepciones sin intervencion humana. El unico gate humano del sistema es la liberacion del lote de pago al banco.
 
 Repositorio **privado**. El material de referencia del proceso real vive en `docs/` (gitignoreado, confidencial, nunca se commitea).
 
-## Estado (cierre tecnico / pre-despliegue)
+## Estado del piloto local
 
 | Entregable | Estado |
 |---|---|
 | Repo privado + docs/ blindado | Listo |
-| Dataset sintetico (junio 2026, 42 documentos: 36 base + 6 flujos reales) | Auditado y aprobado |
+| Dataset sintético de evaluación (junio 2026, 42 documentos) | Auditado |
 | Motor de controles C1-C7 + audit trail hash-chained | Listo (Dia 2) |
 | Doble sign-off agentico + gate humano + cierre | Listo (Dia 2) |
-| UI Streamlit: tablero + PoC de documentos reales con Document AI | Listo |
-| Password gate server-side (env AP_DEMO_PASSWORD) | Listo |
+| UI Streamlit unificada y operativa | Listo para revisión local |
+| Password gate server-side (`AP_SYSTEM_PASSWORD`) | Listo |
 | Dockerfile + .dockerignore (puerto por CLI/PORT, sin hardcodeo) | Build y smoke test verdes en Docker dentro de WSL |
-| Evals con contrato de exit code (19 grupos, incl. app y adaptador Document AI) | Verdes (exit 0) |
+| Evals con contrato de exit code (20 grupos, incl. app, Document AI y Sage) | Verdes (exit 0) |
+| Maestro Sage (Fase 1.5): Tax ID, nombre normalizado, fuzzy seguro y auditoría | Listo; publicación controlada autorizada |
 | Ensayo humano + fixes | Listo |
 
-## Como correr la UI
+## Cómo ejecutar la aplicación
 
 ```powershell
-# Windows (PowerShell) - el password es el que VOS elijas, nunca esta en el repo
-$env:AP_DEMO_PASSWORD = 'eleg-un-password'
-streamlit run app.py --server.port 8501
+# Windows (PowerShell). La contraseña se define solo en la sesión del proceso.
+$env:AP_SYSTEM_PASSWORD = 'elegir-una-contraseña-temporal'
+.\.venv\Scripts\streamlit.exe run app.py --server.port 8501
 ```
 
 ```bash
 # Linux / macOS
-AP_DEMO_PASSWORD='eleg-un-password' streamlit run app.py --server.port 8501
+AP_SYSTEM_PASSWORD='elegir-una-contraseña-temporal' streamlit run app.py --server.port 8501
 ```
 
-- Sin `AP_DEMO_PASSWORD` la app muestra "demo no configurada" y no renderiza nada.
+- Sin `AP_SYSTEM_PASSWORD` la aplicación informa que el acceso no está configurado.
+- `AP_DEMO_PASSWORD` se acepta temporalmente como compatibilidad y se retirará en una etapa posterior.
 - El puerto se pasa SIEMPRE por CLI (`--server.port`); no hay puertos hardcodeados.
 - La sesion autenticada dura lo que dura la session_state (recargar la pagina pide password de nuevo).
 
-## Docker (ensayo local y Cloud Run)
+## Docker local
 
 ```bash
 # Dentro de WSL. El login ADC es interactivo y se hace una sola vez.
@@ -53,7 +60,7 @@ docker build --build-arg GIT_COMMIT=$(git rev-parse --short HEAD) -t ap-control-
 
 # ensayo local: monta ADC de WSL como archivo de solo lectura
 docker run --rm -p 8080:8080 \
-  -e PORT=8080 -e AP_DEMO_PASSWORD=ensayo-local \
+  -e PORT=8080 -e AP_SYSTEM_PASSWORD=revision-local \
   --env-file config/gcp-runtime.example \
   -e GOOGLE_APPLICATION_CREDENTIALS=/var/secrets/google/adc.json \
   -v "$HOME/.config/gcloud/application_default_credentials.json:/var/secrets/google/adc.json:ro" \
@@ -81,7 +88,10 @@ pasa `DOCUMENT_AI_ACCESS_TOKEN`. Las facturas se envian al Invoice Parser del
 proyecto Google Cloud; la app no persiste una copia local. Proformas y ordenes
 de compra conservan el flujo deterministico local.
 
-### Despliegue activo
+### Infraestructura existente de referencia
+
+Los siguientes datos describen el servicio anterior. El producto unificado de
+este repositorio no fue desplegado durante la etapa de revisión local.
 
 - Servicio: `ap-control-tower`
 - Region: `us-central1`
@@ -133,9 +143,9 @@ y `Golden Records.xlsx` estan gitignoreados y un eval lo verifica).
 ## Persistencia opcional (Fase 1 · industrializacion)
 
 Capa **aditiva** de PostgreSQL detras de repositorios, en `ap_control_tower/persistence/`
-(SQLAlchemy 2.0 + Alembic). **Sin `AP_DATABASE_URL` la demo corre exactamente
-igual que hoy**: no hay base, no cambia el motor ni la UI. Las dependencias
-viven en `requirements-persistence.txt` (no en la imagen de la demo).
+(SQLAlchemy 2.0 + Alembic). **Sin `AP_DATABASE_URL` la aplicación funciona
+sin persistencia**: no hay base y no cambia el motor. Las dependencias viven
+en `requirements-persistence.txt` (fuera de la imagen base).
 
 ```bash
 pip install -r requirements-persistence.txt
@@ -148,13 +158,29 @@ python evals/test_persistence.py                     # round-trip motor->base (e
 Detalle, modelo relacional y guia de operacion/rollback/recuperacion:
 `ap_control_tower/persistence/README.md`.
 
+## Maestro de proveedores Sage (Fase 1.5)
+
+La página `Ingreso de documentos` acepta un export XLSX del maestro de
+**proveedores** de Sage. El archivo vive solo en memoria y se descarta; la
+persistencia conserva únicamente el resumen y el resultado no sensible del
+match. La política prioriza Tax ID exacto, luego nombre fuertemente normalizado
+y recién después similitud fuzzy con un umbral único compartido. Un match fuzzy
+único se acepta con FYI visible y auditada; múltiples candidatos o ninguno se
+derivan a revisión.
+
+El archivo local `output sage.xlsx` fue identificado como maestro de clientes
+(`Cód. proveedor` constante y categoría `CLI`), por lo que el guardrail lo
+rechaza. Se necesita el export de proveedores para la validación con datos
+reales. Operación, privacidad y rollback:
+`docs_operacion/runbook_sage_vendor_master.md`.
+
 ## API interna opcional (Fase 4 · industrializacion)
 
 API HTTP **separada de la UI** (FastAPI) sobre la capa `app/`, para que ERP/
 portales consuman las operaciones controladas (corrida, gate, revisión,
 excepciones, auditoría, métricas, carga de documentos). Versionada en `/v1`,
 con OpenAPI en `/docs`, idempotencia, paginación, correlación y datos bancarios
-enmascarados. Dependencias en `requirements-api.txt` (fuera de la imagen de la demo).
+enmascarados. Dependencias en `requirements-api.txt` (fuera de la imagen de la aplicación).
 
 ```bash
 pip install -r requirements-api.txt
@@ -193,7 +219,7 @@ python -m ap_control_tower.dataset_builder
 python -m ap_control_tower.run_month
 
 # 3. Evals: exit 0 = verde, distinto de 0 = contrato roto
-python evals/run_evals.py            # 19 grupos (incluye app + adaptador Document AI)
+python evals/run_evals.py            # 20 grupos (incluye app, Document AI y Sage)
 python evals/run_evals.py --sin-app  # salta el grupo de arranque (CI sin GUI)
 
 # 4. (opcional) Regenerar las facturas visuales
@@ -317,12 +343,12 @@ ap_control_tower/
     batch.py           # doble sign-off agentico + maquina de estados del gate
     closing.py         # cierre: conciliacion pago vs pasivo
   ui/
-    auth.py            # password gate server-side (AP_DEMO_PASSWORD)
+    auth.py            # password gate server-side (AP_SYSTEM_PASSWORD; fallback temporal compatible)
     theme.py           # theming corporativo (paleta, badges, cards, tablas)
     state.py           # corrida y workflows en session_state
     views/             # inbox, detalle, excepciones, gate, auditoria, caso de negocio
 data/                  # dataset + expected + doc_previews (committeados)
-evals/run_evals.py     # exit 0/1 como contrato (19 grupos)
+evals/run_evals.py     # exit 0/1 como contrato (20 grupos)
 runs/                  # audit trails por corrida (gitignoreado)
 docs/                  # confidencial, gitignoreado, NUNCA commitear
 ```

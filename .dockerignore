@@ -17,8 +17,12 @@ __pycache__
 *.doc
 *.docx
 *.png
+*.zip
+*.ndjson
 docs
 invoices & OC
+private_evals
+outputs
 runs
 tmp
 .claude

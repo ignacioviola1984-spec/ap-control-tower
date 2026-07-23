@@ -1,0 +1,13 @@
+# Contexto minimo y seguro para Cloud Build / Cloud Run.
+.gcloudignore
+.git
+.git/**
+
+# Reutiliza las exclusiones del repositorio (secrets, facturas y datasets).
+#!include:.gitignore
+
+# Defensa en profundidad para artefactos privados o generados.
+private_evals/
+outputs/
+*.zip
+*.ndjson

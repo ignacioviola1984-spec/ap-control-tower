@@ -1,12 +1,37 @@
-# Theming de AP Control Tower. Sin [server].port: el puerto SIEMPRE llega por
-# CLI (--server.port) o env PORT en el contenedor; nada hardcodeado.
+# Tema operativo del producto. El puerto se recibe por CLI o por el entorno.
 
 [theme]
 base = "light"
 primaryColor = "#0F4C81"
-backgroundColor = "#F4F6F9"
-secondaryBackgroundColor = "#FFFFFF"
-textColor = "#1A2332"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F3F6F9"
+textColor = "#172234"
+borderColor = "#CBD5E1"
+dataframeBorderColor = "#CBD5E1"
+dataframeHeaderBackgroundColor = "#EAF0F6"
+showWidgetBorder = true
+showSidebarBorder = true
+baseRadius = "8px"
+buttonRadius = "8px"
+baseFontSize = 15
+headingFontSizes = ["30px", "24px", "20px", "17px", "15px", "13px"]
+headingFontWeights = [700, 600, 600, 600, 600, 600]
+greenColor = "#137A4B"
+orangeColor = "#9A5B00"
+redColor = "#B42318"
+blueColor = "#0F4C81"
+
+[theme.sidebar]
+backgroundColor = "#F3F6F9"
+secondaryBackgroundColor = "#E7EEF5"
+textColor = "#172234"
+primaryColor = "#0F4C81"
+borderColor = "#CBD5E1"
 
 [browser]
 gatherUsageStats = false
+
+[client]
+toolbarMode = "minimal"
+showErrorDetails = "none"
+showSidebarNavigation = true

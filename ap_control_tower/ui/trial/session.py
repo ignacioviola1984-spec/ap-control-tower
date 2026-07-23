@@ -38,19 +38,120 @@ class TrialSession:
     sources: dict = field(default_factory=dict)          # doc_id -> canal
     review_decisions: dict = field(default_factory=dict) # doc_id -> decisión humana
     approval_decisions: dict = field(default_factory=dict) # doc_id -> propuesta pago
+    supplier_master: object | None = field(default=None, repr=False)
+    supplier_master_summary: dict = field(default_factory=dict)
+    supplier_resolutions: dict = field(default_factory=dict) # doc_id -> match no sensible
     persistence_error: str | None = None
 
 
 def new_session() -> TrialSession:
-    audit = AuditTrail(commit="trial-session")
-    audit.add(agent="trial", action="sesion-iniciada")
+    audit = AuditTrail(commit="pilot-session")
+    audit.add(agent="sistema", action="sesion-iniciada")
     return TrialSession(audit=audit)
 
 
 def record_intake(session: TrialSession, canal: str, cantidad: int) -> None:
     """Registra una ingesta por canal (carga-manual | gmail) sin contenido."""
-    session.audit.add(agent="trial", action="ingesta", result=canal,
+    session.audit.add(agent="sistema", action="ingesta", result=canal,
                       evidence={"canal": canal, "documentos": cantidad})
+
+
+def _resolve_supplier(session: TrialSession, result):
+    """Aplica el maestro activo y conserva solo el resultado no sensible."""
+    if session.supplier_master is None:
+        return None
+    from ...app import match_supplier_to_sage
+    from ...sage.vendor_master import (
+        AMBIGUOUS_VENDOR_WARNING,
+        FUZZY_VENDOR_FYI,
+        MISSING_VENDOR_IDENTITY_WARNING,
+        TAX_ID_NOT_FOUND_WARNING,
+        VENDOR_NOT_FOUND_WARNING,
+    )
+
+    sage_warnings = {
+        AMBIGUOUS_VENDOR_WARNING,
+        FUZZY_VENDOR_FYI,
+        MISSING_VENDOR_IDENTITY_WARNING,
+        TAX_ID_NOT_FOUND_WARNING,
+        VENDOR_NOT_FOUND_WARNING,
+    }
+    result.warnings = [
+        warning for warning in (result.warnings or [])
+        if str(warning) not in sage_warnings
+    ]
+    resolution = match_supplier_to_sage(result.document, session.supplier_master)
+    if resolution.warning and resolution.warning not in result.warnings:
+        result.warnings.append(resolution.warning)
+    safe_resolution = resolution.safe_dict()
+    if not resolution.accepted:
+        previous_payment = session.approval_decisions.pop(str(result.doc_id), None)
+        previous_review = session.review_decisions.get(str(result.doc_id)) or {}
+        review_reverted = previous_review.get("status") in {
+            "confirmed", "payment_exception_approved"
+        }
+        if review_reverted:
+            session.review_decisions.pop(str(result.doc_id), None)
+        safe_resolution["payment_decision_reverted"] = bool(previous_payment)
+        safe_resolution["review_confirmation_reverted"] = review_reverted
+    session.supplier_resolutions[str(result.doc_id)] = safe_resolution
+    return resolution
+
+
+def _audit_supplier_resolution(session: TrialSession, result, resolution) -> None:
+    if resolution is None:
+        return
+    if resolution.status == "matched" and resolution.method == "fuzzy_name":
+        action, audit_result = "proveedor-vinculado-por-similitud-nombre", "fyi"
+    elif resolution.status == "matched":
+        action, audit_result = "proveedor-vinculado-sage", resolution.method
+    elif resolution.status == "ambiguous":
+        action, audit_result = "proveedor-ambiguo-sage", "requiere-revision"
+    else:
+        action, audit_result = "proveedor-no-encontrado-sage", "requiere-revision"
+    session.audit.add(
+        agent="sistema",
+        action=action,
+        invoice_id=result.doc_id,
+        result=audit_result,
+        evidence={
+            "metodo": resolution.method,
+            "candidatos": resolution.candidate_count,
+            "similitud": (
+                f"{resolution.score:.4f}" if resolution.score is not None else None
+            ),
+            "tax_id_confirmado": resolution.tax_id_confirmed,
+            "maestro": session.supplier_master_summary.get("fingerprint"),
+            "decision_pago_previa_revertida": bool(
+                session.supplier_resolutions.get(str(result.doc_id), {}).get(
+                    "payment_decision_reverted")),
+            "confirmacion_previa_revertida": bool(
+                session.supplier_resolutions.get(str(result.doc_id), {}).get(
+                    "review_confirmation_reverted")),
+        },
+    )
+
+
+def load_sage_vendor_master(
+    session: TrialSession, filename: str, content: bytes
+) -> dict:
+    """Valida el XLSX, lo mantiene en memoria y reconcilia la sesion completa."""
+    from ...app import parse_sage_vendor_master
+
+    master = parse_sage_vendor_master(content, filename)
+    session.supplier_master = master
+    session.supplier_master_summary = master.safe_summary()
+    session.supplier_resolutions = {}
+    session.audit.add(
+        agent="sistema",
+        action="maestro-proveedores-sage-cargado",
+        result="ok",
+        evidence=dict(session.supplier_master_summary),
+    )
+    for result in session.results:
+        resolution = _resolve_supplier(session, result)
+        _audit_supplier_resolution(session, result, resolution)
+    return dict(session.supplier_master_summary)
 
 
 def add_results(session: TrialSession, results) -> None:
@@ -61,8 +162,9 @@ def add_results(session: TrialSession, results) -> None:
             _record_duplicate_omitted(session, r.doc_id)
             continue
         session.results.append(r)
+        supplier_resolution = _resolve_supplier(session, r)
         session.audit.add(
-            agent="trial",
+            agent="sistema",
             action="documento-procesado",
             invoice_id=r.doc_id,
             result=("con-advertencias" if r.warnings else "ok"),
@@ -74,6 +176,7 @@ def add_results(session: TrialSession, results) -> None:
                 "paginas": r.pages,
             },
         )
+        _audit_supplier_resolution(session, r, supplier_resolution)
 
 
 def _already_present(session: TrialSession, doc_id: str,
@@ -85,7 +188,7 @@ def _already_present(session: TrialSession, doc_id: str,
 
 def _record_duplicate_omitted(session: TrialSession, doc_id: str) -> None:
     session.audit.add(
-        agent="trial", action="documento-repetido-omitido", invoice_id=doc_id,
+        agent="sistema", action="documento-repetido-omitido", invoice_id=doc_id,
         result="omitido", evidence={"motivo": "ya-presente-en-la-corrida"})
 
 
@@ -98,13 +201,14 @@ def add_document(session: TrialSession, result, seconds: float = 0.0,
         _record_duplicate_omitted(session, result.doc_id)
         return False
     session.results.append(result)
+    supplier_resolution = _resolve_supplier(session, result)
     session.proc_seconds[result.doc_id] = round(max(0.0, float(seconds)), 3)
     session.processing_seconds += max(0.0, float(seconds))
     if file_hash:
         session.file_hashes[result.doc_id] = file_hash
     session.sources[result.doc_id] = source
     session.audit.add(
-        agent="trial",
+        agent="sistema",
         action="documento-procesado",
         invoice_id=result.doc_id,
         result=("con-advertencias" if result.warnings else "ok"),
@@ -117,6 +221,7 @@ def add_document(session: TrialSession, result, seconds: float = 0.0,
             "segundos": round(max(0.0, float(seconds)), 2),
         },
     )
+    _audit_supplier_resolution(session, result, supplier_resolution)
     return True
 
 
@@ -143,7 +248,7 @@ def repair_duplicates(session: TrialSession) -> int:
         session.processing_seconds = round(
             sum(float(value) for value in session.proc_seconds.values()), 3)
         session.audit.add(
-            agent="trial", action="sesion-deduplicada", result="reparada",
+            agent="sistema", action="sesion-deduplicada", result="reparada",
             evidence={"documentos_repetidos_eliminados": removed})
     return removed
 
@@ -155,7 +260,7 @@ def add_error(session: TrialSession, filename: str, detalle: str,
     session.errors.append((filename, detalle))
     session.processing_seconds += max(0.0, float(seconds))
     session.audit.add(
-        agent="trial",
+        agent="sistema",
         action="error-procesamiento",
         invoice_id=filename,
         result="error",
@@ -169,7 +274,7 @@ def add_processing_time(session: TrialSession, seconds: float) -> None:
 
 
 def record_event(session: TrialSession, action: str, evidence: dict | None = None) -> None:
-    session.audit.add(agent="trial", action=action, evidence=evidence or {})
+    session.audit.add(agent="sistema", action=action, evidence=evidence or {})
 
 
 def _result_by_id(session: TrialSession, doc_id: str):
@@ -281,8 +386,8 @@ def decide_payment_proposal(session: TrialSession, doc_ids: list[str], approver:
         raise ValueError("Decisión de pago inválida.")
     if not doc_ids:
         raise ValueError("Seleccioná al menos una factura.")
-    if status == "rejected" and not note:
-        raise ValueError("El rechazo requiere un motivo.")
+    if status in {"rejected", "excluded"} and not note:
+        raise ValueError("La exclusión o el rechazo requieren un motivo.")
 
     states = {row["result"].doc_id: row
               for row in workflow.approval_rows(
@@ -383,6 +488,8 @@ def resume_saved_run(run_id: str) -> TrialSession:
         sources=dict(stored.sources),
         review_decisions=dict(stored.review_decisions),
         approval_decisions=dict(stored.approval_decisions),
+        supplier_master_summary=dict(stored.supplier_master_summary),
+        supplier_resolutions=dict(stored.supplier_resolutions),
     )
     st.session_state[_KEY] = active
     return active
@@ -407,7 +514,13 @@ def get_session() -> TrialSession:
 
 def session_keys_to_clear(all_keys) -> list:
     """Claves de session_state que borra 'Finalizar y borrar' (logica pura)."""
-    return [k for k in all_keys if str(k) == _KEY or str(k).startswith("_trial_")]
+    page_keys = {"documents_list", "review_queue", "payment_documents"}
+    return [
+        key for key in all_keys
+        if str(key) == _KEY
+        or str(key).startswith(("_trial_", "_pilot_", "_close_session_"))
+        or str(key) in page_keys
+    ]
 
 
 def reset_session() -> None:
@@ -447,7 +560,8 @@ def render_sidebar_end_session() -> None:
     import streamlit as st
 
     st.sidebar.markdown("---")
-    if st.sidebar.button("🗑  Finalizar sesión actual", use_container_width=True,
+    if st.sidebar.button("Cerrar sesión de trabajo", width="stretch",
+                         icon=":material/logout:",
                          key="_trial_clear_sidebar"):
         _clear_and_rerun()
 
@@ -456,6 +570,7 @@ def render_clear_action() -> None:
     """Accion visible de borrado para el area principal (p. ej. Resultados)."""
     import streamlit as st
 
-    if st.button("🗑  Finalizar sesión actual", use_container_width=True,
+    if st.button("Eliminar datos de esta sesión", width="stretch",
+                 icon=":material/delete:",
                  key="_trial_clear_main"):
         _clear_and_rerun()

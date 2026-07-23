@@ -17,6 +17,7 @@ from ap_control_tower.extraction.document_ai import (
     DocumentAIConfig,
     extract_uploaded_document,
     map_document_ai_result,
+    refine_mapped_document,
 )
 from ap_control_tower.extraction.pdf_poc import PdfText, PocResult, extract_document
 from ap_control_tower.extraction.schema import empty_document
@@ -80,7 +81,7 @@ BIC CAIXESBBXXX
         self.assertEqual(doc["proveedor_cuenta_bancaria"], "2100-0418-45-0200051332")
         self.assertEqual(doc["iban"], "ES9121000418450200051332")
         self.assertEqual(doc["bic"], "CAIXESBBXXX")
-        self.assertEqual(doc["metodo_pago"], "transferencia")
+        self.assertEqual(doc["metodo_pago"], "no_indicado")
         self.assertEqual(doc["tratamiento_iva"], "nacional")
         self.assertEqual(result.warnings, [])
 
@@ -195,6 +196,41 @@ SERVICIOS VERDES UNA TINTA S.L.U. N.I.F: B12345678
         self.assertEqual(result.document["tipo_iva"], "21")
         self.assertEqual(result.document["proveedor_nombre_comercial"], "SERVICIOS VERDES UNA TINTA S.L.U")
         self.assertEqual(result.document["cliente_nombre"], "MERIDIA CONSULTING SLU")
+
+    def test_brand_up_context_repairs_inverted_supplier_and_tax_ids(self):
+        text = """Orange Espagne, S.A.U. CIF A82009812
+FACTURA A-1
+CLIENTE: BRAND UP S.L.U. CIF B85902583
+TOTAL EUR 121,00
+"""
+        document = SimpleNamespace(
+            text=text,
+            pages=[object()],
+            entities=[
+                entity("invoice_id", "A-1"),
+                entity("supplier_name", "BRAND UP S.L.U."),
+                entity("supplier_tax_id", "B85902583"),
+                entity("receiver_name", "Orange Espagne, S.A.U."),
+                entity("receiver_tax_id", "A82009812"),
+                entity("currency", "EUR", "EUR"),
+                entity("total_amount", "121,00", "121.00"),
+            ],
+        )
+
+        result = map_document_ai_result("orange.pdf", document)
+
+        self.assertIn("Orange", result.document["proveedor_nombre_comercial"])
+        self.assertEqual(result.document["proveedor_tax_id"], "A82009812")
+        self.assertIn("BRAND UP", result.document["cliente_nombre"])
+        self.assertEqual(result.document["cliente_tax_id"], "B85902583")
+
+    def test_refinement_repairs_strong_total_and_thousands_scale(self):
+        document = empty_document()
+        document.update({"document_type": "invoice", "importe_total": "2.86"})
+
+        refine_mapped_document(document, "GROSS : £ 2,860 GBP", empty_document())
+
+        self.assertEqual(document["importe_total"], "2860.00")
 
     def test_banking_validators_reject_plausible_but_invalid_values(self):
         self.assertTrue(is_valid_iban("ES9121000418450200051332"))

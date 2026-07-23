@@ -22,7 +22,7 @@ la intencion declarada del dataset, NUNCA de correr el motor). Verifica:
   13. Password gate: comparacion server-side correcta; el password nunca
       aparece en el codigo del repo.
   14. La app ARRANCA sin API keys y sin red externa: se lanza streamlit en un
-      subproceso con un entorno minimo (solo AP_DEMO_PASSWORD) en un puerto
+      subproceso con un entorno minimo (solo AP_SYSTEM_PASSWORD) en un puerto
       libre elegido al azar, y el health endpoint responde ok.
   15. Extraccion v2: esquema/template sincronizados, golden labels de las 5
       fixtures validan y cubren los casos nuevos, comparador con semantica de
@@ -41,11 +41,13 @@ la intencion declarada del dataset, NUNCA de correr el motor). Verifica:
       Golden Records.xlsx, *.pdf) esta git-ignoreado.
   19. Adaptador Document AI: mapeo, validadores bancarios, configuracion y
       degradacion segura al extractor local sin credenciales.
+  20. Fase 1.5 Sage: import seguro del maestro, normalizacion de proveedor,
+      Tax ID prioritario, fuzzy compartido, ambiguedad y FYI auditada.
 
 Invariantes ademas de los originales: INVARIANTE-3, una proforma JAMAS puede
 aparecer en un lote de pago (grupo 4).
 
-Uso: python evals/run_evals.py            (19 grupos)
+Uso: python evals/run_evals.py            (20 grupos)
      python evals/run_evals.py --sin-app  (salta el grupo 14, p. ej. en CI sin GUI)
 """
 
@@ -104,7 +106,7 @@ def _boot_app_check(timeout_s: float = 60.0) -> bool:
     """Lanza streamlit en subproceso con entorno minimo y verifica el health.
 
     - Puerto: uno libre elegido por el SO (nada hardcodeado), pasado por CLI.
-    - Entorno: PATH/SYSTEMROOT del sistema + AP_DEMO_PASSWORD. Ninguna API key.
+    - Entorno: PATH/SYSTEMROOT del sistema + AP_SYSTEM_PASSWORD. Ninguna API key.
     - Red: solo localhost (el health endpoint propio de streamlit).
     """
     import os
@@ -120,8 +122,8 @@ def _boot_app_check(timeout_s: float = 60.0) -> bool:
     env = {k: v for k, v in os.environ.items()
            if k in ("PATH", "SYSTEMROOT", "SYSTEMDRIVE", "TEMP", "TMP", "COMSPEC",
                     "PATHEXT", "WINDIR", "HOME", "USERPROFILE", "APPDATA",
-                    "LOCALAPPDATA", "PROGRAMDATA", "LANG")}
-    env["AP_DEMO_PASSWORD"] = "eval-arranque"
+                    "LOCALAPPDATA", "PROGRAMDATA", "LANG", "PYTHONPATH")}
+    env["AP_SYSTEM_PASSWORD"] = "eval-arranque"
     env["PYTHONIOENCODING"] = "utf-8"
 
     proc = subprocess.Popen(
@@ -362,7 +364,9 @@ def main() -> int:
     # (docstrings, mensajes) es valido. (Los evals si setean un password
     # descartable para el subproceso de arranque: fuera de alcance.)
     import re
-    assign_pat = re.compile(r"""["']?AP_DEMO_PASSWORD["']?\s*\]?\s*=\s*["']""")
+    assign_pat = re.compile(
+        r"""["']?AP_(?:SYSTEM|DEMO)_PASSWORD["']?\s*\]?\s*=\s*["']"""
+    )
     leaked = []
     app_files = [ROOT / "app.py"] + sorted((ROOT / "ap_control_tower").rglob("*.py"))
     for py in app_files:
@@ -383,7 +387,7 @@ def main() -> int:
     else:
         print("== 14. La app arranca sin API keys ni red externa ==")
         check(_boot_app_check(), "streamlit sirve el health endpoint con entorno minimo "
-                                 "(solo AP_DEMO_PASSWORD) en un puerto libre por CLI")
+                                 "(solo AP_SYSTEM_PASSWORD) en un puerto libre por CLI")
 
     print("== 15. Extraccion v2: esquema, fixtures, comparador y prompt ==")
     from datetime import date as _date
@@ -639,6 +643,13 @@ def main() -> int:
     check(adapter_result.wasSuccessful()
           and adapter_result.testsRun >= 11,
           f"adaptador Document AI: {adapter_result.testsRun} pruebas unitarias verdes")
+
+    print("== 20. Fase 1.5: maestro Sage y matching de proveedor ==")
+    sage_suite = unittest.defaultTestLoader.loadTestsFromName(
+        "evals.test_sage_vendor_master")
+    sage_result = unittest.TextTestRunner(verbosity=0).run(sage_suite)
+    check(sage_result.wasSuccessful() and sage_result.testsRun >= 12,
+          f"maestro Sage: {sage_result.testsRun} pruebas unitarias verdes")
 
     print()
     if failures:

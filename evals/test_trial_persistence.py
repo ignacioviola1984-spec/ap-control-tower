@@ -68,6 +68,12 @@ def main() -> int:
         "status": "confirmed", "actor": "Ana", "timestamp": "2026-07-12T12:00:00Z"}
     state.approval_decisions[long_doc_id] = {
         "status": "approved", "actor": "Bruno", "timestamp": "2026-07-12T12:05:00Z"}
+    state.supplier_master_summary = {
+        "source": "sage-xlsx", "fingerprint": "abc123", "active_vendors": 25}
+    state.supplier_resolutions[long_doc_id] = {
+        "status": "matched", "method": "fuzzy_name", "candidate_count": 1,
+        "score": 0.91, "tax_id_confirmed": False,
+        "warning": "proveedor vinculado por similitud de nombre, sin tax ID que lo confirme"}
 
     print("== Guardar y recuperar corrida ==")
     with Session(engine) as db:
@@ -92,6 +98,10 @@ def main() -> int:
         check(loaded is not None and loaded.file_hashes[long_doc_id] == "b" * 64
               and loaded.sources[long_doc_id] == "correo-ap",
               "recupera metadatos para continuar la corrida")
+        check(loaded is not None
+              and loaded.supplier_master_summary["active_vendors"] == 25
+              and loaded.supplier_resolutions[long_doc_id]["method"] == "fuzzy_name",
+              "recupera resumen y resolución Sage sin persistir el maestro")
 
         stored = db.query(TrialDocument).one()
         blob = str(stored.document)

@@ -83,7 +83,12 @@ def save_trial_session(db: Session, trial_session) -> TrialRun:
     row.document_count = len(results)
     row.error_count = len(trial_session.errors)
     row.processing_seconds = Decimal(str(round(trial_session.processing_seconds, 3)))
-    row.metrics = _metrics(trial_session)
+    metrics = _metrics(trial_session)
+    metrics["sage_vendor_master"] = _json_value(
+        trial_session.supplier_master_summary)
+    metrics["supplier_resolutions"] = _json_value(
+        trial_session.supplier_resolutions)
+    row.metrics = metrics
     row.errors = [
         {"filename": filename, "detail": (detail or "")[:240]}
         for filename, detail in trial_session.errors
@@ -130,6 +135,8 @@ class StoredTrialRun:
     approval_decisions: dict
     file_hashes: dict
     sources: dict
+    supplier_master_summary: dict
+    supplier_resolutions: dict
 
 
 def list_trial_runs(db: Session, limit: int = 25) -> list[dict]:
@@ -188,6 +195,7 @@ def load_trial_run(db: Session, run_id: str) -> StoredTrialRun | None:
     audit = _load_audit(db, run_id)
     if audit.events and not verify_persisted_chain(db, run_id):
         raise ValueError(f"cadena de auditoría inconsistente para {run_id}")
+    metrics = row.metrics or {}
     return StoredTrialRun(
         run_id=row.run_id,
         created_at=row.created_at,
@@ -203,6 +211,8 @@ def load_trial_run(db: Session, run_id: str) -> StoredTrialRun | None:
         approval_decisions=dict(row.approval_decisions or {}),
         file_hashes=file_hashes,
         sources=sources,
+        supplier_master_summary=dict(metrics.get("sage_vendor_master") or {}),
+        supplier_resolutions=dict(metrics.get("supplier_resolutions") or {}),
     )
 
 

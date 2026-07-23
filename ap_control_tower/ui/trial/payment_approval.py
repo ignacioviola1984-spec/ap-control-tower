@@ -8,6 +8,7 @@ from io import BytesIO
 import pandas as pd
 import streamlit as st
 
+from ...persistence.masking import mask_account, mask_iban
 from ..components import extraction_view as ev
 from . import session as sess
 from . import workflow
@@ -69,8 +70,11 @@ def payment_export_rows(approved_rows: list[dict]) -> list[dict]:
                             doc.get("fecha_vencimiento_texto") or ""),
             "moneda": doc.get("moneda") or "",
             "importe": doc.get("importe_total"),
-            "iban_cuenta": (doc.get("iban") or
-                             doc.get("proveedor_cuenta_bancaria") or ""),
+            "iban_cuenta": (
+                mask_iban(doc.get("iban"))
+                or mask_account(doc.get("proveedor_cuenta_bancaria"))
+                or ""
+            ),
             "bic_swift": doc.get("bic") or "",
             "banco": doc.get("proveedor_banco") or "",
             "metodo_pago": doc.get("metodo_pago") or "",
@@ -153,7 +157,7 @@ def render() -> None:
             "estado": STATUS_LABEL[row["status"]],
             "motivo de retención": " · ".join(row["reasons"]) or "—",
         })
-    st.dataframe(pd.DataFrame(table), use_container_width=True, hide_index=True)
+    st.dataframe(pd.DataFrame(table), width="stretch", hide_index=True)
 
     if approved:
         st.markdown("### Exportar lote aprobado")
@@ -163,13 +167,13 @@ def render() -> None:
         export_csv.download_button(
             "Exportar lote aprobado CSV", data=payment_export_csv(approved),
             file_name="ap-control-tower-propuesta-pago.csv", mime="text/csv",
-            use_container_width=True,
+            width="stretch",
             key=f"trial_payment_export_csv_{session.audit.run_id}")
         export_excel.download_button(
             "Exportar lote aprobado Excel", data=payment_export_excel(approved),
             file_name="ap-control-tower-propuesta-pago.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True,
+            width="stretch",
             key=f"trial_payment_export_xlsx_{session.audit.run_id}")
         if any(bool(row["result"].document.get("iban_enmascarado")) for row in approved):
             st.warning("El lote contiene datos bancarios enmascarados. Tesorería debe "
@@ -202,7 +206,7 @@ def render() -> None:
             acknowledgement = st.checkbox(
                 "Confirmo que esta acción no libera dinero ni reemplaza la autorización bancaria")
             approve = st.form_submit_button(
-                "Aprobar para propuesta de pago", type="primary", use_container_width=True)
+                "Aprobar para propuesta de pago", type="primary", width="stretch")
 
         selected_ids = _selected_doc_ids(labels, selected_labels, select_all)
         try:
@@ -241,9 +245,9 @@ def render() -> None:
                                     f"{decision.get('timestamp')}"
                                     if decision else "—"),
             })
-        st.dataframe(pd.DataFrame(retained_table), use_container_width=True,
+        st.dataframe(pd.DataFrame(retained_table), width="stretch",
                      hide_index=True)
-        if st.button("Ir a Revisión humana", type="primary", use_container_width=True,
+        if st.button("Ir a Revisión humana", type="primary", width="stretch",
                      key="trial_payment_go_review"):
             _go_to_human_review()
 

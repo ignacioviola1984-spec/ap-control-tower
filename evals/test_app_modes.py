@@ -1,16 +1,11 @@
-"""Eval: contrato de los dos modos (demo y trial). exit 0 = verde.
+"""Eval del contrato público del producto unificado. Exit 0 = verde.
 
-- La Demo conserva sus vistas y NO muestra "PoC documentos reales" (ahora Gmail).
-- La app trial tiene cinco vistas internas sin enlace externo.
-- La Demo enlaza al PoC mediante configuracion externa (AP_POC_URL).
-- Ambos modos ARRANCAN (streamlit sirve el health endpoint).
-
-SKIP con exit 0 si Streamlit no esta instalado (dependencia de UI).
+Verifica que el acceso, la navegación, el wording y ambos entrypoints respondan
+como un único producto operativo. No usa red externa ni realiza despliegues.
 """
 
 from __future__ import annotations
 
-import inspect
 import os
 import socket
 import subprocess
@@ -19,209 +14,281 @@ import time
 import urllib.request
 from pathlib import Path
 
+
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 failures: list[str] = []
 
 
-def check(cond: bool, label: str) -> None:
-    print(f"  {'PASS' if cond else 'FAIL'}  {label}")
-    if not cond:
+def check(condition: bool, label: str) -> None:
+    print(f"  {'PASS' if condition else 'FAIL'}  {label}")
+    if not condition:
         failures.append(label)
 
 
-def _boot(entry: str, extra_env: dict, timeout_s: float = 45.0) -> bool:
-    with socket.socket() as s:
-        s.bind(("127.0.0.1", 0))
-        port = s.getsockname()[1]
-    env = {k: v for k, v in os.environ.items()
-           if k in ("PATH", "SYSTEMROOT", "SYSTEMDRIVE", "TEMP", "TMP", "COMSPEC",
-                    "PATHEXT", "WINDIR", "HOME", "USERPROFILE", "APPDATA",
-                    "LOCALAPPDATA", "PROGRAMDATA", "LANG")}
-    env["AP_DEMO_PASSWORD"] = "eval-arranque"
+def _boot(entry: str, timeout_s: float = 45.0) -> bool:
+    with socket.socket() as sock:
+        sock.bind(("127.0.0.1", 0))
+        port = sock.getsockname()[1]
+    env = {
+        key: value
+        for key, value in os.environ.items()
+        if key
+        in (
+            "PATH",
+            "SYSTEMROOT",
+            "SYSTEMDRIVE",
+            "TEMP",
+            "TMP",
+            "COMSPEC",
+            "PATHEXT",
+            "WINDIR",
+            "HOME",
+            "USERPROFILE",
+            "APPDATA",
+            "LOCALAPPDATA",
+            "PROGRAMDATA",
+            "LANG",
+            "PYTHONPATH",
+        )
+    }
+    env["AP_SYSTEM_PASSWORD"] = "eval-arranque"
     env["PYTHONIOENCODING"] = "utf-8"
-    env.update(extra_env)
-    proc = subprocess.Popen(
-        [sys.executable, "-m", "streamlit", "run", str(ROOT / entry),
-         "--server.port", str(port), "--server.address", "127.0.0.1",
-         "--server.headless", "true", "--browser.gatherUsageStats", "false"],
-        cwd=str(ROOT), env=env,
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+    process = subprocess.Popen(
+        [
+            sys.executable,
+            "-m",
+            "streamlit",
+            "run",
+            str(ROOT / entry),
+            "--server.port",
+            str(port),
+            "--server.address",
+            "127.0.0.1",
+            "--server.headless",
+            "true",
+            "--browser.gatherUsageStats",
+            "false",
+        ],
+        cwd=str(ROOT),
+        env=env,
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
     )
-    url = f"http://127.0.0.1:{port}/_stcore/health"
+    health_url = f"http://127.0.0.1:{port}/_stcore/health"
     deadline = time.monotonic() + timeout_s
-    ok = False
+    healthy = False
     try:
         while time.monotonic() < deadline:
-            if proc.poll() is not None:
+            if process.poll() is not None:
                 break
             try:
-                with urllib.request.urlopen(url, timeout=2) as resp:
-                    if resp.status == 200 and resp.read().strip() == b"ok":
-                        ok = True
+                with urllib.request.urlopen(health_url, timeout=2) as response:
+                    if response.status == 200 and response.read().strip() == b"ok":
+                        healthy = True
                         break
             except OSError:
                 time.sleep(0.5)
     finally:
-        proc.terminate()
+        process.terminate()
         try:
-            proc.wait(timeout=10)
+            process.wait(timeout=10)
         except subprocess.TimeoutExpired:
-            proc.kill()
-    return ok
+            process.kill()
+    return healthy
+
+
+def _public_source() -> str:
+    paths = [
+        ROOT / "app.py",
+        ROOT / "app_trial.py",
+        ROOT / "ap_control_tower" / "ui" / "auth.py",
+        ROOT / "ap_control_tower" / "ui" / "bootstrap.py",
+        ROOT / "ap_control_tower" / "ui" / "pilot_shell.py",
+        ROOT / "ap_control_tower" / "ui" / "pilot_pages_common.py",
+        ROOT / "ap_control_tower" / "ui" / "pilot_pages_documents.py",
+        ROOT / "ap_control_tower" / "ui" / "pilot_pages_workflow.py",
+        ROOT / "ap_control_tower" / "ui" / "pilot_pages_reporting.py",
+        ROOT / "ap_control_tower" / "ui" / "trial" / "intake.py",
+        ROOT / "ap_control_tower" / "ui" / "components" / "gmail_panel.py",
+    ]
+    return "\n".join(path.read_text(encoding="utf-8") for path in paths)
+
+
+def _check_password_contract() -> None:
+    from ap_control_tower.ui import auth
+
+    original_primary = os.environ.get(auth.PRIMARY_PASSWORD_ENV_VAR)
+    original_legacy = os.environ.get(auth.LEGACY_PASSWORD_ENV_VAR)
+    try:
+        os.environ.pop(auth.PRIMARY_PASSWORD_ENV_VAR, None)
+        os.environ.pop(auth.LEGACY_PASSWORD_ENV_VAR, None)
+        check(auth.configured_password() is None, "sin configuración no hay contraseña")
+        os.environ[auth.LEGACY_PASSWORD_ENV_VAR] = "compatibilidad"
+        check(
+            auth.configured_password() == "compatibilidad",
+            "la variable anterior sigue funcionando temporalmente",
+        )
+        os.environ[auth.PRIMARY_PASSWORD_ENV_VAR] = "producto"
+        check(
+            auth.configured_password() == "producto",
+            "AP_SYSTEM_PASSWORD tiene prioridad",
+        )
+        check(
+            auth.verify_password("producto", "producto")
+            and not auth.verify_password("incorrecta", "producto"),
+            "la validación de contraseña acepta solo la coincidencia exacta",
+        )
+    finally:
+        if original_primary is None:
+            os.environ.pop(auth.PRIMARY_PASSWORD_ENV_VAR, None)
+        else:
+            os.environ[auth.PRIMARY_PASSWORD_ENV_VAR] = original_primary
+        if original_legacy is None:
+            os.environ.pop(auth.LEGACY_PASSWORD_ENV_VAR, None)
+        else:
+            os.environ[auth.LEGACY_PASSWORD_ENV_VAR] = original_legacy
+
+
+def _check_apptest() -> None:
+    from streamlit.testing.v1 import AppTest
+
+    previous_password = os.environ.get("AP_SYSTEM_PASSWORD")
+    previous_preview = os.environ.get("AP_PREVIEW_MODE")
+    try:
+        os.environ["AP_SYSTEM_PASSWORD"] = "revision-local"
+        os.environ["AP_PREVIEW_MODE"] = "1"
+        app = AppTest.from_file(str(ROOT / "app.py"), default_timeout=20).run()
+        check(not app.exception, "el login abre sin excepciones")
+        check(
+            [item.value for item in app.title]
+            == ["Torre de Control para Cuentas a Pagar"],
+            "el título de acceso usa el nombre del producto",
+        )
+        check(
+            [item.value for item in app.subheader] == ["Acceso al Sistema"],
+            "el acceso no usa wording de demostración",
+        )
+        check(
+            len(app.text_input) == 1 and app.text_input[0].label == "Contraseña",
+            "el campo de acceso tiene label visible y correcto",
+        )
+        app.text_input(key="_system_password_input").input("revision-local")
+        app.button[0].click()
+        app.run()
+        check(not app.exception, "el producto autenticado abre sin excepciones")
+        check(
+            any(item.value == "Inicio" for item in app.title),
+            "el acceso válido conduce al inicio operativo",
+        )
+        metric_labels = {item.label for item in app.metric}
+        check(
+            {"Documentos recibidos", "Pendientes de revisión", "Aprobados para propuesta"}
+            <= metric_labels,
+            "Inicio muestra indicadores de trabajo accionables",
+        )
+        operational_pages = [
+            ("app_pages/ingreso_documentos.py", "Ingreso de documentos"),
+            ("app_pages/documentos.py", "Documentos"),
+            ("app_pages/revision_humana.py", "Revisión humana"),
+            ("app_pages/propuesta_pago.py", "Lote de pago"),
+            ("app_pages/auditoria.py", "Auditoría"),
+            ("app_pages/indicadores.py", "Indicadores"),
+        ]
+        for page_path, title in operational_pages:
+            app.switch_page(page_path).run()
+            check(
+                not app.exception and any(item.value == title for item in app.title),
+                f"la página {title} abre con datos sintéticos sin excepciones",
+            )
+    finally:
+        if previous_password is None:
+            os.environ.pop("AP_SYSTEM_PASSWORD", None)
+        else:
+            os.environ["AP_SYSTEM_PASSWORD"] = previous_password
+        if previous_preview is None:
+            os.environ.pop("AP_PREVIEW_MODE", None)
+        else:
+            os.environ["AP_PREVIEW_MODE"] = previous_preview
 
 
 def main() -> int:
     try:
         import streamlit  # noqa: F401
     except Exception:
-        print("== App modes: SALTEADO (Streamlit no instalado) ==")
-        print("  SKIP  pip install -r requirements.txt")
+        print("== Producto unificado: SALTEADO (Streamlit no instalado) ==")
         return 0
 
-    print("== Demo: vistas y ausencia del PoC ==")
-    from ap_control_tower.ui import demo_shell
-    labels = list(demo_shell.VIEWS)
-    check(not any("PoC" in k for k in labels),
-          "la Demo ya NO muestra 'PoC documentos reales'")
-    check(not any("Correo AP-DEMO" in k for k in labels),
-          "la Demo NO muestra 'Correo AP-DEMO'; Gmail vive solo en Trial")
-    for esperado in ("Corrida del mes", "Cola de excepciones", "Revisión humana",
-                     "Aprobación de pagos", "Registro de auditoría", "Caso de negocio"):
-        check(any(esperado in k for k in labels), f"la Demo conserva '{esperado}'")
+    print("== Producto unificado y navegación ==")
+    from ap_control_tower.ui import bootstrap, pilot_shell
 
-    print("== Trial: cinco vistas internas ==")
-    from ap_control_tower.ui.trial import shell
-    check(len(shell.TRIAL_OPTIONS) == 6, f"trial tiene 6 opciones ({len(shell.TRIAL_OPTIONS)})")
-    joined = " | ".join(shell.TRIAL_OPTIONS)
-    check("Probar con mis facturas" in joined, "opción 'Probar con mis facturas'")
-    check("Ver resultados con mis facturas" in joined, "opción 'Ver resultados con mis facturas'")
-    check("Consultar caso de negocio" in joined, "opción 'Consultar caso de negocio'")
-    check("Revisión humana" in joined, "opción 'Revisión humana'")
-    check("Aprobación para propuesta de pago" in joined,
-          "opción 'Aprobación para propuesta de pago'")
-    trial_results_source = (
-        ROOT / "ap_control_tower" / "ui" / "trial" / "results.py"
-    ).read_text(encoding="utf-8")
-    check("Corridas anteriores" not in trial_results_source,
-          "Resultados muestra solo la sesión actual, sin corridas anteriores")
-    shell_source = inspect.getsource(shell.render)
-    check("demo_link" not in shell_source and "render_sidebar_end_session" in shell_source,
-          "Trial reemplaza el enlace a la Demo por Finalizar sesión")
+    expected_pages = [
+        "Inicio",
+        "Ingreso de documentos",
+        "Documentos",
+        "Revisión humana",
+        "Lote de pago",
+        "Auditoría",
+        "Indicadores",
+    ]
+    check(
+        [page["title"] for page in pilot_shell.PAGES] == expected_pages,
+        "la navegación contiene las siete páginas operativas en el orden esperado",
+    )
+    check(
+        all(bootstrap.normalize_mode(value) == "product" for value in (None, "demo", "trial", "otro")),
+        "todos los entrypoints históricos conducen al producto unificado",
+    )
+    check(
+        all(
+            "pilot_views" in path.read_text(encoding="utf-8")
+            for path in (ROOT / "app_pages").glob("*.py")
+        ),
+        "todas las páginas usan la capa operativa unificada",
+    )
 
-    print("== Copy comercial y limpieza de metadatos técnicos ==")
-    from ap_control_tower.ui import theme
-    from ap_control_tower.ui.trial import intake
-    from ap_control_tower.ui.trial import payment_approval
-    intake_source = inspect.getsource(intake)
-    footer_source = inspect.getsource(theme.sidebar_footer)
-    check("Cargá tus facturas reales y verás cómo el agente las procesa en tiempo real"
-          in intake_source, "Trial usa el mensaje comercial acordado")
-    check("apct-trial-hero" in intake_source and "container(border=True)" in intake_source,
-          "Trial usa título compacto y cards para las dos vías de carga")
-    check("Importar desde el correo AP (" not in intake_source,
-          "el título de Gmail no repite carpeta/modo")
-    from ap_control_tower.ui.components import gmail_panel
-    gmail_source = inspect.getsource(gmail_panel)
-    check("Adjuntos PDF a importar (carpeta AP-DEMO)" not in gmail_source
-          and "**Adjuntos PDF a importar**" in gmail_source,
-          "selector Gmail usa wording limpio y en negrita")
-    check("Consultar carpeta AP-DEMO" not in gmail_source
-          and "Consultar correo AP" in gmail_source,
-          "correo AP no expone el nombre técnico de la etiqueta")
-    from ap_control_tower.ui.trial import human_review
-    review_source = inspect.getsource(human_review)
-    check("Aprobación - propuesta de pago" in review_source,
-          "Revisión humana ofrece navegación al siguiente paso")
-    brand_source = inspect.getsource(theme.sidebar_brand)
-    check("Prueba de concepto con facturas reales" in brand_source,
-          "lateral identifica la experiencia como prueba de concepto real")
-    check("apct-trial-brand" in brand_source and "return" in brand_source,
-          "marca Trial centrada y sin separador superior redundante")
-    check("corrida <code>" not in footer_source and "commit <code>" not in footer_source,
-          "la Demo no expone run/commit en el pie")
-    check("El sistema se auto-bloquea ante alertas" not in footer_source
-          and "El humano interviene en dos lugares" in footer_source,
-          "pie Demo reemplaza la frase guía por la intervención humana")
-    check("PoC documental" not in footer_source,
-          "la Demo no muestra el wording técnico de Document AI")
-    payment_source = inspect.getsource(payment_approval)
-    check("Seleccionar todas las elegibles" in payment_source,
-          "Aprobación ofrece selección masiva explícita")
-    check("Pendientes de aprobación" in payment_source
-          and "Aprobadas para propuesta permanece en 0" in payment_source,
-          "gate distingue pendientes de documentos ya aprobados")
-    check("Documentos retenidos / fuera de la propuesta" in payment_source,
-          "retenidos tienen una sección visible propia")
-    check("Confirmar exclusión de la propuesta" not in payment_source
-          and "Rechazar para propuesta" not in payment_source,
-          "Aprobación elimina acciones duplicadas sobre retenidos")
-    check("Ir a Revisión humana" in payment_source,
-          "retenidos se gestionan desde Revisión humana")
-    check("Exportar lote aprobado CSV" in payment_source
-          and "Exportar lote aprobado Excel" in payment_source,
-          "lote aprobado se exporta en CSV y Excel")
-    check("Autorizar excepción para propuesta de pago" in review_source,
-          "Revisión humana puede autorizar una excepción de pago")
-    from ap_control_tower.ui.trial.step_navigation import (
-        NAVIGATION_KEY, PENDING_KEY, resolve_pending)
-    pending_state = {PENDING_KEY: shell.PAYMENT_APPROVAL,
-                     NAVIGATION_KEY: shell.HUMAN_REVIEW}
-    check(resolve_pending(pending_state, shell.TRIAL_OPTIONS) == shell.PAYMENT_APPROVAL
-          and pending_state[NAVIGATION_KEY] == shell.PAYMENT_APPROVAL,
-          "navegación aplica el destino antes de instanciar el selector")
-    from ap_control_tower.ui.trial import results
-    next_sources = "\n".join((inspect.getsource(intake), inspect.getsource(results),
-                               inspect.getsource(human_review),
-                               inspect.getsource(payment_approval)))
-    for next_label in ("Ver resultados con mis facturas", "Revisión humana",
-                       "Aprobación - propuesta de pago", "Consultar caso de negocio"):
-        check(next_label in next_sources, f"recorrido incluye botón '{next_label}'")
-    from ap_control_tower.ui.trial import business_case
-    business_source = inspect.getsource(business_case)
-    check("apct-method-note" in business_source,
-          "Caso de Negocio destaca las notas metodológicas")
-    check("business_case_evidence_metrics" in business_source
-          and "business_case_asis_metrics" in business_source,
-          "Caso de Negocio permite reequilibrar labels y valores")
+    print("== Wording público y componentes ==")
+    source = _public_source()
+    for forbidden in (
+        "Cargá tus facturas reales y verás cómo el agente las procesa en tiempo real",
+        "Prueba de concepto con facturas reales",
+        "Extracción, revisión y propuesta de pago en un circuito completo",
+        "Acceso a la demo",
+        "Password de la demo",
+        "Contraseña de la demo",
+        "AP Control Tower",
+    ):
+        check(forbidden.casefold() not in source.casefold(), f"no aparece el texto prohibido: {forbidden}")
+    for required in (
+        "Torre de Control para Cuentas a Pagar",
+        "Brand UP",
+        "Acceso al Sistema",
+        "Contraseña",
+    ):
+        check(required in source, f"aparece el wording requerido: {required}")
+    check("use_container_width" not in source, "las páginas nuevas usan la API width actual")
+    check("st.page_link" not in source, "la navegación interna se mantiene en el sistema principal")
 
-    print("== Enlace desde la Demo al PoC por configuración externa ==")
-    from ap_control_tower.ui import poc_link
-    demo_source = inspect.getsource(demo_shell.render)
-    check("render_poc_link" in demo_source,
-          "la Demo muestra el acceso externo al PoC")
-    prev = os.environ.get("AP_POC_URL")
-    try:
-        os.environ.pop("AP_POC_URL", None)
-        check(poc_link.poc_url() is None, "sin AP_POC_URL -> None (no hardcodeada)")
-        os.environ["AP_POC_URL"] = "https://poc.example/app"
-        check(poc_link.poc_url() == "https://poc.example/app",
-              "con AP_POC_URL -> se usa esa URL")
-    finally:
-        if prev is None:
-            os.environ.pop("AP_POC_URL", None)
-        else:
-            os.environ["AP_POC_URL"] = prev
-
-    print("== bootstrap.normalize_mode ==")
-    from ap_control_tower.ui import bootstrap
-    check(bootstrap.normalize_mode("trial") == "trial", "trial -> trial")
-    check(bootstrap.normalize_mode(None) == "demo", "None -> demo")
-    check(bootstrap.normalize_mode("otro") == "demo", "valor invalido -> demo")
+    print("== Acceso y recorrido local ==")
+    _check_password_contract()
+    _check_apptest()
 
     if "--sin-app" in sys.argv:
-        print("== Arranque de ambos modos: SALTEADO (--sin-app) ==")
+        print("== Arranque HTTP local: SALTEADO (--sin-app) ==")
     else:
-        print("== Ambos modos arrancan (health endpoint) ==")
-        check(_boot("app.py", {}), "modo demo arranca (app.py)")
-        check(_boot("app_trial.py", {}), "modo trial arranca (app_trial.py)")
+        print("== Arranque HTTP local ==")
+        check(_boot("app.py"), "app.py responde en el health endpoint local")
+        check(
+            _boot("app_trial.py"),
+            "app_trial.py conserva compatibilidad y abre el mismo producto",
+        )
 
     print()
     if failures:
-        print(f"APP MODES ROJO: {len(failures)} fallas")
+        print(f"PRODUCTO UNIFICADO ROJO: {len(failures)} fallas")
         return 1
-    print("APP MODES VERDE: demo sin PoC, trial 3 vistas, enlace externo, ambos arrancan (exit 0)")
+    print("PRODUCTO UNIFICADO VERDE: acceso, wording, navegación y arranque validados")
     return 0
 
 

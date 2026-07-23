@@ -578,8 +578,7 @@ def _extract_payment(doc: dict, text: str) -> None:
         doc["metodo_pago"] = "domiciliacion_direct_debit"
     elif re.search(r"\b(tarjeta|card payment|credit card|visa|mastercard)\b", folded):
         doc["metodo_pago"] = "tarjeta"
-    elif re.search(r"\b(transferencia|bank transfer|wire transfer|bank account|iban|swift)\b", folded) \
-            or any((bank.iban, bank.bic, bank.banco, bank.cuenta)):
+    elif re.search(r"\b(transferencia|bank transfer|wire transfer)\b", folded):
         doc["metodo_pago"] = "transferencia"
     else:
         doc["metodo_pago"] = "no_indicado"

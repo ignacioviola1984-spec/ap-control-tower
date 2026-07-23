@@ -23,6 +23,13 @@ from ..engine.review import ReviewError
 from ..engine.controls import classify_document
 from ..extraction.schema import FIELD_ORDER
 from .extraction_service import document_ai_configured, process_uploaded_document
+from .master_data_service import (
+    SageMasterError,
+    SageVendorMaster,
+    SupplierResolution,
+    match_supplier_to_sage,
+    parse_sage_vendor_master,
+)
 from .services import (
     approve_and_release,
     approve_anticipo,
@@ -52,6 +59,9 @@ __all__ = [
     "confirm_internal_data", "approve_anticipo",
     # extraccion
     "process_uploaded_document", "document_ai_configured",
+    # maestro Sage
+    "SageMasterError", "SageVendorMaster", "SupplierResolution",
+    "parse_sage_vendor_master", "match_supplier_to_sage",
     # utilidades de display (no reglas de negocio)
     "classify_document", "FIELD_ORDER",
 ]

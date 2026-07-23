@@ -58,6 +58,13 @@ COUNTRY_ALIASES = {
     "PT": {"pt", "portugal"},
     "GB": {"gb", "uk", "united kingdom"},
 }
+DEFAULT_OWN_COMPANY_NAMES = (
+    "Brand Up",
+    "BMC Strategic Innovation Group",
+    "BMC Estrategic Innovation Group",
+    "Meridia Consulting",
+)
+DEFAULT_OWN_TAX_IDS = ("B85902583", "B86774718")
 
 
 class NotInvoiceDocumentError(RuntimeError):
@@ -87,6 +94,47 @@ def is_document_ai_configured() -> bool:
 def _fold(value: str) -> str:
     normalized = unicodedata.normalize("NFKD", value)
     return "".join(ch for ch in normalized if not unicodedata.combining(ch)).casefold()
+
+
+def _configured_values(env_name: str, defaults: tuple[str, ...]) -> list[str]:
+    raw = os.getenv(env_name)
+    values = raw.split(",") if raw is not None else defaults
+    return [value.strip() for value in values if value.strip()]
+
+
+def _is_own_party(value: str | None) -> bool:
+    folded = _fold(value or "")
+    return bool(folded) and any(
+        _fold(name) in folded
+        for name in _configured_values("AP_OWN_COMPANY_NAMES", DEFAULT_OWN_COMPANY_NAMES)
+    )
+
+
+def _tax_id_key(value: str | None) -> str:
+    compact = re.sub(r"\W", "", value or "").upper()
+    if compact.startswith("ES") and len(compact) == 11:
+        compact = compact[2:]
+    return compact
+
+
+def _is_own_tax_id(value: str | None) -> bool:
+    key = _tax_id_key(value)
+    return bool(key) and key in {
+        _tax_id_key(item)
+        for item in _configured_values("AP_OWN_TAX_IDS", DEFAULT_OWN_TAX_IDS)
+    }
+
+
+def _clean_tax_id_candidate(value: str | None) -> str | None:
+    if not value:
+        return None
+    compact = re.sub(r"[^A-Z0-9]", "", value.upper())
+    if not (8 <= len(compact) <= 16) or not any(ch.isdigit() for ch in compact):
+        return None
+    # Evitar que el parser promueva un IBAN como tax ID.
+    if re.fullmatch(r"[A-Z]{2}\d{2}[A-Z0-9]{11,}", compact):
+        return None
+    return compact
 
 
 def _entity_confidence(entity: Any) -> Decimal:
@@ -230,9 +278,86 @@ def _is_bad_party_name(value: str | None) -> bool:
     if not value:
         return True
     folded = _fold(value)
-    return folded in {
+    return len(value) > 120 or folded in {
         "grupo", "numero de cliente", "cliente", "client", "supplier", "proveedor",
-    } or any(term in folded for term in ("bank account", "account holder", "numero factura"))
+    } or any(term in folded for term in (
+        "bank account", "account holder", "numero factura", "factura a", "titular:",
+        "en cumplimiento de lo establecido", "accepts visa", "description", "vat no",
+    ))
+
+
+def _repair_party_roles(doc: dict, text: str, confidences: dict[str, Decimal]) -> None:
+    """Corrige confusiones emisor/receptor usando evidencia del propio PDF.
+
+    El Invoice Parser confunde con frecuencia el bloque "Bill to" con el
+    proveedor. La empresa propia y sus tax IDs son configuración de contexto,
+    no datos inventados: sólo se usan para decidir roles entre valores que ya
+    aparecen en el documento.
+    """
+    supplier = _clean_party_name(doc.get("proveedor_nombre_comercial") or "") or None
+    legal = _clean_party_name(doc.get("proveedor_razon_social_legal") or "") or None
+    receiver = _clean_party_name(doc.get("cliente_nombre") or "") or None
+    supplier_tax = _clean_tax_id_candidate(doc.get("proveedor_tax_id"))
+    receiver_tax = _clean_tax_id_candidate(doc.get("cliente_tax_id"))
+
+    original_supplier, original_receiver = supplier, receiver
+    if _is_own_party(supplier) and receiver and not _is_own_party(receiver):
+        supplier, receiver = receiver, supplier
+        legal = supplier
+    elif _is_own_party(legal) and receiver and not _is_own_party(receiver):
+        supplier, receiver = receiver, legal
+        legal = supplier
+
+    candidates = [name for _, name in _legal_name_candidates(text)]
+    own_names = [name for name in candidates if _is_own_party(name)]
+    non_own_names = [name for name in candidates if not _is_own_party(name)]
+
+    all_tax_ids = [_clean_tax_id_candidate(value) for value in _tax_ids(text)]
+    all_tax_ids = [value for value in all_tax_ids if value]
+    own_tax_ids = [value for value in all_tax_ids if _is_own_tax_id(value)]
+    non_own_tax_ids = [value for value in all_tax_ids if not _is_own_tax_id(value)]
+
+    if own_tax_ids:
+        receiver_tax = own_tax_ids[0]
+        if non_own_tax_ids:
+            supplier_tax = non_own_tax_ids[0]
+        elif _is_own_tax_id(supplier_tax):
+            supplier_tax = None
+    elif _is_own_tax_id(supplier_tax) and receiver_tax and not _is_own_tax_id(receiver_tax):
+        supplier_tax, receiver_tax = receiver_tax, supplier_tax
+
+    tax_supplier = _name_near_tax_id(text, supplier_tax)
+    if receiver and not _is_own_party(receiver) and _is_own_party(original_supplier):
+        supplier = receiver
+    if (_is_bad_party_name(supplier) or _is_own_party(supplier)) and original_receiver \
+            and not _is_bad_party_name(original_receiver) and not _is_own_party(original_receiver):
+        supplier = original_receiver
+    if tax_supplier and not _is_own_party(tax_supplier):
+        legal = tax_supplier
+        if _is_bad_party_name(supplier) or _is_own_party(supplier):
+            supplier = tax_supplier
+    if (_is_bad_party_name(supplier) or _is_own_party(supplier)) and non_own_names:
+        supplier = non_own_names[0]
+    if (not legal or _is_bad_party_name(legal) or _is_own_party(legal)) and non_own_names:
+        legal = tax_supplier if tax_supplier and not _is_own_party(tax_supplier) else non_own_names[0]
+
+    if own_names:
+        if not receiver or not _is_own_party(receiver):
+            receiver = own_names[0]
+    elif _is_own_party(original_supplier):
+        receiver = original_supplier
+
+    doc["proveedor_nombre_comercial"] = supplier
+    doc["proveedor_razon_social_legal"] = legal or supplier
+    doc["cliente_nombre"] = receiver
+    doc["proveedor_tax_id"] = supplier_tax
+    doc["cliente_tax_id"] = receiver_tax
+    for field in (
+        "proveedor_nombre_comercial", "proveedor_razon_social_legal", "cliente_nombre",
+        "proveedor_tax_id", "cliente_tax_id",
+    ):
+        if doc.get(field) not in (None, ""):
+            confidences.setdefault(field, Decimal("0.85"))
 
 
 def _name_near_country(text: str, country: str) -> str | None:
@@ -403,6 +528,7 @@ def _resolve_parties(
         confidences["proveedor_nombre_comercial"] = _entity_confidence(supplier_entity)
     if receiver_entity and doc.get("cliente_nombre") and "cliente_nombre" not in confidences:
         confidences["cliente_nombre"] = _entity_confidence(receiver_entity)
+    _repair_party_roles(doc, text, confidences)
 
 
 def _reconcile_tax(doc: dict, text: str, confidences: dict[str, Decimal]) -> None:
@@ -469,13 +595,13 @@ def _tax_rate_from_text(text: str) -> str | None:
     return _decimal_value(match.group(1), rate=True) if match else None
 
 
-def _payment_method(text: str, has_bank_details: bool) -> str:
+def _payment_method(text: str, has_bank_details: bool = False) -> str:
     folded = _fold(text)
     if re.search(r"\b(direct debit|domiciliacion|domiciliado|sepa|cargo en cuenta)\b", folded):
         return "domiciliacion_direct_debit"
     if re.search(r"\b(tarjeta|card payment|credit card|visa|mastercard)\b", folded):
         return "tarjeta"
-    if has_bank_details or re.search(r"\b(transferencia|bank transfer|wire transfer)\b", folded):
+    if re.search(r"\b(transferencia|bank transfer|wire transfer)\b", folded):
         return "transferencia"
     return "no_indicado"
 
@@ -487,11 +613,173 @@ def _tax_treatment(doc: dict, text: str) -> str | None:
         "article 196", "articulo 196",
     )):
         return "intracomunitario_inversion_sujeto_pasivo"
-    if doc.get("tipo_iva") is not None or doc.get("importe_iva") is not None:
-        return "nacional"
     if any(term in folded for term in ("exempt", "exento", "exonerado")):
         return "exento_otro"
+    try:
+        rate = Decimal(str(doc.get("tipo_iva"))) if doc.get("tipo_iva") is not None else None
+        tax = Decimal(str(doc.get("importe_iva"))) if doc.get("importe_iva") is not None else None
+    except InvalidOperation:
+        rate = tax = None
+    if rate == 0 and tax in (None, Decimal("0")):
+        return "exento_otro"
+    if rate is not None or tax is not None:
+        return "nacional"
     return None
+
+
+def _money(value: Any) -> Decimal | None:
+    if value in (None, ""):
+        return None
+    try:
+        return Decimal(str(value))
+    except (InvalidOperation, TypeError):
+        return None
+
+
+_AMOUNT_TOKEN_RE = re.compile(
+    r"(?<![A-Z0-9])[-+]?\d{1,3}(?:[.,]\d{3})+(?:[.,]\d{2})?"
+    r"|(?<![A-Z0-9])[-+]?\d+(?:[.,]\d{2})(?!\d)",
+    re.IGNORECASE,
+)
+
+
+def _amount_token_value(token: str) -> Decimal | None:
+    raw = token.strip()
+    if "," in raw and "." not in raw and len(raw.rsplit(",", 1)[1]) == 3:
+        raw = raw.replace(",", "")
+    elif "." in raw and "," not in raw and len(raw.rsplit(".", 1)[1]) == 3:
+        raw = raw.replace(".", "")
+    value = _decimal_value(raw)
+    return _money(value)
+
+
+def _labelled_amount(
+    text: str,
+    labels: tuple[str, ...],
+    *,
+    reject: tuple[str, ...] = (),
+    pick: str = "last",
+) -> Decimal | None:
+    lines = text.splitlines()
+    for label in labels:
+        for line in lines:
+            folded = _fold(line)
+            if label not in folded or any(item in folded for item in reject):
+                continue
+            values = [
+                value for value in (_amount_token_value(match.group(0)) for match in _AMOUNT_TOKEN_RE.finditer(line))
+                if value is not None
+            ]
+            if values:
+                return values[0] if pick == "first" else values[-1]
+    return None
+
+
+def refine_mapped_document(
+    doc: dict,
+    text: str,
+    local_document: dict | None = None,
+    confidences: dict[str, Decimal] | None = None,
+) -> dict:
+    """Refinamiento determinístico reutilizable, sin una nueva llamada cloud."""
+    confidences = confidences if confidences is not None else {}
+    local_document = local_document or {}
+    _repair_party_roles(doc, text, confidences)
+
+    # PO sólo con evidencia etiquetada explícitamente. El extractor local ya
+    # implementa esa política; el entity parser suele promover referencias
+    # genéricas o números de contrato a purchase_order.
+    doc["po_reference"] = local_document.get("po_reference")
+    if local_document.get("project_reference") and not doc.get("project_reference"):
+        doc["project_reference"] = local_document["project_reference"]
+
+    current_total = _money(doc.get("importe_total"))
+    strong_total = _labelled_amount(
+        text,
+        ("total a pagar", "invoice total", "total factura", "amount due", "importe adeudado", "gross"),
+        reject=("subtotal", "total net", "total excl", "descuentos", "total a percibir"),
+    )
+    generic_total = _labelled_amount(
+        text,
+        ("total",),
+        reject=("subtotal", "total net", "total excl", "descuentos", "total a percibir"),
+    )
+    labelled_net = _labelled_amount(
+        text,
+        ("base imponible", "net amount", "importe neto", "total net", "total excl", "subtotal"),
+        pick="first",
+    )
+    labelled_tax = _labelled_amount(
+        text,
+        ("importe iva", "vat amount", "impuestos", "iva", "vat", "tva"),
+        reject=("vat number", "vat no", "cif", "nif"),
+    )
+    labelled_total = strong_total
+    if labelled_total is None and generic_total is not None:
+        if current_total is None or current_total == 0:
+            labelled_total = generic_total
+        else:
+            scale = abs(generic_total / current_total)
+            if Decimal("990") <= scale <= Decimal("1010") \
+                    or Decimal("0.00099") <= scale <= Decimal("0.00101"):
+                labelled_total = generic_total
+    if labelled_total is not None:
+        doc["importe_total"] = f"{labelled_total.quantize(Decimal('0.01'))}"
+    if labelled_net is not None and doc.get("importe_neto") in (None, ""):
+        doc["importe_neto"] = f"{labelled_net.quantize(Decimal('0.01'))}"
+    if labelled_tax is not None and doc.get("importe_iva") in (None, ""):
+        doc["importe_iva"] = f"{labelled_tax.quantize(Decimal('0.01'))}"
+
+    local_total = _money(local_document.get("importe_total"))
+    total = _money(doc.get("importe_total"))
+    if local_total is not None and total is not None and total != 0:
+        ratio = abs(local_total / total)
+        if ratio in (Decimal("1000"), Decimal("0.001")):
+            doc["importe_total"] = f"{local_total.quantize(Decimal('0.01'))}"
+            total = local_total
+
+    # Si la terna local cuadra exactamente con el total administrado, es una
+    # evidencia más fuerte que una entidad aislada tomada de una línea.
+    local_net = _money(local_document.get("importe_neto"))
+    local_tax = _money(local_document.get("importe_iva"))
+    if total is not None and local_net is not None and local_tax is not None \
+            and abs(local_net + local_tax - total) <= Decimal("0.02"):
+        doc["importe_neto"] = f"{local_net.quantize(Decimal('0.01'))}"
+        doc["importe_iva"] = f"{local_tax.quantize(Decimal('0.01'))}"
+
+    folded = _fold(text)
+    reverse_charge = any(term in folded for term in (
+        "reverse charge", "reverse-charged", "inversion del sujeto pasivo", "article 196",
+    ))
+    labelled_rate = _tax_rate_from_text(text)
+    if reverse_charge:
+        doc["tipo_iva"] = "0"
+        doc["importe_iva"] = "0.00"
+        if total is not None:
+            doc["importe_neto"] = f"{total.quantize(Decimal('0.01'))}"
+    elif labelled_rate is not None:
+        doc["tipo_iva"] = labelled_rate
+        rate = _money(labelled_rate)
+        total = _money(doc.get("importe_total"))
+        net = _money(doc.get("importe_neto"))
+        tax = _money(doc.get("importe_iva"))
+        has_withholding = any(term in folded for term in ("irpf", "retencion", "withholding"))
+        if total is not None and rate is not None and not has_withholding:
+            expected_net = (total / (Decimal("1") + rate / Decimal("100"))).quantize(Decimal("0.01"))
+            expected_tax = (total - expected_net).quantize(Decimal("0.01"))
+            inconsistent = net is None or tax is None or abs(net + tax - total) > Decimal("0.02")
+            implausible = (net is not None and net > total * 10) or (tax is not None and tax > total)
+            if inconsistent or implausible:
+                doc["importe_neto"] = f"{expected_net:.2f}"
+                doc["importe_iva"] = f"{expected_tax:.2f}"
+
+    _reconcile_tax(doc, text, confidences)
+    doc["metodo_pago"] = _payment_method(text)
+    doc["tratamiento_iva"] = _tax_treatment(doc, text)
+    confidences.setdefault("metodo_pago", Decimal("0.85"))
+    if doc.get("tratamiento_iva"):
+        confidences.setdefault("tratamiento_iva", Decimal("0.90"))
+    return doc
 
 
 def _validate_invoice(doc: dict, text: str, confidences: dict[str, Decimal]) -> list[str]:
@@ -585,7 +873,6 @@ def map_document_ai_result(filename: str, cloud_document: Any) -> PocResult:
     _set_entity(doc, confidences, entities, "importe_iva", ("total_tax_amount", "vat/tax_amount"), _decimal_value)
     _set_entity(doc, confidences, entities, "importe_total", ("total_amount",), _decimal_value)
     _set_entity(doc, confidences, entities, "tipo_iva", ("vat/tax_rate",), lambda value: _decimal_value(value, rate=True))
-    _set_entity(doc, confidences, entities, "po_reference", ("purchase_order",))
     _set_entity(doc, confidences, entities, "condiciones_pago", ("payment_terms",))
 
     if doc.get("tipo_iva") is None:
@@ -613,13 +900,7 @@ def map_document_ai_result(filename: str, cloud_document: Any) -> PocResult:
             confidences[field] = Decimal("0.90")
 
     _resolve_parties(doc, entities, text, confidences, bank.iban)
-    _reconcile_tax(doc, text, confidences)
-    has_bank = any((bank.iban, bank.bic, bank.banco, bank.cuenta))
-    doc["metodo_pago"] = _payment_method(text, has_bank)
-    doc["tratamiento_iva"] = _tax_treatment(doc, text)
-    confidences.setdefault("metodo_pago", Decimal("0.85"))
-    if doc["tratamiento_iva"]:
-        confidences.setdefault("tratamiento_iva", Decimal("0.90"))
+    refine_mapped_document(doc, text, baseline.document, confidences)
 
     warnings = _validate_invoice(doc, text, confidences)
     return PocResult(
@@ -651,7 +932,13 @@ def _document_ai_client(config: DocumentAIConfig):
     )
 
 
-def process_invoice_bytes(filename: str, data: bytes, config: DocumentAIConfig) -> PocResult:
+def process_invoice_bytes(
+    filename: str,
+    data: bytes,
+    config: DocumentAIConfig,
+    *,
+    require_invoice_evidence: bool = True,
+) -> PocResult:
     from google.cloud import documentai_v1 as documentai  # type: ignore
 
     client = _document_ai_client(config)
@@ -659,15 +946,30 @@ def process_invoice_bytes(filename: str, data: bytes, config: DocumentAIConfig) 
     request = documentai.ProcessRequest(
         name=name,
         raw_document=documentai.RawDocument(content=data, mime_type="application/pdf"),
+        # El processor administrado admite hasta 30 páginas en modo imageless
+        # (15 en el modo estándar). Varias facturas reales incluyen anexos de
+        # detalle extensos; habilitarlo evita rechazarlas antes de extraer.
+        imageless_mode=True,
     )
     response = client.process_document(request=request, timeout=90)
     entity_types = {
         getattr(entity, "type_", None) or getattr(entity, "type", None)
         for entity in getattr(response.document, "entities", ()) or ()
     }
-    if "invoice_id" not in entity_types or "total_amount" not in entity_types:
+    missing_evidence = [
+        entity_type
+        for entity_type in ("invoice_id", "total_amount")
+        if entity_type not in entity_types
+    ]
+    if missing_evidence and require_invoice_evidence:
         raise NotInvoiceDocumentError("Document AI no encontro evidencia suficiente de factura")
-    return map_document_ai_result(filename, response.document)
+    result = map_document_ai_result(filename, response.document)
+    if missing_evidence:
+        result.warnings.insert(
+            0,
+            "respuesta parcial de Document AI; faltan entidades: " + ", ".join(missing_evidence),
+        )
+    return result
 
 
 def extract_uploaded_document(filename: str, data: bytes) -> PocResult:
@@ -699,6 +1001,12 @@ def extract_uploaded_document(filename: str, data: bytes) -> PocResult:
             if managed_result.document.get(field) in (None, "") and local_value:
                 managed_result.document[field] = local_value
                 managed_result.field_confidences[field] = Decimal("0.95")
+        refine_mapped_document(
+            managed_result.document,
+            local_pdf.text,
+            local_result.document,
+            managed_result.field_confidences,
+        )
         return managed_result
     except NotInvoiceDocumentError:
         return local_result

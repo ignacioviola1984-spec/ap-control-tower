@@ -8,7 +8,9 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from decimal import Decimal, InvalidOperation
-from difflib import SequenceMatcher
+
+from ...matching import meets_fuzzy_threshold
+from ...sage.vendor_master import FUZZY_VENDOR_FYI
 
 
 REVIEW_THRESHOLD = Decimal("0.65")
@@ -66,6 +68,7 @@ def missing_payment_fields(document: dict) -> list[str]:
 # bancarios visibles no requiere aprobación humana, solo flag.
 FYI_WARNINGS = (
     "hay datos bancarios visibles pero no se pudieron estructurar",
+    FUZZY_VENDOR_FYI,
     # Controles ARCA con AP_ARCA_FAIL_MODE=warn: la falta de verificación se
     # muestra y se audita, pero no deriva (el sufijo marca la variante aviso).
     "modo aviso: no deriva",
@@ -89,7 +92,7 @@ def _arca_warnings(result) -> list[str]:
     relevant: list[str] = []
     for item in result.warnings or []:
         lowered = str(item).casefold()
-        if any(fyi in lowered for fyi in FYI_WARNINGS):
+        if any(str(fyi).casefold() in lowered for fyi in FYI_WARNINGS):
             continue
         if any(marker in lowered for marker in ARCA_WARNING_MARKERS):
             relevant.append(str(item))
@@ -151,7 +154,7 @@ def _field_warnings(result) -> list[str]:
         lowered = text.casefold()
         if "document ai" in lowered:
             continue
-        if any(fyi in lowered for fyi in FYI_WARNINGS):
+        if any(str(fyi).casefold() in lowered for fyi in FYI_WARNINGS):
             continue
         if lowered.startswith("baja confianza en:"):
             fields = [field.strip() for field in text.split(":", 1)[1].split(",")]
@@ -187,6 +190,7 @@ def review_reasons(result, *, duplicate: bool = False,
         extractor_flagged = any(
             "document ai" not in lowered
             and not any(marker in lowered for marker in ARCA_WARNING_MARKERS)
+            and not any(str(fyi).casefold() in lowered for fyi in FYI_WARNINGS)
             for lowered in (str(item).casefold()
                             for item in (result.warnings or [])))
         # Una confianza técnica aislada no alcanza: debe existir además una
@@ -243,10 +247,9 @@ def unique_results(results) -> list:
 
 
 NEAR_DUP_AMOUNT_TOLERANCE = Decimal("0.05")
-# 0.85 y no menos: series legítimas tipo INV-1..INV-7 (cuotas recurrentes con
-# el mismo importe) tienen similitud ~0.80 y no deben marcarse; un correlativo
-# largo con un dígito cambiado (EF-2026-045 vs -046) da ~0.91 y sí.
-NEAR_DUP_NUMBER_SIMILARITY = 0.85
+# El umbral fuzzy canonico vive en ``ap_control_tower.matching`` y se comparte
+# con la vinculacion de proveedores. Series cortas recurrentes quedan debajo;
+# un correlativo largo con un digito cambiado queda por encima.
 
 
 def _amount_of(doc: dict) -> Decimal | None:
@@ -297,8 +300,10 @@ def duplicate_doc_ids(results) -> set[str]:
                     continue
                 num_a = str(a.document.get("numero_factura") or "").strip().casefold()
                 num_b = str(b.document.get("numero_factura") or "").strip().casefold()
-                similar = (not num_a or not num_b or SequenceMatcher(
-                    None, num_a, num_b).ratio() >= NEAR_DUP_NUMBER_SIMILARITY)
+                similar = (
+                    not num_a or not num_b
+                    or meets_fuzzy_threshold(num_a, num_b)
+                )
                 if similar:
                     flagged.update({a.doc_id, b.doc_id})
     return flagged

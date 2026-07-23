@@ -23,7 +23,7 @@ ENV_CLIENT_ID = "AP_GMAIL_CLIENT_ID"
 ENV_CLIENT_SECRET = "AP_GMAIL_CLIENT_SECRET"
 ENV_REFRESH_TOKEN = "AP_GMAIL_REFRESH_TOKEN"
 
-DEFAULT_USER = "ignacio@getdeterma.com"
+DEFAULT_USER = "mberhensen@bmcinnovation.com"
 DEFAULT_LABEL = "AP-DEMO"
 
 
@@ -68,6 +68,15 @@ def mailbox_provider() -> str | None:
     if gmail_configured():
         return "Gmail"
     return None
+
+
+def mailbox_address() -> str:
+    """Dirección asignada al circuito AP, aun si faltan credenciales de lectura."""
+    return (
+        os.environ.get("AP_IMAP_USER")
+        or os.environ.get(ENV_USER)
+        or DEFAULT_USER
+    ).strip()
 
 
 @dataclass(frozen=True)

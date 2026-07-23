@@ -17,11 +17,14 @@ strings y texto crudo case-insensitive con espacios colapsados.
 from __future__ import annotations
 
 import csv
+import re
 from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 from typing import Any
 
+from ..matching import meets_fuzzy_threshold
+from ..sage.vendor_master import normalize_supplier_name
 from .schema import FIELD_KINDS, FIELD_ORDER
 
 ACIERTO = "acierto"
@@ -54,12 +57,32 @@ def _norm(field_name: str, value: Any) -> Any:
     if kind == "date":
         return s[:10]
     if kind == "id":
-        return "".join(s.split()).replace("-", "").upper() if field_name in ("iban", "bic") \
-            else " ".join(s.split()).upper()
+        # El contrato del comparador define los IDs sin espacios ni guiones.
+        # Aplicarlo a todos los IDs evita penalizar variaciones de formato en
+        # CIF/NIF, números de factura y referencias, no sólo en IBAN/BIC.
+        normalized = "".join(s.split()).replace("-", "").upper()
+        if field_name in ("proveedor_tax_id", "cliente_tax_id"):
+            normalized = re.sub(r"^(?:CIF|NIF|DNI|VAT)", "", normalized)
+            if normalized.startswith("ES") and len(normalized) == 11:
+                normalized = normalized[2:]
+            if normalized.startswith("00") and len(normalized) == 11 \
+                    and normalized[2:3].isalpha():
+                normalized = normalized[2:]
+        return normalized
     if kind == "enum":
         return s.strip().lower()
     # str / text_raw
     return " ".join(s.split()).casefold()
+
+
+def _values_equal(field_name: str, golden: Any, extracted: Any) -> bool:
+    if field_name in ("proveedor_nombre_comercial", "proveedor_razon_social_legal"):
+        left = normalize_supplier_name(golden)
+        right = normalize_supplier_name(extracted)
+        return bool(left and right) and (left == right or meets_fuzzy_threshold(left, right))
+    if field_name == "cliente_nombre":
+        return normalize_supplier_name(golden) == normalize_supplier_name(extracted)
+    return _norm(field_name, golden) == _norm(field_name, extracted)
 
 
 def _is_null(field_name: str, value: Any) -> bool:
@@ -143,7 +166,7 @@ def compare_document(doc_id: str, extracted: dict, golden: dict) -> list[FieldRe
         elif not g_null and e_null:
             outcome = OMISION
         else:
-            outcome = ACIERTO if _norm(f, g) == _norm(f, e) else DISCREPANCIA
+            outcome = ACIERTO if _values_equal(f, g, e) else DISCREPANCIA
         results.append(FieldResult(doc_id=doc_id, field=f, outcome=outcome,
                                    golden=g, extracted=e))
     return results

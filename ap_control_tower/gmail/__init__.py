@@ -20,6 +20,7 @@ from .client import (
     RealGmailClient,
     build_client,
     gmail_configured,
+    mailbox_address,
     mailbox_configured,
     mailbox_provider,
 )
@@ -28,7 +29,7 @@ from .imap_client import IMAPConfig, ReadOnlyIMAPClient, imap_configured
 
 __all__ = [
     "SCOPES", "GmailAttachment", "GmailConfig", "GmailMessage",
-    "RealGmailClient", "build_client", "gmail_configured", "mailbox_configured",
-    "mailbox_provider", "IMAPConfig", "ReadOnlyIMAPClient", "imap_configured",
+    "RealGmailClient", "build_client", "gmail_configured", "mailbox_address",
+    "mailbox_configured", "mailbox_provider", "IMAPConfig", "ReadOnlyIMAPClient", "imap_configured",
     "FakeGmailClient",
 ]

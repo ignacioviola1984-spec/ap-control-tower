@@ -1,4 +1,4 @@
-"""Panel de correo reutilizable: listar AP-DEMO e importar PDFs.
+"""Panel de correo reutilizable para consultar e importar PDF.
 
 Solo lectura: lista mensajes con la etiqueta, muestra remitente/asunto/fecha/
 adjuntos y descarga los PDF seleccionados. El QUE hacer con los PDF importados lo
@@ -12,7 +12,7 @@ import os
 import pandas as pd
 import streamlit as st
 
-from ...gmail import build_client, mailbox_configured, mailbox_provider
+from ...gmail import build_client, mailbox_address, mailbox_configured, mailbox_provider
 
 
 def _excluded_filenames() -> set[str]:
@@ -27,9 +27,12 @@ def _visible_attachments(message) -> list:
 
 
 def render_gmail_panel(on_import, client=None, *, require_open: bool = False) -> None:
+    address = mailbox_address()
+    st.caption(f"Buzón AP asignado: **{address}**")
     if require_open and not st.session_state.get("_trial_gmail_browse"):
         st.caption("La carpeta se consulta únicamente cuando lo solicites.")
-        if st.button("Consultar correo AP", use_container_width=True,
+        if st.button("Consultar correo AP", width="stretch",
+                     icon=":material/mail:",
                      key="_trial_gmail_open"):
             st.session_state["_trial_gmail_browse"] = True
             st.rerun()
@@ -37,19 +40,26 @@ def render_gmail_panel(on_import, client=None, *, require_open: bool = False) ->
 
     if client is None:
         if not mailbox_configured():
-            st.info("El correo AP no está configurado. Podés continuar con la carga "
-                    "manual. La conexión al buzón se habilita por secretos de entorno "
-                    "y funciona en modo de solo lectura.")
+            st.info(
+                f"El buzón AP **{address}** ya está identificado. Para consultar sus "
+                "adjuntos falta autorizar la conexión de solo lectura por OAuth o IMAP. "
+                "Mientras tanto, podés continuar con la carga manual."
+            )
             return
         client = build_client()
 
     try:
         messages = client.list_messages()
     except Exception as exc:  # credenciales/red: mensaje claro, sin crash
-        st.error(f"No se pudo leer el correo AP (solo lectura): {exc}")
+        st.error(
+            "No se pudo consultar el correo en este momento. Verificá la conexión "
+            "o continuá con la carga manual."
+        )
         return
 
-    st.caption(f"Conexión: {mailbox_provider() or 'correo'} · solo lectura")
+    st.caption(
+        f"Conexión: {mailbox_provider() or 'correo'} · {address} · solo lectura"
+    )
 
     if not messages:
         st.caption("No hay mensajes con la etiqueta configurada.")
@@ -75,7 +85,7 @@ def render_gmail_panel(on_import, client=None, *, require_open: bool = False) ->
             "asunto": m.subject,
             "PDF disponibles": len(attachments),
         } for m, attachments in visible_messages]),
-        use_container_width=True, hide_index=True,
+        width="stretch", hide_index=True,
     )
 
     options: dict = {}
@@ -86,9 +96,14 @@ def render_gmail_panel(on_import, client=None, *, require_open: bool = False) ->
         st.caption("Los mensajes con esa etiqueta no traen adjuntos PDF.")
         return
 
-    picked = st.multiselect("**Adjuntos PDF a importar**", list(options))
-    if picked and st.button("Importar y procesar seleccionados", type="primary",
-                            use_container_width=True):
+    picked = st.multiselect(
+        "**Adjuntos PDF a importar**",
+        list(options),
+        placeholder="Seleccionar archivos",
+    )
+    if picked and st.button(
+            "Importar y procesar seleccionados", type="primary",
+            icon=":material/download:", width="stretch"):
         files = []
         for label in picked:
             att = options[label]

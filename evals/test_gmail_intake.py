@@ -53,14 +53,18 @@ def main() -> int:
     os.environ["AP_GMAIL_REFRESH_TOKEN"] = "rtok"
     try:
         cfg = g.GmailConfig.from_env()
-        check(cfg is not None and cfg.user == "ignacio@getdeterma.com"
+        check(cfg is not None and cfg.user == "mberhensen@bmcinnovation.com"
               and cfg.label == "AP-DEMO",
-              "defaults AP_GMAIL_USER=ignacio@getdeterma.com, label AP-DEMO")
+              "defaults AP_GMAIL_USER=mberhensen@bmcinnovation.com, label AP-DEMO")
+        check(g.mailbox_address() == "mberhensen@bmcinnovation.com",
+              "el buzón AP asignado es visible aun antes de conectar credenciales")
         os.environ["AP_GMAIL_LABEL"] = "OTRA"
         os.environ["AP_GMAIL_USER"] = "otro@dominio.com"
         cfg2 = g.GmailConfig.from_env()
         check(cfg2.label == "OTRA" and cfg2.user == "otro@dominio.com",
               "user y label son configurables por entorno")
+        check(g.mailbox_address() == "otro@dominio.com",
+              "la dirección visible respeta la configuración del entorno")
     finally:
         for key in ("AP_GMAIL_CLIENT_ID", "AP_GMAIL_CLIENT_SECRET",
                     "AP_GMAIL_REFRESH_TOKEN", "AP_GMAIL_LABEL", "AP_GMAIL_USER"):

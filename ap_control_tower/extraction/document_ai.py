@@ -1016,18 +1016,20 @@ def process_invoice_bytes(
 
 
 def extract_uploaded_document(filename: str, data: bytes) -> PocResult:
-    """Classify locally, then route invoices through the managed parser."""
+    """Document AI procesa TODO documento; el tipo se deriva de la evidencia.
+
+    Política (decidida con el negocio): Document AI extrae todos los documentos,
+    también OCs y proformas, para máxima calidad de extracción. Una OC/proforma
+    NO se vuelve pagable: si Document AI no encuentra evidencia de factura
+    (número + total) y el clasificador local la vio como proforma u otro, se
+    respeta ese tipo (queda fuera del circuito de pago). Solo se cae al motor
+    local si Document AI no está configurado o la API falla.
+    """
     local_pdf = read_pdf_bytes(filename, data)
     local_result = extract_document(local_pdf)
     # Texto en memoria para el asistente (el PDF binario nunca sale del entorno).
     local_result.source_text = local_pdf.text
-    document_type = local_result.document["document_type"]
-    folded_name = _fold(filename)
-    explicit_non_invoice = document_type == "proforma_or_advance_request" or any(
-        term in folded_name for term in ("orden de compra", "purchase order", "pedido", " oc ")
-    )
-    if explicit_non_invoice:
-        return local_result
+    local_type = local_result.document.get("document_type")
 
     config = DocumentAIConfig.from_env()
     if config is None:
@@ -1037,7 +1039,12 @@ def extract_uploaded_document(filename: str, data: bytes) -> PocResult:
         return local_result
 
     try:
-        managed_result = process_invoice_bytes(filename, data, config)
+        # require_invoice_evidence=False: aprovechamos la extracción de Document
+        # AI también en documentos sin número/total de factura (p. ej. OCs), en
+        # vez de descartarla. El tipo documental se corrige más abajo.
+        managed_result = process_invoice_bytes(
+            filename, data, config, require_invoice_evidence=False
+        )
         # El texto vectorial local suele preservar mejor etiquetas y guiones
         # de referencias que el OCR administrado. Solo completamos ausencias;
         # nunca reemplazamos una entidad que Document AI haya encontrado.
@@ -1053,6 +1060,18 @@ def extract_uploaded_document(filename: str, data: bytes) -> PocResult:
             managed_result.field_confidences,
         )
         managed_result.source_text = local_pdf.text
+        # El parser marca todo como "invoice". Si NO hay evidencia de factura
+        # (número + total > 0) y el clasificador local la vio como proforma u
+        # otro (p. ej. una OC), respetamos ese tipo para que no entre al circuito
+        # de pago. Una factura real conserva su tipo "invoice".
+        has_invoice_evidence = bool(managed_result.document.get("numero_factura")) and (
+            _money(managed_result.document.get("importe_total")) not in (None, Decimal("0"))
+        )
+        if not has_invoice_evidence and local_type in ("proforma_or_advance_request", "other"):
+            managed_result.document["document_type"] = local_type
+            managed_result.field_confidences["document_type"] = (
+                local_result.field_confidences.get("document_type", Decimal("0.60"))
+            )
         return managed_result
     except NotInvoiceDocumentError:
         return local_result

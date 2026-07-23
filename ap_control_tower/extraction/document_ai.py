@@ -825,12 +825,11 @@ def _validate_invoice(doc: dict, text: str, confidences: dict[str, Decimal]) -> 
     # Confusión emisor/receptor: si el proveedor extraído es la propia empresa
     # (el comprador), el extractor tomó el bloque "Facturar a" como emisor.
     # run1 mostró este error con confianza 1.00, por eso no depende del score.
-    own_names = [
-        _fold(name.strip())
-        for name in os.getenv("AP_OWN_COMPANY_NAMES", "Meridia Consulting").split(",")
-        if name.strip()
-    ]
-    if supplier and any(own and own in supplier for own in own_names):
+    # Usa la MISMA lista de empresa propia que el corrector de roles
+    # (_is_own_party / DEFAULT_OWN_COMPANY_NAMES), no un default aparte.
+    if doc.get("proveedor_nombre_comercial") and _is_own_party(
+        doc.get("proveedor_nombre_comercial")
+    ):
         warnings.append(
             "el proveedor extraido coincide con la empresa propia: "
             "posible confusion emisor/receptor")

@@ -2,11 +2,10 @@
 
 from __future__ import annotations
 
-import base64
+import io
 
 import pandas as pd
 import streamlit as st
-import streamlit.components.v1 as components
 
 from ..persistence.masking import mask_account, mask_iban, mask_tax_id
 from .pilot_format import (
@@ -171,12 +170,9 @@ def render_pdf_viewer(result) -> None:
     if not data:
         return
     with st.expander("Ver PDF original", icon=":material/picture_as_pdf:"):
-        b64 = base64.b64encode(data).decode("ascii")
-        components.html(
-            f'<iframe title="PDF" src="data:application/pdf;base64,{b64}" '
-            'style="width:100%;height:640px;border:1px solid #d0d5dd;border-radius:8px;"></iframe>',
-            height=660,
-        )
+        # st.pdf (Streamlit >=1.57) sirve los bytes con headers correctos; evita
+        # el bloqueo de Chrome a los PDF vía data:URI dentro de un iframe sandbox.
+        st.pdf(io.BytesIO(data), height=640)
         st.download_button(
             "Descargar PDF",
             data=data,

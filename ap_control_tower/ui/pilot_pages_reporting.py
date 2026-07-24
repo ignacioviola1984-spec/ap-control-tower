@@ -25,7 +25,7 @@ ROOT = Path(__file__).resolve().parents[2]
 #: Acciones que produce el asistente. Es un dato estructurado del evento, no
 #: una pista de texto: se compara contra la acción registrada, no contra su
 #: descripción.
-_AI_ACTIONS = {"asistente-respuesta", "asistente-error"}
+_AI_ACTIONS = {"consulta-asistente-ap"}
 
 #: Claves de evidencia que nunca se muestran: podrían llevar contenido del
 #: documento en vez de metadatos.

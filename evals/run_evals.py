@@ -57,6 +57,7 @@ Uso: python evals/run_evals.py            (21 grupos)
 from __future__ import annotations
 
 import json
+import subprocess
 import sys
 from dataclasses import replace
 from decimal import Decimal
@@ -662,6 +663,22 @@ def main() -> int:
     historical_result = unittest.TextTestRunner(verbosity=0).run(historical_suite)
     check(historical_result.wasSuccessful() and historical_result.testsRun >= 9,
           f"memoria historica: {historical_result.testsRun} pruebas unitarias verdes")
+
+    print("== 22. Frontend: superficies del producto operativo ==")
+    # Los evals del frontend son scripts con su propio exit code (usan AppTest y
+    # necesitan aislarse del maestro provisionado de la instalacion), asi que se
+    # invocan como proceso en vez de cargarse como unittest.
+    for modulo, etiqueta in (
+        ("test_frontend_ai_native", "sistema visual y command center"),
+        ("test_frontend_completion", "topbar, launcher, workspace v2, pagos e indicadores"),
+    ):
+        completed = subprocess.run(
+            [sys.executable, str(Path(__file__).resolve().parent / f"{modulo}.py")],
+            capture_output=True, text=True, cwd=str(ROOT),
+        )
+        check(completed.returncode == 0, f"{modulo}: {etiqueta}")
+        if completed.returncode != 0:
+            print((completed.stdout or "")[-2000:])
 
     print()
     if failures:

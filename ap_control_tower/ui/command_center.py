@@ -110,10 +110,16 @@ def collect_signals(active, today: date | None = None) -> dict:
     }
 
 
-#: Acciones humanas que cierran el ciclo de un documento.
+#: Acciones humanas que cierran el ciclo de un documento. Son los nombres que
+#: `ui/trial/session.py` registra realmente en la auditoría; si cambian ahí, el
+#: tiempo de ciclo deja de calcularse y el eval lo detecta.
 _CLOSING_ACTIONS = {
-    "revision-confirmada", "revision-retenida", "excepcion-pago-autorizada",
-    "propuesta-pago-decidida",
+    "revision-humana-confirmada",
+    "documento-retenido-en-revision",
+    "excepcion-pago-autorizada",
+    "aprobada-para-propuesta-pago",
+    "rechazada-para-propuesta-pago",
+    "excluida-de-propuesta-pago",
 }
 
 

@@ -99,6 +99,28 @@ def _boot(entry: str, timeout_s: float = 45.0) -> bool:
     return healthy
 
 
+#: Superficie activa: todo lo que se carga al abrir el producto. Se calcula por
+#: import real (no por lista a mano) para que no se desactualice en silencio.
+def _active_modules() -> dict[str, Path]:
+    import sys
+
+    from ap_control_tower.ui import (  # noqa: F401
+        launcher,
+        pilot_shell,
+        pilot_views,
+        topbar,
+    )
+
+    salida: dict[str, Path] = {}
+    for name, module in list(sys.modules.items()):
+        if not name.startswith("ap_control_tower"):
+            continue
+        origen = getattr(module, "__file__", None)
+        if origen:
+            salida[name] = Path(origen)
+    return salida
+
+
 def _public_source() -> str:
     paths = [
         ROOT / "app.py",
@@ -106,10 +128,15 @@ def _public_source() -> str:
         ROOT / "ap_control_tower" / "ui" / "auth.py",
         ROOT / "ap_control_tower" / "ui" / "bootstrap.py",
         ROOT / "ap_control_tower" / "ui" / "pilot_shell.py",
+        ROOT / "ap_control_tower" / "ui" / "topbar.py",
+        ROOT / "ap_control_tower" / "ui" / "launcher.py",
         ROOT / "ap_control_tower" / "ui" / "pilot_pages_common.py",
         ROOT / "ap_control_tower" / "ui" / "pilot_pages_documents.py",
         ROOT / "ap_control_tower" / "ui" / "pilot_pages_workflow.py",
         ROOT / "ap_control_tower" / "ui" / "pilot_pages_reporting.py",
+        ROOT / "ap_control_tower" / "ui" / "review_workspace.py",
+        ROOT / "ap_control_tower" / "ui" / "review_layout.py",
+        ROOT / "ap_control_tower" / "ui" / "vendor_intake.py",
         ROOT / "ap_control_tower" / "ui" / "trial" / "intake.py",
         ROOT / "ap_control_tower" / "ui" / "components" / "gmail_panel.py",
     ]
@@ -159,15 +186,21 @@ def _check_apptest() -> None:
     try:
         os.environ["AP_SYSTEM_PASSWORD"] = "revision-local"
         os.environ["AP_PREVIEW_MODE"] = "1"
-        app = AppTest.from_file(str(ROOT / "app.py"), default_timeout=20).run()
+        app = AppTest.from_file(str(ROOT / "app.py"), default_timeout=30).run()
         check(not app.exception, "el login abre sin excepciones")
         check(
-            [item.value for item in app.title]
-            == ["Torre de Control para Cuentas a Pagar"],
+            [item.value for item in app.title] == ["AP Control Tower"],
             "el título de acceso usa el nombre del producto",
         )
+        login_text = " ".join(
+            [item.value for item in app.markdown]
+            + [item.value for item in app.subheader]
+        )
+        check("Acceso al sistema" in login_text,
+              "el acceso usa el wording operativo actual")
         check(
-            [item.value for item in app.subheader] == ["Acceso al Sistema"],
+            not any(token in login_text.casefold()
+                    for token in ("demo", "trial", "prueba de concepto")),
             "el acceso no usa wording de demostración",
         )
         check(
@@ -184,15 +217,28 @@ def _check_apptest() -> None:
         )
         metric_labels = {item.label for item in app.metric}
         check(
-            {"Documentos recibidos", "Pendientes de revisión", "Aprobados para propuesta"}
+            {"Requieren atención", "Elegibles para pago", "Aprobados"}
             <= metric_labels,
             "Inicio muestra indicadores de trabajo accionables",
         )
+        check(
+            {"Importe retenido", "Tiempo de ciclo (mediana)"} <= metric_labels,
+            "Inicio muestra importe retenido y tiempo de ciclo",
+        )
+        button_labels = [item.label for item in app.button]
+        check("Buscar" in button_labels and "Copiloto" in button_labels,
+              "la barra superior ofrece búsqueda y acceso al copiloto")
+        check("Ingresar documentos" in button_labels,
+              "la barra superior ofrece la acción primaria del producto")
+        check("Consultar correo" in button_labels,
+              "Inicio ofrece consultar el buzón como acción rápida")
+
         operational_pages = [
             ("app_pages/ingreso_documentos.py", "Ingreso de documentos"),
             ("app_pages/documentos.py", "Documentos"),
-            ("app_pages/revision_humana.py", "Revisión humana"),
-            ("app_pages/propuesta_pago.py", "Lote de pago"),
+            ("app_pages/revision_humana.py", "Revisión"),
+            ("app_pages/propuesta_pago.py", "Pagos"),
+            ("app_pages/nuevo_proveedor.py", "Proveedores"),
             ("app_pages/auditoria.py", "Auditoría"),
             ("app_pages/indicadores.py", "Indicadores"),
         ]
@@ -202,6 +248,13 @@ def _check_apptest() -> None:
                 not app.exception and any(item.value == title for item in app.title),
                 f"la página {title} abre con datos sintéticos sin excepciones",
             )
+
+        app.switch_page("app_pages/revision_humana.py").run()
+        review_buttons = [item.label for item in app.button]
+        for label in ("Anterior", "Siguiente", "Confirmar datos",
+                      "Confirmar y siguiente", "Retener"):
+            check(label in review_buttons,
+                  f"la barra de acciones de Revisión ofrece «{label}»")
     finally:
         if previous_password is None:
             os.environ.pop("AP_SYSTEM_PASSWORD", None)
@@ -221,20 +274,33 @@ def main() -> int:
         return 0
 
     print("== Producto unificado y navegación ==")
-    from ap_control_tower.ui import bootstrap, pilot_shell
+    from ap_control_tower.ui import bootstrap, pilot_shell, topbar
 
-    expected_pages = [
-        "Inicio",
-        "Ingreso de documentos",
-        "Documentos",
-        "Revisión humana",
-        "Lote de pago",
-        "Auditoría",
-        "Indicadores",
+    # Navegación objetivo: Inicio · Documentos · Revisión · Pagos · Proveedores
+    # · Indicadores · Auditoría. "Ingresar documentos" dejó de ser una pestaña y
+    # es la acción primaria de la barra superior, pero su ruta histórica sigue
+    # registrada para que `switch_page` y los enlaces viejos resuelvan.
+    expected_sidebar = [
+        "Inicio", "Documentos", "Revisión", "Pagos",
+        "Proveedores", "Indicadores", "Auditoría",
     ]
+    sidebar_titles = [
+        spec["title"] for _group, specs in pilot_shell.PAGE_GROUPS for spec in specs
+    ]
+    check(sidebar_titles == expected_sidebar,
+          "la navegación lateral contiene las siete páginas en el orden esperado")
     check(
-        [page["title"] for page in pilot_shell.PAGES] == expected_pages,
-        "la navegación contiene las siete páginas operativas en el orden esperado",
+        [spec["title"] for spec in pilot_shell.HIDDEN_PAGES]
+        == ["Ingreso de documentos"],
+        "la ruta histórica de ingreso sigue registrada fuera de la lista lateral",
+    )
+    check(
+        "Ingreso de documentos" in [spec["title"] for spec in pilot_shell.PAGES],
+        "PAGES conserva todas las rutas históricas",
+    )
+    check(
+        topbar.PRIMARY_ACTION["Inicio"][2] == "app_pages/ingreso_documentos.py",
+        "ingresar documentos es la acción primaria, no una pestaña",
     )
     check(
         all(bootstrap.normalize_mode(value) == "product" for value in (None, "demo", "trial", "otro")),
@@ -250,6 +316,8 @@ def main() -> int:
 
     print("== Wording público y componentes ==")
     source = _public_source()
+    # El nombre corto del producto ES "AP Control Tower". Lo que había que
+    # erradicar era el encuadre de demostración, no la marca.
     for forbidden in (
         "Cargá tus facturas reales y verás cómo el agente las procesa en tiempo real",
         "Prueba de concepto con facturas reales",
@@ -257,18 +325,35 @@ def main() -> int:
         "Acceso a la demo",
         "Password de la demo",
         "Contraseña de la demo",
-        "AP Control Tower",
+        "Modo demo",
+        "Modo trial",
     ):
         check(forbidden.casefold() not in source.casefold(), f"no aparece el texto prohibido: {forbidden}")
     for required in (
-        "Torre de Control para Cuentas a Pagar",
+        "AP Control Tower",
         "Brand UP",
-        "Acceso al Sistema",
+        "Acceso al sistema",
         "Contraseña",
     ):
         check(required in source, f"aparece el wording requerido: {required}")
-    check("use_container_width" not in source, "las páginas nuevas usan la API width actual")
-    check("st.page_link" not in source, "la navegación interna se mantiene en el sistema principal")
+
+    print("== APIs vigentes en la superficie activa ==")
+    activos = _active_modules()
+    obsoletos: list[str] = []
+    for name, path in sorted(activos.items()):
+        texto = path.read_text(encoding="utf-8")
+        for token in ("use_container_width", "components.v1", "from ..theme",
+                      "from .theme"):
+            if token in texto:
+                obsoletos.append(f"{name} -> {token}")
+    check(not obsoletos,
+          f"la superficie activa no usa APIs deprecadas ni el sistema visual anterior ({obsoletos})")
+    check("ap_control_tower.ui.theme" not in activos,
+          "el sistema visual anterior (theme.py) no se carga en el producto")
+    check("ap_control_tower.ui.design" in activos,
+          "el sistema visual único (design.py) sí se carga")
+    check("st.page_link" in source,
+          "la navegación lateral se dibuja con enlaces de página registrados")
 
     print("== Acceso y recorrido local ==")
     _check_password_contract()

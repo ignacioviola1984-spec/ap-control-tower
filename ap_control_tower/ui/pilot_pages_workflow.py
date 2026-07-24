@@ -694,14 +694,12 @@ def _render_batch_timeline(active, eligible, approved) -> None:
     marks = {
         "sesion-iniciada": ("Sesión creada", "muted"),
         "ingesta": ("Ingreso de documentos", "muted"),
-        "revision-confirmada": ("Datos confirmados en revisión", "ok"),
-        "documento-confirmado": ("Datos confirmados en revisión", "ok"),
-        "revision-retenida": ("Documento retenido", "warn"),
+        "revision-humana-confirmada": ("Datos confirmados en revisión", "ok"),
+        "documento-retenido-en-revision": ("Documento retenido", "warn"),
         "excepcion-pago-autorizada": ("Excepción autorizada", "warn"),
-        "propuesta-pago-decidida": ("Decisión sobre la propuesta", "ok"),
-        "propuesta-aprobada": ("Aprobación para propuesta", "ok"),
-        "propuesta-excluida": ("Documento excluido", "warn"),
-        "propuesta-rechazada": ("Documento rechazado", "risk"),
+        "aprobada-para-propuesta-pago": ("Aprobación para propuesta", "ok"),
+        "excluida-de-propuesta-pago": ("Documento excluido", "warn"),
+        "rechazada-para-propuesta-pago": ("Documento rechazado", "risk"),
     }
     eventos = []
     for event in active.audit.events:

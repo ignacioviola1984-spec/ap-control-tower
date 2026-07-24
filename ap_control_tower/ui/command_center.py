@@ -365,8 +365,12 @@ def render_home() -> None:
         ]
         for title, value, detail, page, icon in destinos:
             fila = st.columns([2, 1], gap="small", vertical_alignment="center")
-            fila[0].markdown(f"**{title}** · {value}  \n<small>{detail}</small>",
-                             unsafe_allow_html=True)
+            fila[0].html(
+                f'<div style="font-size:14px;"><b>{design.esc(title)}</b> · '
+                f'{design.esc(value)}</div>'
+                f'<div style="font-size:12.5px;color:#5A6B85;">'
+                f'{design.esc(detail)}</div>'
+            )
             if fila[1].button("Abrir", icon=icon, key=f"_cc_go_{page}",
                               width="stretch"):
                 st.switch_page(page)

@@ -11,6 +11,7 @@ resultados anteriores (aislamiento).
 
 from __future__ import annotations
 
+import os
 import sys
 from dataclasses import dataclass, field
 from decimal import Decimal
@@ -18,6 +19,17 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
+
+# Aislamiento de la configuración de la instalación: si la máquina tiene un
+# maestro de proveedores provisionado (``data/sage/vendor_master.xlsx``, que es
+# material real y está git-ignoreado), la sesión suma eventos de conciliación y
+# este eval —que verifica el MODELO de sesión— pasaba a depender de qué archivo
+# hay en el disco. Se apunta a una ruta inexistente para que el resultado sea el
+# mismo en cualquier equipo. La conciliación con el maestro tiene su propio eval
+# en ``test_sage_vendor_master.py``.
+os.environ["AP_VENDOR_MASTER_PATH"] = str(
+    ROOT / "evals" / "_sin_maestro_provisionado.xlsx"
+)
 
 failures: list[str] = []
 

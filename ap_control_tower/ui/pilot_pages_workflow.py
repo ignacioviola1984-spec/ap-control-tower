@@ -9,6 +9,7 @@ from . import design
 from .agent_panel import render_document_agent
 from .pilot_format import (
     STATE_LABELS,
+    decimal_value,
     format_amount,
     format_totals,
     format_datetime,
@@ -312,6 +313,11 @@ def _render_human_review_legacy() -> None:
 
 def _payment_risk_flags(row: dict) -> str:
     """Señales de riesgo del documento en el lote, enunciadas sin datos crudos."""
+    return " · ".join(payment_risk_list(row))
+
+
+def payment_risk_list(row: dict) -> list[str]:
+    """Señales de riesgo como lista. Función pura, verificable sin interfaz."""
     text = " ".join(str(item) for item in row["reasons"]).casefold()
     flags = []
     if "cuenta de cobro" in text:
@@ -324,7 +330,56 @@ def _payment_risk_flags(row: dict) -> str:
         flags.append("Ya pagada")
     if "excep" in text or row["status"] in {"rejected", "excluded"}:
         flags.append("Excepción")
-    return " · ".join(flags)
+    return flags
+
+
+def high_amount_ids(rows: list[dict]) -> set[str]:
+    """Documentos de importe alto dentro del propio lote.
+
+    Definición: importe mayor o igual al percentil 90 del lote. Es relativa a
+    lo que hay sobre la mesa, no a un umbral fijo inventado, y por eso sigue
+    teniendo sentido con lotes de cualquier tamaño.
+    """
+    montos = []
+    for row in rows:
+        amount = decimal_value(row["result"].document.get("importe_total"))
+        if amount is not None and amount > 0:
+            montos.append((amount, str(row["result"].doc_id)))
+    if len(montos) < 4:
+        return set()
+    montos.sort()
+    corte = montos[int(len(montos) * 0.9)][0]
+    return {doc_id for amount, doc_id in montos if amount >= corte}
+
+
+def upcoming_due(rows: list[dict], today=None, days: int = 14) -> list[dict]:
+    """Vencimientos dentro del horizonte, ordenados por fecha. Función pura."""
+    from datetime import date as _date
+    from datetime import datetime as _datetime
+    from datetime import timedelta as _timedelta
+
+    today = today or _date.today()
+    limite = today + _timedelta(days=days)
+    salida = []
+    for row in rows:
+        document = row["result"].document
+        texto = str(document.get("fecha_vencimiento_calculada")
+                    or document.get("fecha_vencimiento_texto") or "")[:10]
+        try:
+            vence = _datetime.strptime(texto, "%Y-%m-%d").date()
+        except ValueError:
+            continue
+        if vence <= limite:
+            salida.append({
+                "doc_id": str(row["result"].doc_id),
+                "Proveedor": supplier_name(document),
+                "Vence": vence,
+                "Importe": format_amount(document.get("importe_total"),
+                                         document.get("moneda")),
+                "Vencido": vence < today,
+            })
+    salida.sort(key=lambda item: item["Vence"])
+    return salida
 
 
 def render_payment_proposal() -> None:
@@ -376,6 +431,8 @@ def render_payment_proposal() -> None:
     resumen.html(design.chip(f"Maker-checker · {estado_gate}",
                              "warn" if eligible and not approved else "ok"))
 
+    _render_maker_checker(active, rows)
+
     if criticos:
         design.alert(
             f"{criticos} documento(s) elegibles o en lote tienen un riesgo de pago "
@@ -383,77 +440,50 @@ def render_payment_proposal() -> None:
             tone="risk", title="Atención",
         )
 
-    table_rows = []
-    for row in rows:
-        result = row["result"]
-        document = result.document
-        table_rows.append({
-            "doc_id": result.doc_id,
-            "Documento": result.doc_id,
-            "Proveedor": supplier_name(document),
-            "Número": document.get("numero_factura") or "—",
-            "Vencimiento": document.get("fecha_vencimiento_calculada")
-            or document.get("fecha_vencimiento_texto") or "—",
-            "Importe": format_amount(document.get("importe_total"), document.get("moneda")),
-            "Estado": STATE_LABELS.get(row["status"], row["status"]),
-            "Riesgos": _payment_risk_flags(row) or "—",
-            "Motivo": " · ".join(row["reasons"]) or "—",
-            "row": row,
-        })
-    frame = pd.DataFrame(
-        [{key: item[key] for key in ("Documento", "Proveedor", "Número", "Vencimiento", "Importe", "Riesgos", "Estado", "Motivo")}
-         for item in table_rows]
-    )
-    event = st.dataframe(
-        frame,
-        hide_index=True,
-        width="stretch",
-        height=360,
-        on_select="rerun",
-        selection_mode="multi-row",
-        key="payment_documents",
-        column_config={
-            "Documento": st.column_config.TextColumn("Documento", pinned=True),
-            "Proveedor": st.column_config.TextColumn("Proveedor", pinned=True),
-        },
-    )
-    selected_indexes = list(event.selection.rows)
-    selected_items = [table_rows[index] for index in selected_indexes]
-    selected_ids = [item["doc_id"] for item in selected_items]
-    can_approve = bool(selected_items) and all(
-        item["row"]["status"] == "eligible" for item in selected_items
-    )
-    if not selected_items:
-        st.caption("Seleccioná una o más filas para habilitar una decisión.")
-    elif not can_approve:
-        st.caption("Aprobar solo está disponible cuando todas las filas son elegibles.")
+    _render_upcoming(rows)
 
-    with st.form(f"payment_decision_{active.audit.run_id}"):
-        actor = st.text_input("Responsable de la decisión", placeholder="Nombre y apellido")
-        note = st.text_area("Motivo o comentario")
-        acknowledgement = st.checkbox(
-            "Confirmo que la decisión no libera dinero ni reemplaza la autorización bancaria"
-        )
-        with st.container(horizontal=True):
-            approve = st.form_submit_button(
-                "Aprobar para propuesta",
-                type="primary",
-                icon=":material/verified:",
-                disabled=not can_approve,
-            )
-            exclude = st.form_submit_button(
-                "Excluir",
-                icon=":material/block:",
-                disabled=not selected_items,
-            )
-            reject = st.form_submit_button(
-                "Rechazar",
-                icon=":material/cancel:",
-                disabled=not selected_items,
-            )
-    status = "approved" if approve else "excluded" if exclude else "rejected" if reject else None
+    # Los cuatro estados del lote, separados: cada pestaña responde una
+    # pregunta distinta y evita que "aprobar" opere sobre filas que no
+    # corresponden.
+    grupos = [
+        ("Elegibles", eligible),
+        ("Aprobados", approved),
+        ("Retenidos", [r for r in rows if r["status"] == "retained"]),
+        ("Excluidos", [r for r in rows
+                       if r["status"] in {"rejected", "excluded"}]),
+    ]
+    pestanas = st.tabs([f"{nombre} · {len(items)}" for nombre, items in grupos])
+    altos = high_amount_ids(rows)
+    seleccion: list[dict] = []
+    for pestana, (nombre, items) in zip(pestanas, grupos):
+        with pestana:
+            elegidos = _render_group_table(nombre, items, altos)
+            if nombre == "Elegibles":
+                seleccion = elegidos
+
+    selected_ids = [item["doc_id"] for item in seleccion]
+
+    st.subheader("Datos de la decisión")
+    st.caption(
+        "La aprobación exige un responsable distinto de quien confirmó los "
+        "datos. El sistema lo verifica al confirmar."
+    )
+    datos = st.columns([1.2, 2, 1.6])
+    actor = datos[0].text_input(
+        "Responsable de la decisión", placeholder="Nombre y apellido",
+        key=f"_pay_actor_{active.audit.run_id}")
+    note = datos[1].text_input(
+        "Motivo o comentario", key=f"_pay_note_{active.audit.run_id}",
+        help="Obligatorio para excluir o rechazar.")
+    acknowledgement = datos[2].checkbox(
+        "La decisión no libera dinero ni reemplaza la autorización bancaria",
+        key=f"_pay_ack_{active.audit.run_id}")
+
+    status = _render_selection_bar(seleccion, altos)
     if status:
-        if not actor.strip():
+        if not selected_ids:
+            st.error("Seleccioná al menos un documento elegible.")
+        elif not actor.strip():
             st.error("Ingresá el nombre de la persona responsable de la decisión.")
         elif not acknowledgement:
             st.error("Confirmá el alcance de la acción antes de continuar.")
@@ -498,11 +528,177 @@ def render_payment_proposal() -> None:
     _render_batch_timeline(active, eligible, approved)
 
 
+_SELECTION_NONCE = "_ap_pay_selection_nonce"
+
+
+def _render_maker_checker(active, rows) -> None:
+    """Quién revisó y quién aprobó, con nombres reales de la auditoría."""
+    revisores = sorted({
+        str((active.review_decisions.get(str(row["result"].doc_id)) or {}).get("actor") or "")
+        for row in rows
+    } - {""})
+    aprobadores = sorted({
+        str((active.approval_decisions.get(str(row["result"].doc_id)) or {}).get("actor") or "")
+        for row in rows
+    } - {""})
+    columnas = st.columns(2, gap="medium")
+    columnas[0].caption(
+        "Revisó · " + (", ".join(revisores) if revisores else "todavía nadie"))
+    columnas[1].caption(
+        "Aprobó · " + (", ".join(aprobadores) if aprobadores else "todavía nadie"))
+
+
+def _render_upcoming(rows) -> None:
+    proximos = upcoming_due(rows)
+    if not proximos:
+        return
+    vencidos = sum(1 for item in proximos if item["Vencido"])
+    titulo = f"Próximos vencimientos · {len(proximos)}"
+    if vencidos:
+        titulo += f" ({vencidos} vencido/s)"
+    with st.expander(titulo, icon=":material/event:", expanded=bool(vencidos)):
+        st.dataframe(
+            pd.DataFrame([
+                {"Documento": item["doc_id"], "Proveedor": item["Proveedor"],
+                 "Vence": item["Vence"], "Importe": item["Importe"],
+                 "Estado": "Vencido" if item["Vencido"] else "Por vencer"}
+                for item in proximos
+            ]),
+            hide_index=True, width="stretch",
+            column_config={
+                "Vence": st.column_config.DateColumn("Vence", format="DD/MM/YYYY"),
+            },
+        )
+
+
+def _render_group_table(nombre: str, items: list[dict], altos: set[str]) -> list[dict]:
+    """Tabla de un grupo del lote. Devuelve las filas seleccionadas."""
+    if not items:
+        design.empty_state(f"Sin documentos {nombre.casefold()}")
+        return []
+    tabla = []
+    for row in items:
+        result = row["result"]
+        document = result.document
+        riesgos = payment_risk_list(row)
+        if str(result.doc_id) in altos:
+            riesgos.append("Alto importe")
+        tabla.append({
+            "doc_id": str(result.doc_id),
+            "Documento": str(result.doc_id),
+            "Proveedor": supplier_name(document),
+            "Número": document.get("numero_factura") or "—",
+            "Vencimiento": document.get("fecha_vencimiento_calculada")
+            or document.get("fecha_vencimiento_texto") or "—",
+            "Importe": format_amount(document.get("importe_total"),
+                                     document.get("moneda")),
+            "Estado": STATE_LABELS.get(row["status"], row["status"]),
+            "Riesgos": " · ".join(riesgos) or "—",
+            "Motivo": " · ".join(row["reasons"]) or "—",
+            "row": row,
+            "riesgos": riesgos,
+        })
+    columnas = ("Documento", "Proveedor", "Número", "Vencimiento", "Importe",
+                "Riesgos", "Estado", "Motivo")
+    frame = pd.DataFrame([{key: item[key] for key in columnas} for item in tabla])
+    nonce = st.session_state.get(_SELECTION_NONCE, 0)
+    seleccionable = nombre == "Elegibles"
+    event = st.dataframe(
+        frame,
+        hide_index=True,
+        width="stretch",
+        height=320,
+        on_select="rerun" if seleccionable else "ignore",
+        selection_mode="multi-row" if seleccionable else None,
+        key=f"payment_documents_{nombre}_{nonce}" if seleccionable else None,
+        column_config={
+            "Documento": st.column_config.TextColumn("Documento", pinned=True),
+            "Proveedor": st.column_config.TextColumn("Proveedor", pinned=True),
+            "Riesgos": st.column_config.TextColumn(
+                "Riesgos",
+                help="Cambio bancario · Duplicado · Proveedor nuevo · Ya pagada "
+                     "· Excepción · Alto importe (percentil 90 del lote)."),
+        },
+    )
+    if not seleccionable:
+        return []
+    return [tabla[index] for index in list(event.selection.rows)]
+
+
+def _render_selection_bar(seleccion: list[dict], altos: set[str]) -> str | None:
+    """Barra fija con el resumen de la selección y las tres decisiones.
+
+    Vive en ``st.bottom``: acompaña el scroll de una tabla larga, así que el
+    responsable siempre ve cuánto está por aprobar sin volver arriba.
+    """
+    with st.bottom:
+        with st.container(border=True, key="ap_payment_bar"):
+            if not seleccion:
+                st.caption(
+                    "Seleccioná una o más filas elegibles para habilitar una "
+                    "decisión. Las demás pestañas son de sólo lectura."
+                )
+                return None
+            totales = format_totals(totals_by_currency(
+                [item["row"] for item in seleccion]))
+            banderas: list[str] = []
+            for item in seleccion:
+                banderas.extend(item["riesgos"])
+            resumen = st.columns([1.5, 2.4, 0.9, 1.0, 0.9, 0.9])
+            resumen[0].html(
+                f'<div style="font-size:13.5px;line-height:2.4;">'
+                f'<b>{len(seleccion)}</b> seleccionado(s)</div>')
+            chips = [
+                design.chip(f"{texto} · {banderas.count(texto)}",
+                            "risk" if texto in {"Ya pagada", "Cambio bancario"}
+                            else "warn")
+                for texto in sorted(set(banderas))
+            ]
+            resumen[1].html(
+                f'<div style="font-size:13.5px;line-height:2.2;">Total '
+                f'<b>{design.esc(totales)}</b> '
+                + " ".join(chips) + "</div>"
+            )
+            limpiar = resumen[2].button(
+                "Limpiar", icon=":material/close:", width="stretch",
+                key="_pay_clear")
+            aprobar = resumen[3].button(
+                "Aprobar", type="primary", icon=":material/verified:",
+                width="stretch", key="_pay_approve")
+            excluir = resumen[4].button(
+                "Excluir", icon=":material/block:", width="stretch",
+                key="_pay_exclude")
+            rechazar = resumen[5].button(
+                "Rechazar", icon=":material/cancel:", width="stretch",
+                key="_pay_reject")
+    if limpiar:
+        # La selección de st.dataframe vive en su clave: cambiarla devuelve un
+        # widget nuevo, sin selección, sin tocar estado interno de Streamlit.
+        st.session_state[_SELECTION_NONCE] = st.session_state.get(
+            _SELECTION_NONCE, 0) + 1
+        st.rerun()
+    if aprobar:
+        return "approved"
+    if excluir:
+        return "excluded"
+    if rechazar:
+        return "rejected"
+    return None
+
+
 def _render_batch_timeline(active, eligible, approved) -> None:
     """Línea temporal del lote a partir de la auditoría real de la sesión."""
+    # Sólo hitos con evento REAL en la auditoría. Los estados que este producto
+    # todavía no ejecuta —exportación efectiva y liberación al banco— no se
+    # dibujan como pasos futuros: sugerirían un circuito que no existe.
     marks = {
         "sesion-iniciada": ("Sesión creada", "muted"),
+        "ingesta": ("Ingreso de documentos", "muted"),
+        "revision-confirmada": ("Datos confirmados en revisión", "ok"),
         "documento-confirmado": ("Datos confirmados en revisión", "ok"),
+        "revision-retenida": ("Documento retenido", "warn"),
+        "excepcion-pago-autorizada": ("Excepción autorizada", "warn"),
+        "propuesta-pago-decidida": ("Decisión sobre la propuesta", "ok"),
         "propuesta-aprobada": ("Aprobación para propuesta", "ok"),
         "propuesta-excluida": ("Documento excluido", "warn"),
         "propuesta-rechazada": ("Documento rechazado", "risk"),

@@ -24,9 +24,6 @@ from ...persistence.masking import mask_tax_id
 from ..theme import badge
 
 # Campos de negocio para cobertura (se excluyen banderas internas).
-_NON_BUSINESS = {"iban_enmascarado", "campos_ilegibles"}
-BUSINESS_FIELDS = [f for f in FIELD_ORDER if f not in _NON_BUSINESS]
-
 DETAIL_FIELDS = [
     "document_type", "numero_factura", "fecha_emision",
     "fecha_vencimiento_texto", "fecha_vencimiento_calculada",
@@ -45,38 +42,17 @@ TYPE_LABELS = {
 }
 
 
-def process_files(files, on_progress=None):
-    """Procesa PDFs INLINE (sin cache): [(nombre, bytes)] -> (results, errores).
-
-    Reutiliza el unico adaptador de Document AI de la demo. No guarda los bytes:
-    se procesan y se descartan; solo se devuelve el resultado estructurado.
-    ``on_progress(i, total, nombre)`` es opcional para feedback de UI.
-    """
-    from ...app import process_uploaded_document
-
-    results, errors = [], []
-    total = len(files)
-    for index, (name, data) in enumerate(files, 1):
-        try:
-            results.append(process_uploaded_document(name, data))
-        except Exception as exc:  # proteccion de red/API: mensaje claro, no crash
-            errors.append((name, str(exc)))
-        if on_progress is not None:
-            on_progress(index, total, name)
-    return results, errors
-
-
-def process_one(name, data):
-    """Procesa UN PDF inline y mide su tiempo. -> (result|None, error|None, segundos)."""
-    from time import perf_counter
-
-    from ...app import process_uploaded_document
-    t0 = perf_counter()
-    try:
-        result = process_uploaded_document(name, data)
-        return result, None, perf_counter() - t0
-    except Exception as exc:  # red/API: mensaje claro, no crash
-        return None, str(exc), perf_counter() - t0
+# El procesamiento y las metricas viven ahora en modulos sin dependencias de
+# presentacion (ui/extraction_runner.py y ui/extraction_metrics.py). Se
+# reexportan aca para no romper a quien ya los importaba desde esta vista.
+from ..extraction_metrics import (  # noqa: E402
+    BUSINESS_FIELDS,
+    aggregate_metrics,
+    coverage,
+    missing_fields,
+    present_fields,
+)
+from ..extraction_runner import process_files, process_one  # noqa: E402
 
 
 # Advertencias que son NOTAS DE MODO (no problemas de campo): no disparan
@@ -139,18 +115,6 @@ def _vencimiento(doc: dict) -> str:
 def _referencias(doc: dict) -> str:
     refs = [doc.get("po_reference"), doc.get("project_reference")]
     return " · ".join(str(r) for r in refs if r) or ""
-
-
-def present_fields(result) -> list[str]:
-    return [f for f in BUSINESS_FIELDS if _is_present(result.document.get(f))]
-
-
-def missing_fields(result) -> list[str]:
-    return [f for f in BUSINESS_FIELDS if not _is_present(result.document.get(f))]
-
-
-def coverage(result) -> float:
-    return len(present_fields(result)) / len(BUSINESS_FIELDS) if BUSINESS_FIELDS else 0.0
 
 
 EXPORT_COLUMNS = [
@@ -237,43 +201,6 @@ def results_excel(results) -> bytes:
 
 
 # ------------------------------------------------------------------ render
-def _informed_confidences(results) -> list:
-    """Todas las confianzas POR CAMPO informadas (para el promedio honesto)."""
-    vals: list = []
-    for r in results:
-        vals.extend(float(v) for v in r.field_confidences.values())
-    return vals
-
-
-def aggregate_metrics(results, errors=None) -> dict:
-    """Metricas descriptivas de extraccion; no implican exactitud validada."""
-    from ..trial.workflow import unique_results
-
-    results = unique_results(results)
-    total = len(results)
-    found = sum(len(present_fields(r)) for r in results)
-    missing = sum(len(missing_fields(r)) for r in results)
-    informed = _informed_confidences(results)
-    from ..trial.workflow import duplicate_doc_ids, requires_human_review
-
-    duplicates = duplicate_doc_ids(results)
-    return {
-        "documents": total + len(errors or []),   # procesados = intentados
-        "ok": total,
-        "invoices": sum(1 for r in results
-                        if r.document.get("document_type") == "invoice"),
-        "fields_found": found,
-        "fields_missing": missing,
-        "coverage": found / (found + missing) if found + missing else 0.0,
-        # Confianza PROMEDIO solo sobre campos con confianza informada.
-        "confidence": (sum(informed) / len(informed)) if informed else None,
-        "with_warnings": sum(1 for r in results
-                             if requires_human_review(
-                                 r, duplicate=r.doc_id in duplicates)),
-        "errors": len(errors or []),
-    }
-
-
 def render_metrics(results, processing_seconds=None, errors=None) -> None:
     m = aggregate_metrics(results, errors)
     r1 = st.columns(3)

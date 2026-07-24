@@ -194,12 +194,25 @@ def _render_pdf_inline(data: bytes) -> None:
         )
 
 
-def render_pdf_viewer(result) -> None:
-    """Muestra el PDF original al revisor humano (bytes solo en memoria de sesión)."""
+def render_pdf_viewer(result, *, expanded: bool = False) -> None:
+    """Muestra el PDF original al revisor humano (bytes solo en memoria de sesión).
+
+    En el workspace de revisión el visor va desplegado: el revisor corrige
+    mirando el documento, no recordándolo.
+    """
     data = _pdf_bytes_for(result.doc_id)
     if not data:
+        if expanded:
+            from . import design
+
+            design.empty_state(
+                "Sin PDF en memoria",
+                "El archivo original sólo se conserva durante la sesión en la "
+                "que se ingresó.",
+            )
         return
-    with st.expander("Ver PDF original", icon=":material/picture_as_pdf:"):
+    with st.expander("Ver PDF original", icon=":material/picture_as_pdf:",
+                     expanded=expanded):
         _render_pdf_inline(data)
         st.download_button(
             "Descargar PDF",

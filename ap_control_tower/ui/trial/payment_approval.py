@@ -9,11 +9,13 @@ import pandas as pd
 import streamlit as st
 
 from ...persistence.masking import mask_account, mask_iban
-from ..components import extraction_view as ev
 from . import session as sess
 from . import workflow
-from .step_navigation import render_next, request_navigation
-from .workflow_ui import active_session_or_resume
+
+# ``step_navigation`` y ``workflow_ui`` son del recorrido guiado heredado y
+# arrastran APIs de Streamlit deprecadas. La superficie activa sólo usa las
+# funciones de exportación de este módulo, así que esas dependencias se
+# importan dentro de las vistas que realmente las necesitan.
 
 
 STATUS_LABEL = {
@@ -113,11 +115,14 @@ def payment_export_excel(approved_rows: list[dict]) -> bytes:
 
 def _go_to_human_review() -> None:
     from .shell import HUMAN_REVIEW
+    from .step_navigation import request_navigation
 
     request_navigation(HUMAN_REVIEW)
 
 
 def render() -> None:
+    from .workflow_ui import active_session_or_resume
+
     st.markdown("## Aprobación para propuesta de pago")
     st.info("Esta decisión prepara una propuesta controlada. No contabiliza, no genera "
             "un archivo bancario y no libera dinero.")
@@ -252,8 +257,10 @@ def render() -> None:
             _go_to_human_review()
 
     st.markdown("### Audit trail de la corrida")
-    ev.render_session_audit(session.audit, persisted=sess.persistence_available())
+    from ..components import extraction_view as ev
     from .shell import BUSINESS_CASE
+    from .step_navigation import render_next
 
+    ev.render_session_audit(session.audit, persisted=sess.persistence_available())
     render_next("Consultar caso de negocio", BUSINESS_CASE,
                 key="trial_payment_next_business_case")

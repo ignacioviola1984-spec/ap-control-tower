@@ -13,8 +13,8 @@ import hashlib
 import streamlit as st
 
 from ...app import SageMasterError, document_ai_configured
-from ..components import extraction_view as ev
 from ..components import gmail_panel
+from ..extraction_runner import process_one
 from . import session as sess
 
 
@@ -50,7 +50,7 @@ def _process_and_store(files, canal: str) -> None:
             omitted += 1
             bar.progress(index / total, text=f"Omitido {index}/{total}: {name}")
             continue
-        result, error, seconds = ev.process_one(name, data)
+        result, error, seconds = process_one(name, data)
         if error is not None:
             friendly = _friendly_error(error)
             sess.add_error(session, name, friendly, seconds)

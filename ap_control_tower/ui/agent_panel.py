@@ -1,4 +1,11 @@
-"""Panel conversacional contextual embebido en Documentos y Revisión humana."""
+"""Panel conversacional contextual embebido en Documentos y Revisión humana.
+
+Presentación estructurada deliberada: los **riesgos**, la **evidencia** y los
+**controles consultados** los produce el sistema y se muestran siempre, incluso
+con la IA apagada. El texto del modelo va aparte, marcado en índigo, que en este
+producto significa una única cosa: lo escribió la IA. Mezclar ambas cosas en un
+mismo bloque haría que una explicación generada parezca un control ejecutado.
+"""
 
 from __future__ import annotations
 
@@ -14,7 +21,9 @@ from ..agent.service import (
     create_openai_client,
 )
 from ..agent.tools import ReadOnlyDocumentTools
+from . import design
 from .trial import session as sess
+from .trial import workflow
 
 
 _SUGGESTIONS = {
@@ -22,6 +31,16 @@ _SUGGESTIONS = {
     "Resumir evidencia": "Resumí la evidencia disponible para revisar este documento.",
     "¿Qué debería verificar?": "Sugerí qué debería verificar el revisor a continuación.",
     "Estado del proveedor": "Informá el estado del maestro y la vinculación del proveedor.",
+}
+
+#: Nombre legible de cada herramienta de solo lectura del asistente.
+TOOL_LABELS = {
+    "get_document_context": "Datos extraídos del documento",
+    "explain_review_reasons": "Motivos de revisión",
+    "summarize_document_evidence": "Evidencia y advertencias",
+    "suggest_reviewer_actions": "Acciones sugeridas al revisor",
+    "get_vendor_master_status": "Maestro de proveedores",
+    "get_document_text": "Texto del documento",
 }
 
 
@@ -58,6 +77,14 @@ _COPILOT_CSS = """
 .st-key-ap_copilot [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) {
   background: #FAF8FF;
 }
+.ap-sysblock {
+  font-size: 13px; line-height: 1.5;
+}
+.ap-sysblock h6 {
+  font-size: 11.5px; font-weight: 700; letter-spacing: .05em;
+  text-transform: uppercase; color: #5A6B85; margin: 10px 0 3px 0;
+}
+.ap-sysblock ul { margin: 0; padding-left: 18px; }
 </style>
 """
 
@@ -80,14 +107,89 @@ def _copilot_header(available: bool) -> None:
     )
 
 
+def deterministic_briefing(active, result) -> dict:
+    """Riesgos, evidencia y próximo paso, calculados por el sistema.
+
+    Función pura sobre los datos ya extraídos: sigue siendo exacta con la IA
+    apagada, y es lo que se muestra cuando el modelo no está disponible.
+    """
+    duplicates = workflow.duplicate_doc_ids(active.results)
+    reasons = workflow.review_reasons(
+        result, duplicate=str(result.doc_id) in duplicates
+    )
+    missing = workflow.missing_critical_fields(result.document)
+    evidencia = [
+        "Extracción: " + ("Google Document AI"
+                          if result.engine == "google_document_ai_invoice_parser"
+                          else "motor local controlado"),
+        "Campos críticos: " + ("completos" if not missing
+                               else "faltan " + ", ".join(missing)),
+    ]
+    resolution = getattr(active, "supplier_resolutions", {}).get(str(result.doc_id))
+    if resolution:
+        evidencia.append("Maestro de proveedores: " + {
+            "matched": "proveedor vinculado",
+            "not_found": "proveedor no dado de alta",
+            "inactive": "proveedor dado de baja",
+            "ambiguous": "vinculación ambigua",
+        }.get(resolution.get("status"), str(resolution.get("status") or "—")))
+    else:
+        evidencia.append("Maestro de proveedores: sin maestro aplicado")
+
+    if reasons:
+        proximo = "Resolver los motivos listados y confirmar los datos, o retener."
+    else:
+        proximo = "Sin motivos pendientes: puede avanzar al gate de pago."
+    return {"riesgos": reasons, "evidencia": evidencia, "proximo": proximo}
+
+
+def _render_system_block(briefing: dict) -> None:
+    """Bloque del SISTEMA: sin acento índigo, porque no lo escribió la IA."""
+    riesgos = "".join(f"<li>{design.esc(item)}</li>" for item in briefing["riesgos"])
+    evidencia = "".join(f"<li>{design.esc(item)}</li>" for item in briefing["evidencia"])
+    st.html(
+        '<div class="ap-sysblock">'
+        "<h6>Riesgos detectados</h6>"
+        + (f"<ul>{riesgos}</ul>" if riesgos
+           else "<p>Ninguno para este documento.</p>")
+        + "<h6>Evidencia</h6>"
+        + f"<ul>{evidencia}</ul>"
+        + "<h6>Próximo paso</h6>"
+        + f"<p>{design.esc(briefing['proximo'])}</p>"
+        + "</div>"
+    )
+
+
+def _render_answer_meta(answer) -> None:
+    """Controles consultados y limitaciones de la respuesta del modelo."""
+    usados = [TOOL_LABELS.get(name, name) for name in answer.tools_used]
+    st.html(
+        '<div class="ap-sysblock"><h6>Controles consultados</h6>'
+        + ("<ul>" + "".join(f"<li>{design.esc(item)}</li>" for item in usados) + "</ul>"
+           if usados else "<p>Ninguno: la respuesta no consultó evidencia.</p>")
+        + "</div>"
+    )
+    st.caption(
+        "Limitaciones: la respuesta es informativa, puede contener errores y no "
+        "sustituye la verificación humana. No accede a datos enmascarados. · "
+        f"{answer.input_tokens + answer.output_tokens:,} tokens"
+    )
+
+
 @st.fragment
 def render_document_agent(active, result, *, page_key: str) -> None:
     settings = AgentSettings.from_env()
     unavailable = settings.availability_message()
     _copilot_header(available=unavailable is None)
 
+    briefing = deterministic_briefing(active, result)
+
     if unavailable:
+        # Degradación: sin modelo, el panel sigue siendo útil. Lo que se pierde
+        # es la explicación en lenguaje natural, no la evidencia.
         st.info(unavailable, icon=":material/smart_toy:")
+        with st.container(border=True, key="ap_copilot"):
+            _render_system_block(briefing)
         return
 
     key = _conversation_key(active, result, page_key)
@@ -95,6 +197,10 @@ def render_document_agent(active, result, *, page_key: str) -> None:
     messages = conversations.setdefault(key, [])
 
     with st.container(border=True, key="ap_copilot"):
+        with st.expander("Riesgos, evidencia y próximo paso",
+                         icon=":material/rule:", expanded=not messages):
+            _render_system_block(briefing)
+
         if not messages:
             selected = st.pills(
                 "Consultas sugeridas",
@@ -134,7 +240,13 @@ def render_document_agent(active, result, *, page_key: str) -> None:
             st.write(prompt)
 
         with st.chat_message("assistant"):
-            with st.spinner("Consultando evidencia controlada…"):
+            # El asistente resuelve en varias rondas de herramientas y el texto
+            # sólo existe cuando termina la última: no hay tokens que emitir
+            # progresivamente, así que se informa el avance real en vez de
+            # animar un texto ya completo con st.write_stream.
+            answer = None
+            with st.status("Consultando evidencia controlada…",
+                           expanded=False) as estado:
                 try:
                     client = _openai_client()
                     answer = answer_question(
@@ -147,19 +259,27 @@ def render_document_agent(active, result, *, page_key: str) -> None:
                 except (AgentUnavailable, AgentServiceError) as exc:
                     audit_error(active, str(result.doc_id), exc)
                     sess.persist(active)
+                    estado.update(label="Sin respuesta del asistente",
+                                  state="error")
                     response = (
                         "No pude responder en este momento. La revisión humana y "
                         "los controles del documento siguen disponibles."
                     )
-                    st.error(response, icon=":material/error:")
                 else:
                     audit_answer(active, str(result.doc_id), answer)
                     sess.persist(active)
-                    response = answer.text
-                    st.write(response)
-                    st.caption(
-                        "Respuesta informativa de solo lectura · "
-                        f"{answer.input_tokens + answer.output_tokens:,} tokens"
+                    estado.update(
+                        label=f"Respuesta lista · {len(answer.tools_used)} control(es) consultados",
+                        state="complete",
                     )
+                    response = answer.text
+            if answer is None:
+                st.error(response, icon=":material/error:")
+            else:
+                st.write(response)
+                _render_answer_meta(answer)
         messages.append({"role": "assistant", "content": response})
         _trim(messages)
+
+
+__all__ = ["TOOL_LABELS", "deterministic_briefing", "render_document_agent"]

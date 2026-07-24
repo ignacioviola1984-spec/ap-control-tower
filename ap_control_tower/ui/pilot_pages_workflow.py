@@ -437,3 +437,32 @@ def render_payment_proposal() -> None:
                 width="stretch",
                 key=f"payment_export_excel_{active.audit.run_id}",
             )
+        _render_pending_vendors(active)
+
+
+def _render_pending_vendors(active) -> None:
+    """Altas de proveedor que deben entrar a Sage junto con el lote.
+
+    Pagar a un proveedor cuya ficha no existe en el ERP deja el pago sin
+    imputar, así que el alta viaja con la propuesta y no por separado.
+    """
+    pendientes = list(getattr(active, "pending_vendors", []) or [])
+    if not pendientes:
+        return
+    from .vendor_intake import altas_xlsx
+
+    st.subheader("Altas de proveedor para Sage")
+    st.caption(
+        f"{len(pendientes)} proveedor(es) dados de alta en esta sesión que aún "
+        "no existen en el maestro del ERP. Importalos antes de imputar el pago."
+    )
+    st.dataframe(pendientes, hide_index=True, width="stretch")
+    st.download_button(
+        "Exportar altas de proveedor",
+        data=altas_xlsx(pendientes),
+        file_name="torre-control-altas-proveedor.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        icon=":material/download:",
+        width="stretch",
+        key=f"vendor_altas_export_{active.audit.run_id}",
+    )

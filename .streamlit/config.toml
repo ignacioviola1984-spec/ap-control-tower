@@ -21,12 +21,18 @@ orangeColor = "#9A5B00"
 redColor = "#B42318"
 blueColor = "#0F4C81"
 
+# Barra lateral corporativa: azul profundo con texto claro. Al oscurecer el
+# fondo hay que ajustar TODOS los colores, no solo el de fondo, para no perder
+# contraste en botones, bordes y texto secundario.
 [theme.sidebar]
-backgroundColor = "#F3F6F9"
-secondaryBackgroundColor = "#E7EEF5"
-textColor = "#172234"
-primaryColor = "#0F4C81"
-borderColor = "#CBD5E1"
+backgroundColor = "#0D2149"
+secondaryBackgroundColor = "#17356B"
+textColor = "#E8EEF7"
+primaryColor = "#5AA0F2"
+linkColor = "#9DC4F5"
+borderColor = "#1E4079"
+codeBackgroundColor = "#17356B"
+showWidgetBorder = true
 
 [browser]
 gatherUsageStats = false

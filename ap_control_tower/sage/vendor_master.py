@@ -27,6 +27,12 @@ AMBIGUOUS_VENDOR_WARNING = (
     "proveedor ambiguo en maestro de Sage: múltiples candidatos posibles"
 )
 VENDOR_NOT_FOUND_WARNING = "proveedor no encontrado en maestro de Sage"
+INACTIVE_VENDOR_WARNING = (
+    "proveedor dado de baja en el maestro de Sage"
+)
+IBAN_MISMATCH_WARNING = (
+    "la cuenta de cobro de la factura no coincide con la registrada en Sage"
+)
 TAX_ID_NOT_FOUND_WARNING = (
     "tax ID del proveedor no encontrado en maestro de Sage"
 )
@@ -102,6 +108,14 @@ class SupplierResolution:
     score: float | None = None
     tax_id_confirmed: bool = False
     warning: str | None = None
+    #: Identidad del proveedor vinculado, para que los controles de pago puedan
+    #: nombrarlo. El IBAN registrado NUNCA se publica: solo viaja el veredicto
+    #: de la comparación (`iban_matches`), calculado dentro del matcher.
+    vendor_code: str | None = None
+    vendor_legal_name: str | None = None
+    #: True/False según coincida la cuenta de cobro; None si no es comparable
+    #: (falta un lado o el IBAN de la factura viene enmascarado).
+    iban_matches: bool | None = None
 
     @property
     def accepted(self) -> bool:
@@ -115,6 +129,9 @@ class SupplierResolution:
             "score": round(self.score, 4) if self.score is not None else None,
             "tax_id_confirmed": self.tax_id_confirmed,
             "warning": self.warning,
+            "vendor_code": self.vendor_code,
+            "vendor_legal_name": self.vendor_legal_name,
+            "iban_matches": self.iban_matches,
         }
 
 
@@ -213,22 +230,31 @@ def _normalize_header(value) -> str:
     return " ".join(re.sub(r"[^a-z0-9]+", " ", text).split())
 
 
+#: Alias de cabecera. Incluye el export de "cuentas contables" de Sage, que es
+#: el que entrega el cliente: usa Código cuenta / Descripción / Clien./Prov. /
+#: Sigla / Bloqueada en lugar de los nombres del export de fichas de proveedor.
 _HEADER_ALIASES = {
     "provider_code": ("cod proveedor", "codigo proveedor"),
     "client_code": ("cod cliente", "codigo cliente"),
     "client_category": ("cod categoria cliente", "codigo categoria cliente"),
-    "accounting_code": ("cod contable", "codigo contable"),
-    "legal_name": ("razon social",),
+    "accounting_code": ("cod contable", "codigo contable", "codigo cuenta",
+                        "cod cuenta", "cuenta contable"),
+    "legal_name": ("razon social", "descripcion"),
     "trading_name": ("nombre cli pro", "nombre proveedor", "nombre comercial"),
     "tax_id": ("cif dni", "nif cif", "tax id", "id fiscal"),
     "eu_tax_id": ("cif europeo", "vat id"),
-    "country": ("sigla nacion", "codigo pais", "pais"),
+    "country": ("sigla nacion", "codigo pais", "pais", "sigla"),
     "iban": ("i b a n", "iban"),
     "bank_code": ("cod banco", "codigo banco"),
     "payment_terms": ("cod condiciones", "codigo condiciones", "condiciones pago"),
-    "inactive": ("baja empresa", "inactivo"),
+    "inactive": ("baja empresa", "inactivo", "bloqueada", "bloqueado"),
     "inactive_date": ("fecha baja",),
+    #: Discrimina proveedor de cliente cuando ambos conviven en el mismo export.
+    "party_type": ("clien prov", "cliente proveedor", "tipo tercero"),
 }
+
+#: Valores de la columna Clien./Prov. que identifican a un proveedor.
+_SUPPLIER_PARTY_VALUES = {"proveedor", "prov", "p", "acreedor"}
 
 
 def _column_map(headers: tuple[object, ...]) -> dict[str, int]:
@@ -339,7 +365,18 @@ def load_vendor_master_xlsx(
         vendors: list[SageVendor] = []
         issues: list[str] = []
         ignored = inactive_count = 0
+        # El export de cuentas contables trae proveedores, clientes y cuentas sin
+        # clasificar en el mismo archivo. Solo entran las filas marcadas como
+        # proveedor: si entrara un cliente, su CIF podría "confirmar" un
+        # proveedor que en realidad no está dado de alta como tal.
+        has_party_type = "party_type" in columns
+        non_supplier = 0
         for offset, row in enumerate(data_rows, start=header_index + 2):
+            if has_party_type:
+                party = _optional_value(row, columns, "party_type").casefold()
+                if party not in _SUPPLIER_PARTY_VALUES:
+                    non_supplier += 1
+                    continue
             provider_code = _value(row, columns, "provider_code")
             accounting_code = _optional_value(row, columns, "accounting_code") or None
             source_id = provider_code or accounting_code
@@ -381,7 +418,9 @@ def load_vendor_master_xlsx(
             fingerprint=sha256(content).hexdigest()[:16],
             source_filename=filename,
             sheet_name=sheet.title,
-            rows_seen=len(data_rows),
+            # Las filas de clientes/cuentas sin clasificar no son "vistas": no
+            # forman parte del universo de proveedores contra el que se concilia.
+            rows_seen=len(data_rows) - non_supplier,
             rows_ignored=ignored,
             inactive_count=inactive_count,
             issues=tuple(issues),
@@ -398,23 +437,72 @@ def _document_names(document: dict) -> tuple[str, ...]:
     return tuple(sorted(name for name in names if name))
 
 
+def normalize_iban(value) -> str:
+    """Compacta un IBAN para compararlo. Vacío si no es comparable."""
+    text = _text(value).upper()
+    if not text:
+        return ""
+    compact = re.sub(r"[^A-Z0-9]", "", text)
+    # Un IBAN enmascarado (asteriscos o puntos en el original) no se puede
+    # comparar: los dígitos ocultos podrían diferir. Mejor no opinar que
+    # levantar una alarma falsa sobre una cuenta de cobro.
+    if any(marker in text for marker in ("*", "•", "…")):
+        return ""
+    return compact
+
+
+def _matched(vendor: SageVendor, document: dict, method: str, score: float,
+             *, tax_id_confirmed: bool = False,
+             warning: str | None = None) -> SupplierResolution:
+    """Resolución vinculada a un proveedor único, con veredicto de cuenta."""
+    document_iban = normalize_iban(document.get("iban"))
+    vendor_iban = normalize_iban(vendor.iban)
+    iban_matches = (
+        document_iban == vendor_iban if document_iban and vendor_iban else None
+    )
+    if iban_matches is False and not warning:
+        warning = IBAN_MISMATCH_WARNING
+    return SupplierResolution(
+        "matched" if vendor.active else "inactive",
+        method,
+        1,
+        score=score,
+        tax_id_confirmed=tax_id_confirmed,
+        warning=warning if vendor.active else INACTIVE_VENDOR_WARNING,
+        vendor_code=vendor.source_id,
+        vendor_legal_name=vendor.legal_name,
+        iban_matches=iban_matches,
+    )
+
+
 def resolve_document_supplier(
     document: dict, master: SageVendorMaster
 ) -> SupplierResolution:
-    """Resuelve proveedor con prioridad Tax ID > exacto normalizado > fuzzy."""
+    """Resuelve proveedor con prioridad Tax ID > exacto normalizado > fuzzy.
+
+    Se busca primero entre los proveedores activos y, si no aparece, entre TODOS:
+    un proveedor dado de baja debe distinguirse de uno que nunca existió, porque
+    el motivo de revisión y la acción del revisor son distintos.
+    """
     vendors = master.active_vendors
     tax_id = normalize_tax_id(document.get("proveedor_tax_id"))
     if tax_id:
         candidates = [vendor for vendor in vendors if tax_id in vendor.tax_id_keys]
         if len(candidates) == 1:
-            return SupplierResolution(
-                "matched", "tax_id", 1, score=1.0, tax_id_confirmed=True
-            )
+            return _matched(candidates[0], document, "tax_id", 1.0,
+                            tax_id_confirmed=True)
         if len(candidates) > 1:
             return SupplierResolution(
                 "ambiguous", "tax_id", len(candidates), score=1.0,
                 tax_id_confirmed=True, warning=AMBIGUOUS_VENDOR_WARNING,
             )
+        inactive = [
+            vendor for vendor in master.vendors
+            if not vendor.active and tax_id in vendor.tax_id_keys
+        ]
+        if len(inactive) == 1:
+            return _matched(inactive[0], document, "tax_id", 1.0,
+                            tax_id_confirmed=True)
         return SupplierResolution(
             "not_found", "tax_id", 0, tax_id_confirmed=False,
             warning=TAX_ID_NOT_FOUND_WARNING,
@@ -431,7 +519,7 @@ def resolve_document_supplier(
         if any(name in vendor.normalized_names for name in names)
     ]
     if len(exact) == 1:
-        return SupplierResolution("matched", "exact_name", 1, score=1.0)
+        return _matched(exact[0], document, "exact_name", 1.0)
     if len(exact) > 1:
         return SupplierResolution(
             "ambiguous", "exact_name", len(exact), score=1.0,
@@ -448,16 +536,21 @@ def resolve_document_supplier(
         if score >= FUZZY_SIMILARITY_THRESHOLD:
             scored.append((vendor, score))
     if len(scored) == 1:
-        return SupplierResolution(
-            "matched", "fuzzy_name", 1, score=scored[0][1],
-            warning=FUZZY_VENDOR_FYI,
-        )
+        return _matched(scored[0][0], document, "fuzzy_name", scored[0][1],
+                        warning=FUZZY_VENDOR_FYI)
     if len(scored) > 1:
         return SupplierResolution(
             "ambiguous", "fuzzy_name", len(scored),
             score=max(score for _, score in scored),
             warning=AMBIGUOUS_VENDOR_WARNING,
         )
+
+    inactive_exact = [
+        vendor for vendor in master.vendors
+        if not vendor.active and any(name in vendor.normalized_names for name in names)
+    ]
+    if len(inactive_exact) == 1:
+        return _matched(inactive_exact[0], document, "exact_name", 1.0)
     return SupplierResolution(
         "not_found", "fuzzy_name", 0, warning=VENDOR_NOT_FOUND_WARNING
     )

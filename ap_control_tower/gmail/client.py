@@ -23,8 +23,14 @@ ENV_CLIENT_ID = "AP_GMAIL_CLIENT_ID"
 ENV_CLIENT_SECRET = "AP_GMAIL_CLIENT_SECRET"
 ENV_REFRESH_TOKEN = "AP_GMAIL_REFRESH_TOKEN"
 
-DEFAULT_USER = "mberhensen@bmcinnovation.com"
-DEFAULT_LABEL = "AP-DEMO"
+#: Buzón del circuito AP. La casilla de facturación de Brand UP
+#: (mberhensen@bmcinnovation.com) reenvía acá; el sistema lee solo este buzón.
+DEFAULT_USER = "apcontroltowerdemo@gmail.com"
+#: Etiqueta OPCIONAL para acotar la búsqueda. Vacía = todo el buzón. Los correos
+#: reenviados llegan sin etiquetar, así que la etiqueta no puede ser obligatoria.
+DEFAULT_LABEL = ""
+#: Un correo entra al circuito por traer un PDF, no por estar etiquetado.
+PDF_QUERY = "has:attachment filename:pdf"
 
 
 @dataclass(frozen=True)
@@ -146,6 +152,8 @@ class RealGmailClient:
         return self._service
 
     def _label_id(self, service) -> str | None:
+        if not (self._config.label or "").strip():
+            return None
         labels = service.users().labels().list(
             userId=self._config.user).execute().get("labels", [])
         for label in labels:
@@ -154,13 +162,23 @@ class RealGmailClient:
         return None
 
     def list_messages(self, max_results: int = 50) -> list:
+        """Todo correo del buzón con al menos un PDF adjunto.
+
+        La etiqueta, si está configurada Y existe, acota la búsqueda. Antes era
+        obligatoria y su ausencia devolvía cero mensajes sin explicación: con el
+        reenvío desde la casilla de facturación los correos llegan sin etiquetar,
+        así que la bandeja quedaba vacía para siempre.
+        """
         service = self._build_service()
         label_id = self._label_id(service)
-        if label_id is None:
-            return []
-        resp = service.users().messages().list(
-            userId=self._config.user, labelIds=[label_id],
-            maxResults=max_results).execute()
+        params = {
+            "userId": self._config.user,
+            "q": PDF_QUERY,
+            "maxResults": max_results,
+        }
+        if label_id is not None:
+            params["labelIds"] = [label_id]
+        resp = service.users().messages().list(**params).execute()
         out: list = []
         for meta in resp.get("messages", []) or ():
             full = service.users().messages().get(

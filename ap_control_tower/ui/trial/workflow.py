@@ -168,6 +168,38 @@ def _field_warnings(result) -> list[str]:
     return relevant
 
 
+def _vendor_master_reasons(result) -> list[str]:
+    """Controles que solo existen si hay maestro de proveedores cargado.
+
+    Sin maestro no se emite ningún motivo: la ausencia del maestro ya se informa
+    aparte y convertirla en un bloqueo dejaría todo el lote retenido.
+    """
+    resolution = getattr(result, "supplier_resolution", None)
+    if not resolution:
+        return []
+    reasons: list[str] = []
+    status = str(resolution.get("status") or "")
+    vendor = str(resolution.get("vendor_legal_name") or "").strip()
+    if status == "not_found":
+        reasons.append(
+            "proveedor no dado de alta en el maestro de Sage: verificar el alta "
+            "antes de pagar")
+    elif status == "inactive":
+        reasons.append(
+            "proveedor dado de baja en el maestro de Sage"
+            + (f" ({vendor})" if vendor else "")
+            + ": no debe pagarse sin reactivación")
+    # Desvío de pago: la factura declara una cuenta de cobro distinta de la
+    # registrada. Es el control de mayor impacto del maestro, así que se enuncia
+    # sin volcar ninguno de los dos IBAN.
+    if resolution.get("iban_matches") is False:
+        reasons.append(
+            "la cuenta de cobro de la factura no coincide con la registrada en "
+            "el maestro: confirmar el cambio con el proveedor por un canal "
+            "conocido antes de pagar")
+    return reasons
+
+
 def review_reasons(result, *, duplicate: bool = False,
                    classification_requested: bool = False) -> list[str]:
     """Política canónica. La ausencia de OC y una proforma clara no son errores."""
@@ -235,6 +267,7 @@ def review_reasons(result, *, duplicate: bool = False,
             if not is_own_company(cliente):
                 reasons.append("la factura no está emitida a nombre de una "
                                "sociedad propia: verificar destinatario")
+        reasons.extend(_vendor_master_reasons(result))
         reasons.extend(_field_warnings(result))
     elif doc_type == "proforma_or_advance_request":
         reasons.append("proforma / anticipo: requiere autorización humana para pago")

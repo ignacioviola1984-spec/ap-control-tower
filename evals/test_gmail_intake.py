@@ -25,6 +25,16 @@ def check(cond: bool, label: str) -> None:
         failures.append(label)
 
 
+class _FakeContainer:
+    """Contenedor mínimo: el panel agrupa la cabecera y las acciones en uno."""
+
+    def caption(self, *args, **kwargs) -> None:
+        return None
+
+    def button(self, *args, **kwargs) -> bool:
+        return False
+
+
 def main() -> int:
     import os
 
@@ -53,10 +63,12 @@ def main() -> int:
     os.environ["AP_GMAIL_REFRESH_TOKEN"] = "rtok"
     try:
         cfg = g.GmailConfig.from_env()
-        check(cfg is not None and cfg.user == "mberhensen@bmcinnovation.com"
-              and cfg.label == "AP-DEMO",
-              "defaults AP_GMAIL_USER=mberhensen@bmcinnovation.com, label AP-DEMO")
-        check(g.mailbox_address() == "mberhensen@bmcinnovation.com",
+        # La casilla de facturación reenvía a este buzón; la etiqueta es
+        # opcional porque el correo reenviado llega sin etiquetar.
+        check(cfg is not None and cfg.user == "apcontroltowerdemo@gmail.com"
+              and cfg.label == "",
+              "defaults AP_GMAIL_USER=apcontroltowerdemo@gmail.com, sin etiqueta obligatoria")
+        check(g.mailbox_address() == "apcontroltowerdemo@gmail.com",
               "el buzón AP asignado es visible aun antes de conectar credenciales")
         os.environ["AP_GMAIL_LABEL"] = "OTRA"
         os.environ["AP_GMAIL_USER"] = "otro@dominio.com"
@@ -128,8 +140,9 @@ def main() -> int:
         gmail_panel.st.session_state = {"_trial_gmail_browse": True}
         gmail_panel.st.caption = lambda text: None
         gmail_panel.st.dataframe = lambda frame, **kwargs: captured_frames.append(frame)
-        gmail_panel.st.info = lambda text: infos.append(text)
+        gmail_panel.st.info = lambda text, **kwargs: infos.append(text)
         gmail_panel.st.multiselect = lambda *args, **kwargs: []
+        gmail_panel.st.container = lambda *args, **kwargs: _FakeContainer()
         gmail_panel.render_gmail_panel(lambda files: None, client=fake, require_open=True)
     finally:
         gmail_panel.st.session_state = original_state

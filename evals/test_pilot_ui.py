@@ -83,10 +83,12 @@ def main() -> int:
         login = AppTest.from_file(str(ROOT / "app.py"))
         login.run(timeout=30)
         visible = _visible_login(login)
+        # "Brand UP" pasó a un bloque propio con filetes; el título de la
+        # tarjeta usa capitalización de oración, como el resto del producto.
         for required in (
             "Torre de Control para Cuentas a Pagar",
             "**Brand UP**",
-            "Acceso al Sistema",
+            "Acceso al sistema",
             "Contraseña",
             "Ingresar",
         ):
@@ -162,9 +164,11 @@ def main() -> int:
             "showSidebarNavigation = true" in streamlit_config,
             "la navegación registrada permanece visible en el sidebar",
         )
-        check('st.sidebar.markdown("#### Brand UP")' in source,
+        check('st.markdown("#### Brand UP")' in source,
               "Brand UP tiene jerarquía tipográfica de marca")
-        check("mberhensen@bmcinnovation.com" in source,
+        check('st.navigation(pages, position="hidden")' in source,
+              "la marca se dibuja por encima de las pestañas del sidebar")
+        check("apcontroltowerdemo@gmail.com" in source,
               "la interfaz identifica el buzón AP asignado")
         check("Abrir Documentos" in source and "st.switch_page" in source,
               "la confirmación de carga ofrece acceso directo a Documentos")

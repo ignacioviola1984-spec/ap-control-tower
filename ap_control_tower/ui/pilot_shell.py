@@ -48,6 +48,11 @@ PAGES = [
         "title": "Indicadores",
         "icon": ":material/analytics:",
     },
+    {
+        "page": "app_pages/nuevo_proveedor.py",
+        "title": "Nuevo proveedor",
+        "icon": ":material/person_add:",
+    },
 ]
 
 
@@ -128,9 +133,19 @@ def render() -> None:
     _seed_local_preview()
     active = sess.get_session()
 
-    st.sidebar.markdown("### Torre de Control para Cuentas a Pagar")
-    st.sidebar.markdown("#### Brand UP")
-    page = st.navigation(_streamlit_pages(), position="sidebar", expanded=True)
+    # El widget de navegación se ancla arriba de la barra lateral y no respeta
+    # el orden de escritura, así que se oculta y los enlaces se dibujan a mano:
+    # es la única forma de dejar la marca por encima de las pestañas.
+    pages = _streamlit_pages()
+    page = st.navigation(pages, position="hidden")
+
+    with st.sidebar:
+        st.markdown("### Torre de Control para Cuentas a Pagar")
+        st.markdown("#### Brand UP")
+        st.divider()
+        for item in pages:
+            st.page_link(item, width="stretch")
+        st.divider()
 
     st.sidebar.caption(
         f"Sesión activa · {len(active.results) + len(active.errors)} documento(s)"

@@ -83,6 +83,10 @@ class PocResult:
     #: Texto extraído del PDF, retenido en memoria para que el asistente pueda
     #: responder sobre el contenido. El PDF binario nunca se envía a OpenAI.
     source_text: str = ""
+    #: Vínculo con el maestro de proveedores (forma segura, sin IBAN en claro).
+    #: Lo completa la sesión al aplicar el maestro; la política de revisión lo
+    #: lee desde acá para no tener que arrastrarlo por cuatro firmas distintas.
+    supplier_resolution: dict[str, Any] | None = None
 
 
 def _fold(s: str) -> str:

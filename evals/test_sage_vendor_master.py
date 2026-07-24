@@ -5,9 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from decimal import Decimal
 from io import BytesIO
+import os
 import sys
 from pathlib import Path
 import unittest
+import unittest.mock
 
 from openpyxl import Workbook
 
@@ -25,6 +27,7 @@ from ap_control_tower.sage import (
     normalize_supplier_name,
     resolve_document_supplier,
 )
+from ap_control_tower.audit import AuditTrail
 from ap_control_tower.ui.trial import session as trial_session
 from ap_control_tower.ui.trial import workflow
 
@@ -59,11 +62,12 @@ def workbook_bytes(rows: list[list]) -> bytes:
     return stream.getvalue()
 
 
-def vendor_row(code: str, name: str, tax_id: str = "", *, country: str = "ES") -> list:
+def vendor_row(code: str, name: str, tax_id: str = "", *, country: str = "ES",
+               iban: str = "168", inactive: bool = False) -> list:
     return [
         "168", code, f"4100{code}", "PRO", country, tax_id,
         f"{country}{tax_id}" if tax_id else "168", name, name,
-        "168", "168", "30", "No", "168",
+        iban, "168", "30", "Sí" if inactive else "No", "168",
     ]
 
 
@@ -262,6 +266,168 @@ class SageVendorMasterTests(unittest.TestCase):
         self.assertTrue(event.evidence["confirmacion_previa_revertida"])
         self.assertTrue(event.evidence["decision_pago_previa_revertida"])
         self.assertTrue(active.audit.verify_chain())
+
+
+class VendorMasterPaymentControlsTests(unittest.TestCase):
+    """El maestro debe DISPARAR controles de pago, no solo mostrarse."""
+
+    IBAN_REGISTRADO = "ES9121000418450200051332"
+    IBAN_DISTINTO = "ES6800495144082310038771"
+
+    def _master(self, **kwargs):
+        # Se acompaña de un proveedor activo: un maestro donde TODOS estén de
+        # baja se rechaza al cargar, y ese no es el caso bajo prueba.
+        return load_vendor_master_xlsx(
+            workbook_bytes([
+                vendor_row("V001", "Empresa S.L.U.", "B12345678", **kwargs),
+                vendor_row("V999", "Otro Proveedor Activo SL", "B11111111"),
+            ]),
+            filename="proveedores.xlsx",
+        )
+
+    def _document(self, iban: str | None):
+        doc = document(name="Empresa S.L.U.", tax_id="B12345678")
+        doc["iban"] = iban
+        return doc
+
+    def _reasons(self, resolution) -> list[str]:
+        result = FakeResult(doc_id="DOC-1", document=self._document(None))
+        result.supplier_resolution = resolution.safe_dict()
+        return workflow.review_reasons(result)
+
+    def test_invoice_bank_account_differing_from_sage_is_flagged(self) -> None:
+        """El control de mayor impacto: desvío del pago a otra cuenta."""
+        master = self._master(iban=self.IBAN_REGISTRADO)
+
+        resolution = resolve_document_supplier(
+            self._document(self.IBAN_DISTINTO), master)
+
+        self.assertIs(resolution.iban_matches, False)
+        motivos = " ".join(self._reasons(resolution))
+        self.assertIn("cuenta de cobro", motivos)
+        # El motivo nunca puede volcar ninguno de los dos IBAN.
+        self.assertNotIn(self.IBAN_REGISTRADO, motivos)
+        self.assertNotIn(self.IBAN_DISTINTO, motivos)
+
+    def test_matching_bank_account_raises_no_reason(self) -> None:
+        master = self._master(iban=self.IBAN_REGISTRADO)
+
+        resolution = resolve_document_supplier(
+            self._document(self.IBAN_REGISTRADO), master)
+
+        self.assertIs(resolution.iban_matches, True)
+        self.assertEqual(self._reasons(resolution), [])
+
+    def test_masked_invoice_iban_is_not_comparable_and_raises_no_alarm(self) -> None:
+        """Un IBAN enmascarado oculta dígitos: no se puede afirmar que difiere."""
+        master = self._master(iban=self.IBAN_REGISTRADO)
+
+        resolution = resolve_document_supplier(
+            self._document("ES91 **** **** **** 1332"), master)
+
+        self.assertIsNone(resolution.iban_matches)
+        self.assertEqual(self._reasons(resolution), [])
+
+    def test_sage_master_without_iban_raises_no_alarm(self) -> None:
+        master = self._master()  # columna I.B.A.N. con el placeholder "168"
+
+        resolution = resolve_document_supplier(
+            self._document(self.IBAN_DISTINTO), master)
+
+        self.assertIsNone(resolution.iban_matches)
+        self.assertEqual(self._reasons(resolution), [])
+
+    def test_inactive_vendor_is_distinguished_from_an_unknown_one(self) -> None:
+        """Dar de baja y no existir exigen acciones distintas del revisor."""
+        master = self._master(inactive=True)
+
+        de_baja = resolve_document_supplier(
+            self._document(None), master)
+        self.assertEqual(de_baja.status, "inactive")
+        self.assertFalse(de_baja.accepted)
+        self.assertIn("dado de baja", " ".join(self._reasons(de_baja)))
+
+        desconocido = resolve_document_supplier(
+            document(name="Otra Cosa SL", tax_id="B99999999"), master)
+        self.assertEqual(desconocido.status, "not_found")
+        self.assertIn("no dado de alta", " ".join(self._reasons(desconocido)))
+
+    def test_without_a_loaded_master_no_vendor_reason_is_emitted(self) -> None:
+        """Sin maestro no se bloquea nada: retendría el lote completo."""
+        result = FakeResult(doc_id="DOC-SIN-MAESTRO",
+                            document=self._document(self.IBAN_DISTINTO))
+
+        self.assertEqual(workflow.review_reasons(result), [])
+
+    def test_resolution_never_publishes_the_registered_iban(self) -> None:
+        master = self._master(iban=self.IBAN_REGISTRADO)
+
+        resolution = resolve_document_supplier(
+            self._document(self.IBAN_DISTINTO), master)
+
+        serialized = str(resolution.safe_dict())
+        self.assertNotIn(self.IBAN_REGISTRADO, serialized)
+        self.assertIn("iban_matches", resolution.safe_dict())
+
+
+class ProvisionedMasterTests(unittest.TestCase):
+    """El maestro es dato de la instalación: se aplica solo, sin que el
+    operador tenga que acordarse de subirlo en cada sesión."""
+
+    def test_session_applies_the_installed_master_without_user_action(self) -> None:
+        import tempfile
+
+        from ap_control_tower.sage import provisioning
+
+        with tempfile.TemporaryDirectory() as tmp:
+            ruta = Path(tmp) / "vendor_master.xlsx"
+            ruta.write_bytes(valid_master_bytes())
+            with unittest.mock.patch.dict(
+                os.environ, {provisioning.ENV_VAR: str(ruta)}, clear=False
+            ):
+                session = trial_session.new_session()
+
+        self.assertIsNotNone(session.supplier_master)
+        self.assertEqual(session.supplier_master_summary["active_vendors"], 5)
+        self.assertTrue(any(
+            event.action == "maestro-proveedores-sage-aplicado"
+            for event in session.audit.events
+        ))
+
+    def test_missing_master_does_not_break_the_session(self) -> None:
+        from ap_control_tower.sage import provisioning
+
+        with unittest.mock.patch.dict(
+            os.environ, {provisioning.ENV_VAR: "/no/existe/maestro.xlsx"}, clear=False
+        ):
+            session = trial_session.new_session()
+
+        self.assertIsNone(session.supplier_master)
+
+    def test_new_vendor_joins_the_master_and_queues_for_sage(self) -> None:
+        """Alta → concilia en el acto y viaja con el lote de pago."""
+        session = trial_session.TrialSession(
+            audit=AuditTrail(run_id="alta", commit="test"))
+        session.supplier_master = load_vendor_master_xlsx(
+            valid_master_bytes(), filename="proveedores.xlsx")
+        antes = len(session.supplier_master.active_vendors)
+
+        fila = {
+            "Código cuenta": "41000999", "Descripción": "NUEVO PROVEEDOR SL",
+            "Clien./Prov.": "Proveedor", "Sigla": "ES", "CIF/DNI": "B44444444",
+            "Cód. divisa": "EUR", "Ind. prorrata": "", "Bloqueada": "No",
+        }
+        trial_session.register_new_vendor(
+            session, fila, {"iban": "ES9121000418450200051332", "bic": ""})
+
+        self.assertEqual(len(session.supplier_master.active_vendors), antes + 1)
+        self.assertEqual(len(session.pending_vendors), 1)
+        # Una factura de ese proveedor concilia sin esperar al export del ERP.
+        resolution = resolve_document_supplier(
+            document(name="NUEVO PROVEEDOR SL", tax_id="B44444444"),
+            session.supplier_master,
+        )
+        self.assertTrue(resolution.accepted)
 
 
 if __name__ == "__main__":

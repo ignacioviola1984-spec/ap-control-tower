@@ -126,7 +126,9 @@ def _render_manual() -> None:
             _process_and_store(files, canal="carga-manual")
 
 
-def _render_sage_master() -> None:
+def render_sage_master() -> None:
+    """Carga del maestro de Sage. Vive en la página de proveedores, no en el
+    ingreso de documentos: es mantenimiento de datos maestros, no operación."""
     session = sess.get_session()
     with st.container(border=True):
         st.markdown("#### Maestro de proveedores de Sage")
@@ -187,9 +189,11 @@ def _render_sage_master() -> None:
 def _render_gmail() -> None:
     with st.container(border=True):
         st.markdown("#### Bandeja de correo")
+        # La bandeja se muestra sola: la casilla de facturación reenvía acá y el
+        # operador tiene que ver lo que llegó sin apretar nada antes.
         gmail_panel.render_gmail_panel(
             on_import=lambda files: _process_and_store(files, canal="correo-ap"),
-            require_open=True)
+            require_open=False)
 
 
 def render() -> None:
@@ -201,12 +205,5 @@ def render() -> None:
             "motor local controlado y quedarán señalados para revisión.",
             icon=":material/warning:",
         )
-    with st.container(border=True):
-        st.markdown("**Tratamiento de los archivos**")
-        st.write(
-            "El PDF se usa durante el procesamiento y luego se descarta. Se conservan "
-            "la extracción estructurada, las métricas y la auditoría según la configuración."
-        )
-    _render_sage_master()
     _render_manual()
     _render_gmail()

@@ -41,13 +41,47 @@ class TrialSession:
     supplier_master: object | None = field(default=None, repr=False)
     supplier_master_summary: dict = field(default_factory=dict)
     supplier_resolutions: dict = field(default_factory=dict) # doc_id -> match no sensible
+    #: Altas de proveedor hechas en la sesión, pendientes de llegar a Sage.
+    #: Viajan con el lote de pago: el pago a un proveedor nuevo no sirve de nada
+    #: si su ficha no está dada de alta en el ERP.
+    pending_vendors: list = field(default_factory=list)
     persistence_error: str | None = None
 
 
 def new_session() -> TrialSession:
     audit = AuditTrail(commit="pilot-session")
     audit.add(agent="sistema", action="sesion-iniciada")
-    return TrialSession(audit=audit)
+    session = TrialSession(audit=audit)
+    _apply_provisioned_master(session)
+    return session
+
+
+def _apply_provisioned_master(session: TrialSession) -> None:
+    """Aplica el maestro instalado en el sistema, sin intervención del usuario.
+
+    El maestro es configuración de la instalación, no un archivo que el operador
+    deba recordar subir en cada sesión. Si no hay ninguno instalado la sesión
+    arranca igual: cada documento queda advertido por falta de conciliación.
+    """
+    import os
+
+    from ...sage.provisioning import load_provisioned_vendor_master
+
+    # Los documentos del modo vista previa son sintéticos: conciliarlos contra
+    # el maestro real los dejaría a todos como "proveedor no dado de alta".
+    if os.environ.get("AP_PREVIEW_MODE", "").strip() == "1":
+        return
+    master = load_provisioned_vendor_master()
+    if master is None:
+        return
+    session.supplier_master = master
+    session.supplier_master_summary = master.safe_summary()
+    session.audit.add(
+        agent="sistema",
+        action="maestro-proveedores-sage-aplicado",
+        result="ok",
+        evidence={**master.safe_summary(), "origen": "provisionado"},
+    )
 
 
 def record_intake(session: TrialSession, canal: str, cantidad: int) -> None:
@@ -64,6 +98,8 @@ def _resolve_supplier(session: TrialSession, result):
     from ...sage.vendor_master import (
         AMBIGUOUS_VENDOR_WARNING,
         FUZZY_VENDOR_FYI,
+        IBAN_MISMATCH_WARNING,
+        INACTIVE_VENDOR_WARNING,
         MISSING_VENDOR_IDENTITY_WARNING,
         TAX_ID_NOT_FOUND_WARNING,
         VENDOR_NOT_FOUND_WARNING,
@@ -72,6 +108,8 @@ def _resolve_supplier(session: TrialSession, result):
     sage_warnings = {
         AMBIGUOUS_VENDOR_WARNING,
         FUZZY_VENDOR_FYI,
+        IBAN_MISMATCH_WARNING,
+        INACTIVE_VENDOR_WARNING,
         MISSING_VENDOR_IDENTITY_WARNING,
         TAX_ID_NOT_FOUND_WARNING,
         VENDOR_NOT_FOUND_WARNING,
@@ -95,6 +133,10 @@ def _resolve_supplier(session: TrialSession, result):
         safe_resolution["payment_decision_reverted"] = bool(previous_payment)
         safe_resolution["review_confirmation_reverted"] = review_reverted
     session.supplier_resolutions[str(result.doc_id)] = safe_resolution
+    # La política de revisión lee el vínculo desde el propio resultado: así los
+    # controles del maestro llegan a todas las vistas sin arrastrar la sesión
+    # por cada firma (mismo criterio que source_text para el asistente).
+    result.supplier_resolution = safe_resolution
     return resolution
 
 
@@ -152,6 +194,61 @@ def load_sage_vendor_master(
         resolution = _resolve_supplier(session, result)
         _audit_supplier_resolution(session, result, resolution)
     return dict(session.supplier_master_summary)
+
+
+def register_new_vendor(session: TrialSession, fila: dict, extras: dict) -> None:
+    """Suma el alta al maestro vivo y la deja pendiente de envío a Sage.
+
+    Incorporarla al maestro en memoria hace que las facturas de ese proveedor
+    concilien desde el momento del alta, sin esperar al próximo export del ERP.
+    """
+    from ...sage.vendor_master import SageVendor, SageVendorMaster, _tax_keys
+
+    master = session.supplier_master
+    country = (fila.get("Sigla") or "").upper() or None
+    vendor = SageVendor(
+        source_id=fila.get("Código cuenta") or fila.get("CIF/DNI") or "",
+        accounting_code=fila.get("Código cuenta") or None,
+        legal_name=fila.get("Descripción") or "",
+        trading_name=None,
+        tax_id_keys=_tax_keys([fila.get("CIF/DNI")], country),
+        country_code=country,
+        iban=extras.get("iban") or None,
+        bank_code=None,
+        payment_terms_code=None,
+        source_row=0,
+        active=fila.get("Bloqueada") != "Sí",
+    )
+    if master is not None:
+        session.supplier_master = SageVendorMaster(
+            vendors=master.vendors + (vendor,),
+            fingerprint=master.fingerprint,
+            source_filename=master.source_filename,
+            sheet_name=master.sheet_name,
+            rows_seen=master.rows_seen + 1,
+            rows_ignored=master.rows_ignored,
+            inactive_count=master.inactive_count + int(not vendor.active),
+            issues=master.issues,
+        )
+        session.supplier_master_summary = session.supplier_master.safe_summary()
+
+    session.pending_vendors.append({**fila, "I.B.A.N.": extras.get("iban") or "",
+                                    "BIC/SWIFT": extras.get("bic") or ""})
+    session.audit.add(
+        agent="alta-proveedor",
+        action="alta-proveedor-registrada",
+        result="pendiente-de-sage",
+        evidence={
+            "descripcion": fila.get("Descripción"),
+            "sigla": country,
+            "con_iban": bool(extras.get("iban")),
+            "bloqueada": fila.get("Bloqueada") == "Sí",
+            "escribe_en_sage": False,
+        },
+    )
+    # Las facturas ya cargadas de ese proveedor pasan a conciliar.
+    for result in session.results:
+        _resolve_supplier(session, result)
 
 
 def add_results(session: TrialSession, results) -> None:

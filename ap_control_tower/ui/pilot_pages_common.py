@@ -229,6 +229,21 @@ def render_document_detail(active, result) -> None:
             "**Importe total:** "
             + format_amount(document.get("importe_total"), document.get("moneda"))
         )
+        if document.get("retencion_irpf") not in (None, ""):
+            st.write(
+                "**Retención IRPF:** −"
+                + format_amount(document.get("retencion_irpf"), document.get("moneda"))
+            )
+        if document.get("saldo_pendiente") not in (None, ""):
+            saldo = format_amount(document.get("saldo_pendiente"), document.get("moneda"))
+            try:
+                pagada = float(str(document["saldo_pendiente"])) == 0
+            except (TypeError, ValueError):
+                pagada = False
+            st.write(
+                f"**Saldo pendiente:** {saldo}"
+                + ("  ·  :red[**ya pagada**]" if pagada else "")
+            )
         st.write(f"**Moneda:** {str(document.get('moneda') or '—').upper()}")
         st.write(f"**CUIT / ID fiscal:** {mask_tax_id(document.get('proveedor_tax_id')) or '—'}")
         st.write(

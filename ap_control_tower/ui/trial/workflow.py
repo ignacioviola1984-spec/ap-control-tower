@@ -214,6 +214,27 @@ def review_reasons(result, *, duplicate: bool = False,
                                "requiere confirmación humana del tipo documental")
         except InvalidOperation:
             reasons.append("importe total ilegible")
+        # Factura ya saldada (saldo pendiente 0 con total positivo): la cobró el
+        # proveedor por tarjeta o domiciliación. Si entra a un lote de pago se
+        # paga dos veces lo mismo.
+        try:
+            saldo = document.get("saldo_pendiente")
+            if present(saldo) and Decimal(str(saldo)) == 0 \
+                    and present(document.get("importe_total")) \
+                    and Decimal(str(document["importe_total"])) > 0:
+                reasons.append("factura ya pagada (saldo pendiente 0): no debe "
+                               "incluirse en un lote de pago")
+        except InvalidOperation:
+            pass
+        # El destinatario no es ninguna sociedad propia: puede ser una factura
+        # de un tercero contabilizada por error.
+        cliente = document.get("cliente_nombre")
+        if present(cliente):
+            from ...extraction.document_ai import is_own_company
+
+            if not is_own_company(cliente):
+                reasons.append("la factura no está emitida a nombre de una "
+                               "sociedad propia: verificar destinatario")
         reasons.extend(_field_warnings(result))
     elif doc_type == "proforma_or_advance_request":
         reasons.append("proforma / anticipo: requiere autorización humana para pago")

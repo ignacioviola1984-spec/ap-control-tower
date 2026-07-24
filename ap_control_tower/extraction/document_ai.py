@@ -139,6 +139,15 @@ def _is_plausible_tax_id(value: str | None) -> bool:
     return bool(compact) and bool(_PLAUSIBLE_TAX_ID_RE.match(compact))
 
 
+def is_own_company(value: str | None) -> bool:
+    """¿El nombre corresponde a una sociedad propia del grupo?
+
+    API pública para que los controles del flujo puedan detectar facturas
+    emitidas a un tercero sin depender de helpers internos.
+    """
+    return _is_own_party(value)
+
+
 def _tax_id_key(value: str | None) -> str:
     compact = re.sub(r"\W", "", value or "").upper()
     if compact.startswith("ES") and len(compact) == 11:
@@ -801,6 +810,31 @@ def _amount_token_value(token: str) -> Decimal | None:
     return _money(value)
 
 
+_RETENTION_LINE_RE = re.compile(r"(?i)\b(?:irpf|retenci[oó]n|retencion|withholding)\b")
+
+
+def _retention_amount(text: str) -> Decimal | None:
+    """Importe de la retención practicada (IRPF / retención a cuenta).
+
+    No usa el token de importe genérico porque las facturas de autónomos suelen
+    escribir el importe sin decimales ("- 15% IRPF 375€"), y ese token exige
+    decimales o separador de miles.
+    """
+    for line in text.splitlines():
+        if not _RETENTION_LINE_RE.search(line):
+            continue
+        # Quitar los porcentajes ("15%") para no confundir el tipo con el importe.
+        cleaned = re.sub(r"\d+(?:[.,]\d+)?\s*%", " ", line)
+        values = []
+        for match in re.finditer(r"[-+]?\d[\d.,]*", cleaned):
+            parsed = _money(_decimal_value(match.group(0)))
+            if parsed is not None and parsed != 0:
+                values.append(abs(parsed))
+        if values:
+            return max(values)
+    return None
+
+
 def _labelled_amount(
     text: str,
     labels: tuple[str, ...],
@@ -954,6 +988,23 @@ def refine_mapped_document(
         recomposed = final_net + (final_tax or Decimal("0"))
         doc["importe_total"] = f"{recomposed.quantize(Decimal('0.01'))}"
 
+    # Retención practicada (IRPF / retención a cuenta): el total a pagar es
+    # neto + IVA - retención. Sin este campo, una factura de autónomo descuadra
+    # y no se sabe cuánto pagar realmente.
+    retencion = _retention_amount(text)
+    if retencion is not None and retencion != 0:
+        doc["retencion_irpf"] = f"{abs(retencion).quantize(Decimal('0.01'))}"
+
+    # Saldo pendiente: 0 significa factura YA PAGADA (Zoom cobró con tarjeta).
+    # Es la señal que evita un doble pago.
+    saldo = _labelled_amount(
+        text,
+        ("invoice balance", "saldo pendiente", "balance due", "importe pendiente",
+         "saldo a pagar", "outstanding balance"),
+    )
+    if saldo is not None:
+        doc["saldo_pendiente"] = f"{saldo.quantize(Decimal('0.01'))}"
+
     # Sin tipo de IVA declarado y con una terna que no cuadra, la partición
     # neto/IVA no es fiable: el documento no desglosa impuestos (caso Field'N Feel,
     # con inversión del sujeto pasivo, donde se inventó 2028 + 1814 para un total
@@ -1019,10 +1070,11 @@ def _validate_invoice(doc: dict, text: str, confidences: dict[str, Decimal]) -> 
         net = Decimal(str(doc["importe_neto"]))
         tax = Decimal(str(doc["importe_iva"]))
         total = Decimal(str(doc["importe_total"]))
-        if abs((net + tax) - total) > Decimal("0.02"):
-            # Un total MENOR que base+IVA suele explicarse por retención/IRPF o
-            # descuento (habitual en facturas de autónomos). En ese caso la
-            # identidad estricta no aplica y no es una inconsistencia real.
+        # Con retención el total es neto + IVA - retención. Se RECONCILIA con el
+        # importe extraído en vez de silenciar la validación: silenciarla sin
+        # comprobar enmascaraba errores reales de importe.
+        retencion = _money(doc.get("retencion_irpf")) or Decimal("0")
+        if abs((net + tax - retencion) - total) > Decimal("0.02"):
             deduction = (net + tax) - total
             folded_total = _fold(text)
             has_deduction_note = any(
@@ -1032,7 +1084,9 @@ def _validate_invoice(doc: dict, text: str, confidences: dict[str, Decimal]) -> 
                     "rappel", "bonificacion", "a percibir", "liquido",
                 )
             )
-            if not (has_deduction_note and deduction > Decimal("0")):
+            if retencion or not (has_deduction_note and deduction > Decimal("0")):
+                # Si la retención ya se conocía y aun así no cuadra, es un
+                # descuadre real y debe avisarse.
                 warnings.append("base + IVA no coincide con el total")
     except (InvalidOperation, TypeError, KeyError):
         pass

@@ -42,7 +42,9 @@ FIELD_ORDER = [
     "importe_neto",
     "tipo_iva",
     "importe_iva",
+    "retencion_irpf",
     "importe_total",
+    "saldo_pendiente",
     "tratamiento_iva",
     "metodo_pago",
     "proveedor_banco",
@@ -75,7 +77,9 @@ FIELD_KINDS = {
     "importe_neto": "amount",
     "tipo_iva": "amount",
     "importe_iva": "amount",
+    "retencion_irpf": "amount",
     "importe_total": "amount",
+    "saldo_pendiente": "amount",
     "tratamiento_iva": "enum",
     "metodo_pago": "enum",
     "proveedor_banco": "str",
@@ -130,7 +134,15 @@ FIELD_NOTES = {
     "importe_neto": "Base imponible / importe sin IVA. null si no esta desglosado.",
     "tipo_iva": "Tipo de IVA en porcentaje (21, 10, 0...). null si no aparece.",
     "importe_iva": "Importe del IVA. null si no esta desglosado.",
+    "retencion_irpf": (
+        "Importe de la retencion practicada (IRPF, retencion a cuenta, "
+        "withholding). Habitual en facturas de autonomos: el total a pagar es "
+        "neto + IVA - retencion. null si el documento no la practica."),
     "importe_total": "Importe total del documento.",
+    "saldo_pendiente": (
+        "Importe que queda por pagar (invoice balance, saldo pendiente). 0 "
+        "significa factura YA PAGADA: no debe entrar a un lote de pago. null si "
+        "el documento no informa saldo."),
     "tratamiento_iva": (
         "'nacional' = IVA espanol desglosado; "
         "'intracomunitario_inversion_sujeto_pasivo' = reverse charge UE "

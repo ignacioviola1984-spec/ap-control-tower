@@ -246,7 +246,14 @@ def _decimal_value(raw: str | None, *, rate: bool = False) -> str | None:
         else:
             value = value.replace(",", "")
     elif "," in value:
-        value = value.replace(".", "").replace(",", ".")
+        # Comas agrupando de a 3 sin decimales: separador de miles anglosajon
+        # ("2,860" = dos mil ochocientos sesenta). El importe de Craft Marketeer
+        # se leia como 2,86: un factor 1000 sobre lo que se iba a pagar. Es la
+        # regla simetrica a la del punto europeo de mas abajo.
+        if re.fullmatch(r"[-+]?\d{1,3}(?:,\d{3})+", value):
+            value = value.replace(",", "")
+        else:
+            value = value.replace(".", "").replace(",", ".")
     elif "." in value:
         # Solo puntos agrupando de a 3: separador de miles europeo
         # ("2.500" = dos mil quinientos, "1.234.567"), no decimales. Sin esto se
@@ -314,8 +321,10 @@ def _currency_value(raw: str | None) -> str | None:
 
 def _clean_party_name(value: str) -> str:
     cleaned = re.sub(
-        # "Sello" precede al cuño impreso junto a la razón social (Securitas).
-        r"(?i)^\s*(?:supplier|client|cliente|nombre|account holder|address|sello)\s*[:#-]?\s*",
+        # "Sello" precede al cuño impreso junto a la razón social (Securitas);
+        # "Bank details" encabeza el bloque bancario y se colaba como cliente.
+        r"(?i)^\s*(?:supplier|client|cliente|nombre|account holder|address|sello|"
+        r"bank details|datos bancarios)\s*[:#-]?\s*",
         "",
         value,
     )
@@ -970,6 +979,31 @@ def _repair_net_from_identity(
         )
         if value is not None
     }
+    # Factura de autónomo en columna (Rebeca Ferrer): etiquetas y valores se
+    # alternan por línea y el parser corrió las columnas una posición, tomando
+    # el IVA como base y la retención como IVA. Con el tipo de IVA y el de
+    # retención declarados, la terna se despeja entera; se exige que los TRES
+    # importes figuren impresos en el documento antes de aceptarla.
+    rates = sorted({value for value in declared if value > 0}, reverse=True)
+    for vat_rate in rates:
+        for hold_rate in rates:
+            if hold_rate >= vat_rate:
+                continue
+            factor = Decimal("1") + (vat_rate - hold_rate) / Decimal("100")
+            base = (total / factor).quantize(Decimal("0.01"))
+            vat = (base * vat_rate / Decimal("100")).quantize(Decimal("0.01"))
+            hold = (base * hold_rate / Decimal("100")).quantize(Decimal("0.01"))
+            if base + vat - hold != total:
+                continue
+            if {base, vat, hold} <= present:
+                doc["importe_neto"] = f"{base}"
+                doc["importe_iva"] = f"{vat}"
+                doc["retencion_irpf"] = f"{hold}"
+                doc["tipo_iva"] = format(vat_rate.normalize(), "f")
+                for field in ("importe_neto", "importe_iva", "retencion_irpf", "tipo_iva"):
+                    confidences[field] = Decimal("0.90")
+                return
+
     candidate = (total - tax + retencion).quantize(Decimal("0.01"))
     if candidate > 0:
         if tax == 0:

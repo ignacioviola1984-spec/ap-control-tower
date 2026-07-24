@@ -398,6 +398,43 @@ TOTAL EUR 121,00
         self.assertEqual(document["proveedor_tax_id"], "12817931P")
         self.assertEqual(document["tratamiento_iva"], "nacional")
 
+    def test_column_layout_solves_the_whole_vat_and_withholding_triple(self):
+        """Rebeca Ferrer: el parser corrió las columnas y tomó el IVA como base."""
+        document = empty_document()
+        document.update({
+            "document_type": "invoice",
+            "importe_neto": "672.00",
+            "importe_iva": "480.00",
+            "importe_total": "3392.00",
+        })
+
+        refine_mapped_document(
+            document,
+            "Base imponible\n3.200,00\n% IVA\n21,00%\n% IRPF\n15,00%\n"
+            "IVA\n672,00\nIRPF\n480,00\nTotal factura\n3.392,00\n",
+            empty_document(),
+        )
+
+        self.assertEqual(document["importe_neto"], "3200.00")
+        self.assertEqual(document["importe_iva"], "672.00")
+        self.assertEqual(document["retencion_irpf"], "480.00")
+
+    def test_anglo_thousands_comma_is_not_a_decimal_separator(self):
+        """Craft Marketeer factura GBP 2,860 y se leia 2,86: factor 1000."""
+        from ap_control_tower.extraction.document_ai import _decimal_value
+
+        self.assertEqual(_decimal_value("2,860"), "2860.00")
+        self.assertEqual(_decimal_value("1,234,567"), "1234567.00")
+        # Sin romper el decimal europeo de dos digitos.
+        self.assertEqual(_decimal_value("44,38"), "44.38")
+        self.assertEqual(_decimal_value("3.200,00"), "3200.00")
+
+    def test_bank_details_heading_is_not_a_party_name(self):
+        from ap_control_tower.extraction.document_ai import _clean_party_name
+
+        self.assertEqual(
+            _clean_party_name("Bank details: CRAFT MARKETEER LTD"), "CRAFT MARKETEER LTD")
+
     def test_advance_already_invoiced_leaves_the_payable_amount_as_balance(self):
         """GESMAR descuenta un anticipo facturado aparte que viaja en el mismo lote."""
         document = empty_document()

@@ -429,6 +429,19 @@ TOTAL EUR 121,00
         self.assertEqual(_decimal_value("44,38"), "44.38")
         self.assertEqual(_decimal_value("3.200,00"), "3200.00")
 
+    def test_spanish_nif_is_accepted_only_when_the_check_letter_matches(self):
+        """El NIF de autonomo faltaba; aceptarlo sin validar colaba referencias."""
+        from ap_control_tower.extraction.document_ai import _tax_ids
+
+        # NIF reales de las facturas de autonomos del semestre.
+        self.assertIn("53341404B", _tax_ids("REBECA FERRER VIDAL\n53341404B\n"))
+        self.assertIn("12817931P", _tax_ids("Florencia Murga\nDNI 12817931P\n"))
+        # Referencia de 8 digitos + letra en una factura de suministro: la letra
+        # de control no cuadra, asi que no es un NIF y no debe desplazar al CIF.
+        found = _tax_ids("Endesa Energia, S.A.U.\nCIF A81948077\nRef 77084918A\n")
+        self.assertIn("A81948077", found)
+        self.assertNotIn("77084918A", found)
+
     def test_bank_details_heading_is_not_a_party_name(self):
         from ap_control_tower.extraction.document_ai import _clean_party_name
 

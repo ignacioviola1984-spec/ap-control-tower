@@ -50,7 +50,13 @@ LEGAL_SUFFIX_RE = re.compile(
     re.IGNORECASE,
 )
 TAX_ID_RE = re.compile(
-    r"\b(?:(?:ES|FR|NL|DE|IT|PT|BE|AT|IE|GB)[A-Z0-9]{8,14}|[A-Z]-?\d{7,8}[A-Z0-9]?)\b",
+    # El NIF español de persona física (8 dígitos + letra de control) faltaba:
+    # el validador lo aceptaba, pero el buscador nunca lo encontraba en el
+    # texto, así que las facturas de autónomos quedaban sin identificador
+    # fiscal aunque estuviera impreso (Paola Rivera, Rebeca Ferrer).
+    r"\b(?:(?:ES|FR|NL|DE|IT|PT|BE|AT|IE|GB)[A-Z0-9]{8,14}"
+    r"|[A-Z]-?\d{7,8}[A-Z0-9]?"
+    r"|\d{8}-?[A-Z])\b",
     re.IGNORECASE,
 )
 COUNTRY_ALIASES = {
@@ -588,10 +594,28 @@ def _name_near_tax_id(text: str, tax_id: str | None) -> str | None:
     return None
 
 
+#: Letra de control del NIF español: es determinista, así que valida de verdad.
+_NIF_CONTROL_LETTERS = "TRWAGMYFPDXBNJZSQVHLCKE"
+_NIF_RE = re.compile(r"^(\d{8})([A-Z])$")
+
+
+def _is_valid_spanish_nif(value: str) -> bool:
+    match = _NIF_RE.match(value)
+    if not match:
+        return True  # no es un NIF de persona física: no aplica esta validación
+    number, letter = match.groups()
+    return _NIF_CONTROL_LETTERS[int(number) % 23] == letter
+
+
 def _tax_ids(text: str) -> list[str]:
     values: list[str] = []
     for match in TAX_ID_RE.finditer(text):
         value = re.sub(r"[\s-]", "", match.group(0)).upper()
+        # Sin verificar la letra, cualquier referencia de 8 dígitos seguida de
+        # una letra pasaba por NIF: en las facturas de Endesa se colaba
+        # "77084918A" y desplazaba al CIF real del proveedor.
+        if not _is_valid_spanish_nif(value):
+            continue
         if value not in values:
             values.append(value)
     return values

@@ -5,6 +5,7 @@ import unittest
 from decimal import Decimal
 from pathlib import Path
 from types import SimpleNamespace
+from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from ap_control_tower.extraction.banking import (
@@ -396,6 +397,37 @@ TOTAL EUR 121,00
 
         self.assertEqual(document["proveedor_tax_id"], "12817931P")
         self.assertEqual(document["tratamiento_iva"], "nacional")
+
+    def test_document_ai_cache_is_off_unless_a_directory_is_configured(self):
+        """En producción nunca se activa: ninguna factura real va a disco."""
+        from ap_control_tower.extraction.document_ai import _cache_dir
+
+        with patch.dict(os.environ, {}, clear=True):
+            self.assertIsNone(_cache_dir())
+        with patch.dict(os.environ, {"AP_DOCUMENT_AI_CACHE_DIR": "  "}, clear=True):
+            self.assertIsNone(_cache_dir())
+        with patch.dict(os.environ, {"AP_DOCUMENT_AI_CACHE_DIR": "cache"}, clear=True):
+            self.assertEqual(_cache_dir(), Path("cache"))
+
+    def test_cache_key_changes_with_the_processor(self):
+        """Cambiar de processor debe invalidar la caché, no reusar respuestas."""
+        from ap_control_tower.extraction.document_ai import _cache_key
+
+        uno = DocumentAIConfig(project_id="p", location="us", processor_id="a")
+        otro = DocumentAIConfig(project_id="p", location="us", processor_id="b")
+        self.assertNotEqual(_cache_key(b"pdf", uno), _cache_key(b"pdf", otro))
+        self.assertNotEqual(_cache_key(b"pdf", uno), _cache_key(b"otro", uno))
+        self.assertEqual(_cache_key(b"pdf", uno), _cache_key(b"pdf", uno))
+
+    def test_corrupt_cache_entry_falls_back_to_the_api(self):
+        from ap_control_tower.extraction.document_ai import _cached_document
+
+        with TemporaryDirectory() as tmp:
+            (Path(tmp) / "abc.json").write_text("{no es json", encoding="utf-8")
+            with patch.dict(os.environ, {"AP_DOCUMENT_AI_CACHE_DIR": tmp}, clear=True):
+                from google.cloud import documentai_v1 as documentai  # type: ignore
+
+                self.assertIsNone(_cached_document("abc", documentai))
 
     def test_banking_validators_reject_plausible_but_invalid_values(self):
         self.assertTrue(is_valid_iban("ES9121000418450200051332"))

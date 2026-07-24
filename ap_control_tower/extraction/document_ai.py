@@ -7,12 +7,14 @@ an explicit degraded-mode result when the managed service is unavailable.
 
 from __future__ import annotations
 
+import hashlib
 import os
 import re
 import unicodedata
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, Callable, Iterable
 
 from .banking import (
@@ -1427,6 +1429,55 @@ def _document_ai_client(config: DocumentAIConfig):
     )
 
 
+def _cache_dir() -> Path | None:
+    """Directorio de caché de respuestas de Document AI, o None si está apagado.
+
+    Es una herramienta de desarrollo y evaluación: durante un ciclo golden se
+    reprocesa el mismo lote decenas de veces y cada vuelta son cientos de
+    llamadas a la API. Apagada por defecto; en producción nunca se activa, así
+    que ninguna factura real se escribe a disco por esta vía.
+    """
+    raw = os.getenv("AP_DOCUMENT_AI_CACHE_DIR", "").strip()
+    return Path(raw) if raw else None
+
+
+def _cache_key(data: bytes, config: DocumentAIConfig) -> str:
+    """La clave incluye el processor: cambiarlo debe invalidar la caché."""
+    digest = hashlib.sha256()
+    digest.update(data)
+    digest.update(b"\0")
+    digest.update(f"{config.project_id}/{config.location}/{config.processor_id}".encode())
+    return digest.hexdigest()
+
+
+def _cached_document(key: str, documentai: Any) -> Any | None:
+    directory = _cache_dir()
+    if directory is None:
+        return None
+    path = directory / f"{key}.json"
+    if not path.is_file():
+        return None
+    try:
+        return documentai.Document.from_json(
+            path.read_text(encoding="utf-8"), ignore_unknown_fields=True
+        )
+    except Exception:  # noqa: BLE001 - una caché corrupta nunca debe romper la extracción
+        return None
+
+
+def _store_document(key: str, document: Any, documentai: Any) -> None:
+    directory = _cache_dir()
+    if directory is None:
+        return
+    try:
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / f"{key}.json").write_text(
+            documentai.Document.to_json(document), encoding="utf-8"
+        )
+    except Exception:  # noqa: BLE001 - no poder cachear no es un error de negocio
+        pass
+
+
 def process_invoice_bytes(
     filename: str,
     data: bytes,
@@ -1436,17 +1487,22 @@ def process_invoice_bytes(
 ) -> PocResult:
     from google.cloud import documentai_v1 as documentai  # type: ignore
 
-    client = _document_ai_client(config)
-    name = client.processor_path(config.project_id, config.location, config.processor_id)
-    request = documentai.ProcessRequest(
-        name=name,
-        raw_document=documentai.RawDocument(content=data, mime_type="application/pdf"),
-        # El processor administrado admite hasta 30 páginas en modo imageless
-        # (15 en el modo estándar). Varias facturas reales incluyen anexos de
-        # detalle extensos; habilitarlo evita rechazarlas antes de extraer.
-        imageless_mode=True,
-    )
-    response = client.process_document(request=request, timeout=90)
+    key = _cache_key(data, config)
+    document = _cached_document(key, documentai)
+    if document is None:
+        client = _document_ai_client(config)
+        name = client.processor_path(config.project_id, config.location, config.processor_id)
+        request = documentai.ProcessRequest(
+            name=name,
+            raw_document=documentai.RawDocument(content=data, mime_type="application/pdf"),
+            # El processor administrado admite hasta 30 páginas en modo imageless
+            # (15 en el modo estándar). Varias facturas reales incluyen anexos de
+            # detalle extensos; habilitarlo evita rechazarlas antes de extraer.
+            imageless_mode=True,
+        )
+        document = client.process_document(request=request, timeout=90).document
+        _store_document(key, document, documentai)
+    response = SimpleNamespace(document=document)
     entity_types = {
         getattr(entity, "type_", None) or getattr(entity, "type", None)
         for entity in getattr(response.document, "entities", ()) or ()

@@ -18,7 +18,7 @@ from datetime import date, timedelta
 # ------------------------------------------------------------------ enums
 DOCUMENT_TYPES = ("invoice", "proforma_or_advance_request", "other")
 TRATAMIENTOS_IVA = ("nacional", "intracomunitario_inversion_sujeto_pasivo",
-                    "no_desglosado", "exento_otro")
+                    "extracomunitario", "no_desglosado", "exento_otro")
 METODOS_PAGO = ("transferencia", "domiciliacion_direct_debit", "tarjeta",
                 "no_indicado")
 
@@ -147,6 +147,8 @@ FIELD_NOTES = {
         "'nacional' = IVA espanol desglosado; "
         "'intracomunitario_inversion_sujeto_pasivo' = reverse charge UE "
         "(VAT 0% con mencion a inversion del sujeto pasivo / reverse charge); "
+        "'extracomunitario' = proveedor fuera de la UE (incluido GB post-Brexit: "
+        "una operacion con VAT britanico NO es intracomunitaria); "
         "'no_desglosado' = el documento no desglosa IVA (tipico de proformas); "
         "'exento_otro' = exencion u otro regimen explicito."),
     "metodo_pago": (

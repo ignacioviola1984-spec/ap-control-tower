@@ -207,14 +207,44 @@ def _all_dates(raw: str) -> list[date]:
     return dates
 
 
+#: Etiquetas de cabecera que suelen apilarse antes del bloque de valores.
+_HEADER_LABEL_RE = re.compile(
+    r"(?i)^\s*(?:invoice\s+number|purchase\s+order|emission\s+date|expiring\s+date|"
+    r"expiry\s+date|expiration\s+date|due\s+date|invoice\s+date|numero\s+de\s+factura|"
+    r"fecha|vencimiento)\s*:?\s*$"
+)
+
+
 def _find_date_after(lines: list[str], labels: tuple[str, ...]) -> date | None:
     for i, line in enumerate(lines):
         folded = _fold(line)
-        if any(label in folded for label in labels):
-            window = " ".join(lines[i:i + 3])
-            dates = _all_dates(window)
-            if dates:
-                return dates[0]
+        if not any(label in folded for label in labels):
+            continue
+        # Layout de cabeceras apiladas (Lua Group): todas las etiquetas van
+        # seguidas y después el bloque de valores. Leer la primera fecha tras la
+        # etiqueta devolvía la de emisión; hay que respetar la posición de la
+        # etiqueta dentro del grupo.
+        if _HEADER_LABEL_RE.match(line):
+            group_start = i
+            while group_start > 0 and _HEADER_LABEL_RE.match(lines[group_start - 1]):
+                group_start -= 1
+            group_end = i
+            while group_end + 1 < len(lines) and _HEADER_LABEL_RE.match(lines[group_end + 1]):
+                group_end += 1
+            if group_end > group_start:
+                values = lines[group_end + 1:group_end + 2 + (group_end - group_start) * 2]
+                dates = _all_dates(" ".join(values))
+                # Las etiquetas sin valor (p. ej. "Purchase order" vacío) hacen
+                # que no haya correspondencia 1 a 1; se toma la última fecha del
+                # bloque, que es la del vencimiento por ser la etiqueta final.
+                if dates and i == group_end:
+                    return dates[-1]
+                if dates:
+                    return dates[0]
+        window = " ".join(lines[i:i + 3])
+        dates = _all_dates(window)
+        if dates:
+            return dates[0]
     return None
 
 
@@ -460,7 +490,11 @@ def _extract_dates(doc: dict, lines: list[str], text: str) -> None:
         "invoice date", "fecha de emision", "fecha emision", "fecha de la factura",
         "date facture", "date of issue", "fecha:", "factura fecha",
     ))
-    due = _find_date_after(lines, ("payment due date", "due date", "vencimiento", "fecha de vencimiento", "echeance"))
+    due = _find_date_after(lines, ("payment due date", "due date", "vencimiento",
+                                   "fecha de vencimiento", "echeance",
+                                   # Lua Group etiqueta el vencimiento como
+                                   # "Expiring date" y se perdía por completo.
+                                   "expiring date", "expiry date", "expiration date"))
     if issued:
         doc["fecha_emision"] = issued.isoformat()
     elif doc["document_type"] == "invoice" and doc["numero_factura"]:

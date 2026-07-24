@@ -42,7 +42,8 @@ INVOICE_CRITICAL_FIELDS = (
 )
 
 LEGAL_SUFFIX_RE = re.compile(
-    r"\b(?:S\.?\s*L\.?\s*(?:U|L)?\.?|S\.?\s*A\.?|B\.?\s*V\.?|"
+    # SLP = sociedad limitada profesional, habitual en despachos (ELZABURU SLP).
+    r"\b(?:S\.?\s*L\.?\s*(?:U|L|P)?\.?|S\.?\s*A\.?\s*U?\.?|B\.?\s*V\.?|"
     r"SASU|SAS|SARL|GMBH|LTD|LIMITED|LLC|DAC)\b",
     re.IGNORECASE,
 )
@@ -168,10 +169,17 @@ def _is_own_tax_id(value: str | None) -> bool:
     }
 
 
+#: Etiquetas que algunos emisores imprimen pegadas al número ("DNI12817931P").
+#: Dejarlas dentro rompe la inferencia de país: "DN" no es un prefijo VAT y la
+#: factura de una autónoma española quedaba clasificada como extracomunitaria.
+_TAX_ID_LABEL_PREFIX_RE = re.compile(r"^(?:DNI|NIF|CIF|NIE|VAT|TIN|RUC|CUIT)(?=\d)")
+
+
 def _clean_tax_id_candidate(value: str | None) -> str | None:
     if not value:
         return None
     compact = re.sub(r"[^A-Z0-9]", "", value.upper())
+    compact = _TAX_ID_LABEL_PREFIX_RE.sub("", compact)
     if not (8 <= len(compact) <= 16) or not any(ch.isdigit() for ch in compact):
         return None
     # Evitar que el parser promueva un IBAN como tax ID.
@@ -252,23 +260,60 @@ def _decimal_value(raw: str | None, *, rate: bool = False) -> str | None:
     return f"{number.quantize(Decimal('0.01'))}"
 
 
+#: Fechas centinela que algunos ERP imprimen para decir "sin vencimiento".
+_SENTINEL_DATES = {"9999-12-31", "0001-01-01", "1900-01-01"}
+_SENTINEL_YEARS_RE = re.compile(r"\b(?:9999|0001|1900)\b")
+
+
+def _looks_like_sentinel_date(raw: str) -> bool:
+    return bool(_SENTINEL_YEARS_RE.search(raw))
+
+
 def _date_value(raw: str | None) -> str | None:
+    """Normaliza a ISO. Devuelve None si el texto no es una fecha.
+
+    Antes se devolvía el texto crudo cuando no se reconocía una fecha, así que
+    en un campo declarado como 'date' terminaban cadenas como "30 days from
+    invoice issuance." o el centinela "31/12/9999". El texto libre de
+    vencimiento tiene su propio campo (fecha_vencimiento_texto).
+    """
     if not raw:
         return None
-    match = re.search(r"\b(20\d{2})-(\d{2})-(\d{2})\b", raw)
-    return match.group(0) if match else raw.strip()
+    value = raw.strip()
+    match = re.search(r"\b(20\d{2})-(\d{2})-(\d{2})\b", value)
+    if not match:
+        slashed = re.search(r"\b(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})\b", value)
+        if not slashed:
+            return None
+        day, month, year = slashed.groups()
+        iso = f"{year}-{int(month):02d}-{int(day):02d}"
+    else:
+        iso = match.group(0)
+    return None if iso in _SENTINEL_DATES else iso
+
+
+_CURRENCY_ALIASES = {
+    "€": "EUR", "$": "USD", "£": "GBP",
+    # OCR y abreviaturas del emisor: la factura de Iván Zimmermann escribe
+    # "10.000,00 EU" y quedaba con moneda "EU", que no es un código ISO.
+    "EU": "EUR", "EUR": "EUR", "EURO": "EUR", "EUROS": "EUR",
+    "USD": "USD", "GBP": "GBP", "US": "USD", "LIBRA": "GBP",
+}
 
 
 def _currency_value(raw: str | None) -> str | None:
     if not raw:
         return None
-    folded = raw.strip().upper()
-    return {"€": "EUR", "$": "USD", "£": "GBP"}.get(folded, folded[:3])
+    folded = re.sub(r"[^A-Z€$£]", "", raw.strip().upper())
+    if folded in _CURRENCY_ALIASES:
+        return _CURRENCY_ALIASES[folded]
+    return folded[:3] if len(folded) >= 3 else None
 
 
 def _clean_party_name(value: str) -> str:
     cleaned = re.sub(
-        r"(?i)^\s*(?:supplier|client|cliente|nombre|account holder|address)\s*[:#-]?\s*",
+        # "Sello" precede al cuño impreso junto a la razón social (Securitas).
+        r"(?i)^\s*(?:supplier|client|cliente|nombre|account holder|address|sello)\s*[:#-]?\s*",
         "",
         value,
     )
@@ -357,6 +402,10 @@ def _is_bad_party_name(value: str | None) -> bool:
         return True
     if folded in {
         "grupo", "numero de cliente", "cliente", "client", "supplier", "proveedor",
+        # Etiquetas del propio formulario tomadas como nombre: en el albarán de
+        # Viñals el proveedor salía "N.I.F.".
+        "n.i.f.", "n.i.f", "nif", "n.l.f.", "cif", "vat", "tax id", "factura",
+        "invoice", "albaran", "fecha", "date", "total",
     }:
         return True
     if any(term in folded for term in _BAD_PARTY_TERMS):
@@ -605,9 +654,36 @@ def _resolve_parties(
 
     country_supplier = _name_near_country(text, bank_country) if bank_country else None
     tax_supplier = _name_near_tax_id(text, supplier_tax)
+    # Las heurísticas de país y de CIF sólo valen si NO devuelven la empresa
+    # propia: con un IBAN español, "el nombre cerca de España" caía en el bloque
+    # del cliente y sustituía al proveedor real (Iván Zimmermann, ELZABURU).
+    if country_supplier and _is_own_party(country_supplier):
+        country_supplier = None
+    if tax_supplier and _is_own_party(tax_supplier):
+        tax_supplier = None
+    # La entidad del parser es evidencia directa: manda sobre las heurísticas
+    # salvo que sea inválida o la propia empresa. Antes iba última y por eso se
+    # perdían los nombres de personas físicas, que no llevan forma jurídica y
+    # ninguna heurística sabe reconstruir.
+    entity_supplier = _clean_party_name(supplier or "") or None
+    entity_usable = bool(entity_supplier) and not _is_bad_party_name(entity_supplier) \
+        and not _is_own_party(entity_supplier)
+    # El nombre impreso junto al CIF del proveedor, cuando trae forma jurídica,
+    # es la razón social registrada: gana sobre la entidad del parser, que a
+    # menudo captura el logotipo ("AVANOɅ PUNTO PORPUNTO", "II/ELZABURU").
+    registered_supplier = tax_supplier if tax_supplier and LEGAL_SUFFIX_RE.search(tax_supplier) else None
     if labelled_supplier:
         supplier = labelled_supplier
         confidences["proveedor_nombre_comercial"] = Decimal("0.95")
+    elif registered_supplier:
+        supplier = registered_supplier
+        confidences["proveedor_nombre_comercial"] = Decimal("0.92")
+    elif entity_usable:
+        # Sin forma jurídica en la entidad se intenta completar desde el texto;
+        # si no hay nada mejor se conserva la entidad. Es el caso de las personas
+        # físicas, que no llevan forma jurídica y ninguna heurística reconstruye.
+        supplier = _expanded_supplier_name(text, entity_supplier, receiver) or entity_supplier
+        confidences["proveedor_nombre_comercial"] = Decimal("0.90")
     elif country_supplier:
         supplier = country_supplier
         confidences["proveedor_nombre_comercial"] = Decimal("0.90")
@@ -635,7 +711,19 @@ def _resolve_parties(
     if supplier:
         supplier = _clean_party_name(supplier)
         doc["proveedor_nombre_comercial"] = supplier
-        doc["proveedor_razon_social_legal"] = supplier
+        # Nombre comercial y razón social son campos distintos del esquema y se
+        # estaban rellenando con el mismo valor. "Sabores Patagónicos" factura
+        # como GAYARETAS 2018 S.L: para conciliar con el maestro de proveedores
+        # y para pagar, la denominación con forma jurídica es la que importa.
+        legal_name = supplier if LEGAL_SUFFIX_RE.search(supplier) else (
+            registered_supplier
+            or next(
+                (name for _, name in _legal_name_candidates(text)
+                 if not _is_own_party(name) and not _is_bad_party_name(name)),
+                None,
+            )
+        )
+        doc["proveedor_razon_social_legal"] = legal_name or supplier
     if receiver:
         doc["cliente_nombre"] = _clean_party_name(receiver)
     else:
@@ -722,10 +810,18 @@ def _payment_method(text: str, has_bank_details: bool = False) -> str:
     folded = _fold(text)
     if re.search(r"\b(direct debit|domiciliacion|domiciliado|sepa|cargo en cuenta)\b", folded):
         return "domiciliacion_direct_debit"
+    # La transferencia gana sobre la tarjeta: muchas facturas piden transferencia
+    # y sólo listan las tarjetas que el emisor acepta como alternativa. Qualzy
+    # dice "Please transfer the total amount payable" y salía como tarjeta por
+    # el pie "Accepts Visa, Mastercard".
+    if re.search(
+        r"\b(transferencia|bank transfer|wire transfer|direct transfer|"
+        r"transfer the total|virement)\b",
+        folded,
+    ):
+        return "transferencia"
     if re.search(r"\b(tarjeta|card payment|credit card|visa|mastercard)\b", folded):
         return "tarjeta"
-    if re.search(r"\b(transferencia|bank transfer|wire transfer)\b", folded):
-        return "transferencia"
     return "no_indicado"
 
 
@@ -759,6 +855,15 @@ def _treatment_by_country(doc: dict) -> str | None:
     return None
 
 
+#: La exención debe estar referida al IVA/VAT/TVA, y no ser una mención suelta
+#: dentro del texto legal de la factura.
+_EXEMPTION_RE = re.compile(
+    r"(?:iva|vat|tva|impuesto|operacion|operaciones|entrega|entregas)\s+"
+    r"(?:\w+\s+){0,2}?(?:exent[ao]s?|exempt|exoner\w+)"
+    r"|(?:exent[ao]s?|exempt|exoner\w+)\s+(?:\w+\s+){0,2}?(?:iva|vat|tva)"
+)
+
+
 def _tax_treatment(doc: dict, text: str) -> str | None:
     folded = _fold(text)
     if any(term in folded for term in (
@@ -766,12 +871,16 @@ def _tax_treatment(doc: dict, text: str) -> str | None:
         "article 196", "articulo 196",
     )):
         return "intracomunitario_inversion_sujeto_pasivo"
-    if any(term in folded for term in ("exempt", "exento", "exonerado")):
-        return "exento_otro"
-    # El país manda sobre la heurística de tasa: es evidencia más fuerte.
+    # El país manda sobre la mención de exención: una factura francesa al 0% es
+    # intracomunitaria, no "exenta". Antes esta rama iba primero y cualquier
+    # aparición suelta de "exento" ganaba (la factura de Endesa, con IVA 21%
+    # real, salía exenta por el texto legal del bono social).
     by_country = _treatment_by_country(doc)
     if by_country:
         return by_country
+    # La exención tiene que estar referida al IVA, no ser una palabra suelta.
+    if _EXEMPTION_RE.search(folded):
+        return "exento_otro"
     try:
         rate = Decimal(str(doc.get("tipo_iva"))) if doc.get("tipo_iva") is not None else None
         tax = Decimal(str(doc.get("importe_iva"))) if doc.get("importe_iva") is not None else None
@@ -811,6 +920,98 @@ def _amount_token_value(token: str) -> Decimal | None:
 
 
 _RETENTION_LINE_RE = re.compile(r"(?i)\b(?:irpf|retenci[oó]n|retencion|withholding)\b")
+
+
+def _repair_net_from_identity(
+    doc: dict, text: str, confidences: dict[str, Decimal]
+) -> None:
+    """Repara importe_neto usando neto + IVA - retencion = total.
+
+    El parser sólo emite net_amount en una minoría de facturas; cuando falta, el
+    neto se rellenaba con el primer número plausible del documento y salía
+    cualquier cosa (el porcentaje de IRPF en Rebeca, el propio IVA en Iván, un
+    código de artículo en Agua Life). El total y el IVA sí vienen etiquetados y
+    con confianza alta, así que el neto se despeja en vez de adivinarse.
+
+    Para no reparar a ciegas se exige que el tipo implícito por el despeje
+    coincida con un porcentaje declarado en el documento: si no coincide, el
+    dato dudoso no es el neto y se deja como está.
+    """
+    total = _money(doc.get("importe_total"))
+    tax = _money(doc.get("importe_iva"))
+    net = _money(doc.get("importe_neto"))
+    retencion = _money(doc.get("retencion_irpf")) or Decimal("0")
+    if total is None or tax is None or total <= 0:
+        return
+    if net is not None and abs(net + tax - retencion - total) <= Decimal("0.02"):
+        return  # la terna ya cuadra: no hay nada que reparar
+
+    declared = [
+        Decimal(raw.replace(",", "."))
+        for raw in re.findall(r"\b(\d{1,2}(?:[,.]\d+)?)\s*%", text)
+    ]
+    present = {
+        value
+        for value in (
+            _amount_token_value(match.group(0)) for match in _AMOUNT_TOKEN_RE.finditer(text)
+        )
+        if value is not None
+    }
+    candidate = (total - tax + retencion).quantize(Decimal("0.01"))
+    if candidate > 0:
+        if tax == 0:
+            implied_ok = True
+        else:
+            implied = (tax / candidate) * Decimal("100")
+            implied_ok = any(abs(rate - implied) <= Decimal("0.3") for rate in declared)
+            # Algunas facturas imprimen el tipo en una columna separada del
+            # signo "%" (Agua Life, Viñals), así que no hay porcentaje que
+            # comparar. El despeje se acepta igual si el importe resultante
+            # figura literalmente en el documento: es evidencia, no inferencia.
+            implied_ok = implied_ok or candidate in present
+        if implied_ok:
+            doc["importe_neto"] = f"{candidate}"
+            confidences["importe_neto"] = Decimal("0.88")
+            return
+
+    # El despeje directo no cierra: o falta la retención, o el propio IVA es
+    # malo. Antes de nada se prueba la partición por tipo declarado exigiendo
+    # que AMBOS números aparezcan literalmente en el documento: en la factura de
+    # Endesa el parser erró neto e IVA a la vez (259,39 / 68,19) y la partición
+    # correcta al 21% (263,99 / 55,44) sí está impresa en el cuadro de totales.
+    if not retencion:
+        for rate in sorted({value for value in declared if value > 0}, reverse=True):
+            base = (total / (Decimal("1") + rate / Decimal("100"))).quantize(Decimal("0.01"))
+            split_tax = (total - base).quantize(Decimal("0.01"))
+            if base in present and split_tax in present:
+                doc["importe_neto"] = f"{base}"
+                doc["importe_iva"] = f"{split_tax}"
+                doc["tipo_iva"] = format(rate.normalize(), "f")
+                confidences["importe_neto"] = Decimal("0.86")
+                confidences["importe_iva"] = Decimal("0.86")
+                confidences["tipo_iva"] = Decimal("0.86")
+                return
+
+    # Sigue sin cerrar: suele faltar la retención, porque en layouts en columna
+    # el importe cae varias líneas debajo de la etiqueta "IRPF" y el extractor
+    # por línea no la ve (caso Rebeca Ferrer). Con el tipo de IVA declarado el
+    # neto sale del propio IVA, y la retención queda como residuo verificable
+    # contra otro porcentaje declarado.
+    if tax <= 0 or retencion:
+        return
+    for rate in {value for value in declared if value > 0}:
+        base = (tax / (rate / Decimal("100"))).quantize(Decimal("0.01"))
+        residual = (base + tax - total).quantize(Decimal("0.01"))
+        if residual <= 0 or residual >= base:
+            continue
+        residual_rate = (residual / base) * Decimal("100")
+        if not any(abs(other - residual_rate) <= Decimal("0.3") for other in declared):
+            continue
+        doc["importe_neto"] = f"{base}"
+        doc["retencion_irpf"] = f"{residual}"
+        confidences["importe_neto"] = Decimal("0.85")
+        confidences["retencion_irpf"] = Decimal("0.85")
+        return
 
 
 def _retention_amount(text: str) -> Decimal | None:
@@ -897,9 +1098,13 @@ def refine_mapped_document(
         doc["project_reference"] = local_document["project_reference"]
 
     current_total = _money(doc.get("importe_total"))
+    # "importe adeudado" / "amount due" NO son el total de la factura: son el
+    # saldo que queda por pagar. En ECOTISA ("Pagado 44,38 / Importe adeudado
+    # 0,00") ese 0,00 pisaba el total correcto y arrastraba neto e IVA a cero.
+    # Se leen más abajo como saldo_pendiente.
     strong_total = _labelled_amount(
         text,
-        ("total a pagar", "invoice total", "total factura", "amount due", "importe adeudado", "gross",
+        ("total a pagar", "invoice total", "total factura", "gross",
          "incl btw", "incl. btw", "inclusief btw", "totaal incl", "totaal"),
         reject=("subtotal", "total net", "total excl", "excl btw", "excl. btw", "descuentos", "total a percibir"),
     )
@@ -929,7 +1134,9 @@ def refine_mapped_document(
             if Decimal("990") <= scale <= Decimal("1010") \
                     or Decimal("0.00099") <= scale <= Decimal("0.00101"):
                 labelled_total = generic_total
-    if labelled_total is not None:
+    # Un total etiquetado en cero nunca pisa un total ya extraído: el cero de un
+    # documento suele ser un saldo saldado, no el importe de la factura.
+    if labelled_total is not None and not (labelled_total == 0 and current_total):
         doc["importe_total"] = f"{labelled_total.quantize(Decimal('0.01'))}"
     if labelled_net is not None and doc.get("importe_neto") in (None, ""):
         doc["importe_neto"] = f"{labelled_net.quantize(Decimal('0.01'))}"
@@ -995,12 +1202,18 @@ def refine_mapped_document(
     if retencion is not None and retencion != 0:
         doc["retencion_irpf"] = f"{abs(retencion).quantize(Decimal('0.01'))}"
 
+    _repair_net_from_identity(doc, text, confidences)
+
     # Saldo pendiente: 0 significa factura YA PAGADA (Zoom cobró con tarjeta).
     # Es la señal que evita un doble pago.
+    # "importe adeudado" y "importe a pagar" entran acá y no como total: en
+    # ELZABURU el total es 6.467,44 pero, descontada una provisión de fondos ya
+    # recibida, sólo quedan 1.022,14 por pagar. Pagar el total sobrepagaría.
     saldo = _labelled_amount(
         text,
         ("invoice balance", "saldo pendiente", "balance due", "importe pendiente",
-         "saldo a pagar", "outstanding balance"),
+         "saldo a pagar", "outstanding balance", "importe adeudado", "amount due",
+         "importe a pagar", "amount payable"),
     )
     if saldo is not None:
         doc["saldo_pendiente"] = f"{saldo.quantize(Decimal('0.01'))}"
@@ -1137,8 +1350,13 @@ def map_document_ai_result(filename: str, cloud_document: Any) -> PocResult:
     _set_entity(doc, confidences, entities, "fecha_emision", ("invoice_date",), _date_value)
     _set_entity(doc, confidences, entities, "fecha_vencimiento_calculada", ("due_date",), _date_value)
     due_entity = entities.get("due_date")
-    if due_entity is not None and _entity_mention(due_entity):
-        doc["fecha_vencimiento_texto"] = _entity_mention(due_entity)
+    due_mention = _entity_mention(due_entity) if due_entity is not None else None
+    # Un centinela tipo "31/12/9999" no es una condición de pago: es la forma en
+    # que el ERP del emisor dice "sin vencimiento". Guardarlo confundía al revisor.
+    if due_mention and _looks_like_sentinel_date(due_mention):
+        due_mention = None
+    if due_mention:
+        doc["fecha_vencimiento_texto"] = due_mention
         confidences["fecha_vencimiento_texto"] = _entity_confidence(due_entity)
     _set_entity(doc, confidences, entities, "proveedor_nombre_comercial", ("supplier_name",))
     _set_entity(doc, confidences, entities, "proveedor_tax_id", ("supplier_tax_id",))

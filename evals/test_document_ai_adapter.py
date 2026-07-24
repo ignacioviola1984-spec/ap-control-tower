@@ -232,6 +232,171 @@ TOTAL EUR 121,00
 
         self.assertEqual(document["importe_total"], "2860.00")
 
+    def test_amount_due_is_a_balance_and_never_overwrites_the_invoice_total(self):
+        """Ecotisa: "Importe adeudado 0,00" pisaba el total y lo dejaba en cero."""
+        document = empty_document()
+        document.update({
+            "document_type": "invoice",
+            "importe_neto": "36.68",
+            "importe_iva": "7.70",
+            "importe_total": "44.38",
+        })
+
+        refine_mapped_document(
+            document,
+            "Base imponible 36,68 €\nImpuesto 7,70 €\nTotal 44,38 €\n"
+            "Pagado en 03/02/2026\nImporte adeudado 0,00 €\n",
+            empty_document(),
+        )
+
+        self.assertEqual(document["importe_total"], "44.38")
+        self.assertEqual(document["saldo_pendiente"], "0.00")
+
+    def test_provision_of_funds_leaves_the_payable_amount_as_balance(self):
+        """Elzaburu: el total es 6.467,44 pero sólo quedan 1.022,14 por pagar."""
+        document = empty_document()
+        document.update({
+            "document_type": "invoice",
+            "importe_neto": "6057.77",
+            "importe_iva": "409.67",
+            "importe_total": "6467.44",
+        })
+
+        refine_mapped_document(
+            document,
+            "Subtotal 6.057,77\n409,67\nTotal EUR 6.467,44\n"
+            "Provision de Fondos recibida EUR 5.445,30\nImporte a pagar EUR 1.022,14\n",
+            empty_document(),
+        )
+
+        self.assertEqual(document["importe_total"], "6467.44")
+        self.assertEqual(document["saldo_pendiente"], "1022.14")
+
+    def test_net_amount_is_solved_from_the_total_when_the_parser_guesses_wrong(self):
+        """Iván Zimmermann: el neto venía con el valor del IVA (2.100 en vez de 10.000)."""
+        document = empty_document()
+        document.update({
+            "document_type": "invoice",
+            "importe_neto": "2100.00",
+            "importe_iva": "2100.00",
+            "importe_total": "10600.00",
+        })
+
+        refine_mapped_document(
+            document,
+            "Creativity services Bayer\n10.000,00 EU\nIVA (21%)\nIRPF (-15%)\n"
+            "2.100,00 €\n-1.500,00 €\nTotal 10.600,00 EU\n",
+            empty_document(),
+        )
+
+        self.assertEqual(document["importe_neto"], "10000.00")
+        self.assertEqual(document["retencion_irpf"], "1500.00")
+
+    def test_withholding_in_a_column_layout_is_derived_from_the_declared_rate(self):
+        """Rebeca Ferrer: el importe del IRPF cae lejos de su etiqueta y no se leía."""
+        document = empty_document()
+        document.update({
+            "document_type": "invoice",
+            "importe_neto": "15.00",
+            "importe_iva": "210.00",
+            "importe_total": "1060.00",
+        })
+
+        refine_mapped_document(
+            document,
+            "Base imponible\n1.000,00\n% IVA\n21,00%\nIVA\n210,00\n"
+            "% IRPF\n15,00%\nIRPF\n150,00\nTotal factura\n1.060,00\n",
+            empty_document(),
+        )
+
+        self.assertEqual(document["importe_neto"], "1000.00")
+        self.assertEqual(document["retencion_irpf"], "150.00")
+
+    def test_vat_split_is_recovered_from_amounts_printed_in_the_document(self):
+        """Endesa: el parser erró neto e IVA a la vez; la partición al 21% está impresa."""
+        document = empty_document()
+        document.update({
+            "document_type": "invoice",
+            "importe_neto": "259.39",
+            "importe_iva": "68.19",
+            "importe_total": "319.43",
+        })
+
+        refine_mapped_document(
+            document,
+            "Impuesto Electricidad 249,35 12,75\nIVA 21%\n263,99\n55,44\nTotal 319,43\n",
+            empty_document(),
+        )
+
+        self.assertEqual(document["importe_neto"], "263.99")
+        self.assertEqual(document["importe_iva"], "55.44")
+
+    def test_loose_exemption_wording_does_not_zero_a_taxed_invoice(self):
+        """El texto legal de una factura de suministro mencionaba "exento"."""
+        document = empty_document()
+        document.update({
+            "document_type": "invoice",
+            "importe_neto": "263.99",
+            "importe_iva": "55.44",
+            "importe_total": "319.43",
+            "tipo_iva": "21",
+            "proveedor_tax_id": "A81948077",
+        })
+
+        refine_mapped_document(
+            document,
+            "IVA 21% 55,44\nTotal 319,43\n"
+            "El bono social esta exento de recargo segun la normativa vigente.\n",
+            empty_document(),
+        )
+
+        self.assertEqual(document["tratamiento_iva"], "nacional")
+        self.assertEqual(document["importe_iva"], "55.44")
+
+    def test_free_text_and_sentinel_dates_never_reach_a_date_field(self):
+        document = empty_document()
+        document.update({"document_type": "invoice", "importe_total": "10.00"})
+
+        refine_mapped_document(document, "Due date: 30 days from invoice issuance.", empty_document())
+
+        self.assertIsNone(document["fecha_vencimiento_calculada"])
+
+    def test_transfer_wins_over_the_accepted_cards_footer(self):
+        """Qualzy pide transferencia y sólo lista las tarjetas que acepta."""
+        document = empty_document()
+        document.update({"document_type": "invoice", "importe_total": "1300.00"})
+
+        refine_mapped_document(
+            document,
+            "Please transfer the total amount payable to the bank account listed above.\n"
+            "Accepts Visa, Mastercard and American Express payments from customers worldwide.\n",
+            empty_document(),
+        )
+
+        self.assertEqual(document["metodo_pago"], "transferencia")
+
+    def test_labelled_tax_id_prefix_does_not_turn_a_spanish_freelancer_foreign(self):
+        """Flor Murga: "DNI12817931P" hacía inferir el país "DN" -> extracomunitario."""
+        document = empty_document()
+        document.update({
+            "document_type": "invoice",
+            "importe_neto": "1250.00",
+            "importe_iva": "262.50",
+            "importe_total": "1325.00",
+            "proveedor_tax_id": "DNI12817931P",
+            "iban": "ES4001821294170203714052",
+        })
+
+        refine_mapped_document(
+            document,
+            "Florencia Murga\nDNI12817931P\nIVA 21,00%\nRetencion 15,00% 187,50 €\n"
+            "TOTAL FACTURA 1.325,00 €\n",
+            empty_document(),
+        )
+
+        self.assertEqual(document["proveedor_tax_id"], "12817931P")
+        self.assertEqual(document["tratamiento_iva"], "nacional")
+
     def test_banking_validators_reject_plausible_but_invalid_values(self):
         self.assertTrue(is_valid_iban("ES9121000418450200051332"))
         self.assertFalse(is_valid_iban("ES4321000418450200051332"))

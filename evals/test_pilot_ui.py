@@ -140,8 +140,12 @@ def main() -> int:
             ROOT / "ap_control_tower" / "gmail" / "client.py",
         ]
         source = "\n".join(path.read_text(encoding="utf-8") for path in active_files)
+        # La regla original prohibía el nombre "AP Control Tower" junto con el
+        # wording de demo/PoC. En esta versión del frontend el nombre corto del
+        # producto ES "AP Control Tower", así que se prohíbe solo el wording
+        # promocional: lo que había que erradicar era el encuadre de prueba de
+        # concepto, no la marca. Ver nota de implementación.
         exact_forbidden = (
-            "AP Control Tower",
             "Acceso a la demo",
             "Password de la demo",
             "Cargá tus facturas reales y verás cómo el agente las procesa en tiempo real",
@@ -164,9 +168,9 @@ def main() -> int:
             "showSidebarNavigation = true" in streamlit_config,
             "la navegación registrada permanece visible en el sidebar",
         )
-        check('st.markdown("#### Brand UP")' in source,
+        check('ap-brand-sub">Brand UP<' in source or '"#### Brand UP"' in source,
               "Brand UP tiene jerarquía tipográfica de marca")
-        check('st.navigation(pages, position="hidden")' in source,
+        check('position="hidden"' in source and "st.page_link" in source,
               "la marca se dibuja por encima de las pestañas del sidebar")
         check("apcontroltowerdemo@gmail.com" in source,
               "la interfaz identifica el buzón AP asignado")

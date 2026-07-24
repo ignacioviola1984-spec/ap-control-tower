@@ -132,9 +132,13 @@ def safe_document_rows(active) -> list[dict]:
         state, reasons = document_state(
             result, active.review_decisions, active.approval_decisions, duplicates
         )
+        from . import design
+
+        priority, _tone = design.priority_tone(reasons)
         rows.append(
             {
                 "doc_id": result.doc_id,
+                "Prioridad": priority,
                 "Documento": result.doc_id,
                 "Proveedor": supplier_name(document),
                 "Número": str(document.get("numero_factura") or "—"),
@@ -154,6 +158,13 @@ def safe_document_rows(active) -> list[dict]:
                 "state_code": state,
                 "reasons": reasons,
                 "month": str(document.get("fecha_emision") or "")[:7],
+                # Valores crudos para ordenar y filtrar sin reparsear el texto
+                # ya formateado (que lleva separadores de miles y moneda).
+                "_importe_raw": document.get("importe_total"),
+                "_vencimiento_raw": (
+                    document.get("fecha_vencimiento_calculada")
+                    or document.get("fecha_vencimiento_texto")
+                ),
             }
         )
     return rows

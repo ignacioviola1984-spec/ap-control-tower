@@ -3,23 +3,29 @@
 [theme]
 base = "light"
 primaryColor = "#0F4C81"
-backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F3F6F9"
-textColor = "#172234"
-borderColor = "#CBD5E1"
-dataframeBorderColor = "#CBD5E1"
-dataframeHeaderBackgroundColor = "#EAF0F6"
+# Lienzo gris azulado con las tarjetas en blanco: da profundidad sin sombras
+# fuertes y hace legible una pantalla densa de datos financieros.
+backgroundColor = "#F4F7FB"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#0F1B2D"
+borderColor = "#DCE3ED"
+linkUnderline = false
+dataframeBorderColor = "#DCE3ED"
+dataframeHeaderBackgroundColor = "#F4F7FB"
 showWidgetBorder = true
-showSidebarBorder = true
-baseRadius = "8px"
-buttonRadius = "8px"
+showSidebarBorder = false
+baseRadius = "10px"
+buttonRadius = "10px"
 baseFontSize = 15
-headingFontSizes = ["30px", "24px", "20px", "17px", "15px", "13px"]
-headingFontWeights = [700, 600, 600, 600, 600, 600]
-greenColor = "#137A4B"
+headingFontSizes = ["28px", "22px", "18px", "16px", "14px", "13px"]
+headingFontWeights = [700, 650, 650, 650, 600, 600]
+greenColor = "#127A4B"
 orangeColor = "#9A5B00"
 redColor = "#B42318"
 blueColor = "#0F4C81"
+# Índigo reservado a la IA: ningún elemento operativo lo usa, de modo que ver
+# violeta en pantalla significa siempre "esto lo dijo el asistente".
+violetColor = "#6D4AFF"
 
 # Barra lateral corporativa: azul profundo con texto claro. Al oscurecer el
 # fondo hay que ajustar TODOS los colores, no solo el de fondo, para no perder

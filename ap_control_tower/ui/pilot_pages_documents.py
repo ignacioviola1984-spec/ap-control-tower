@@ -1,102 +1,22 @@
-"""Inicio, ingreso y lista→detalle de documentos."""
+"""Ingreso y bandeja de documentos (lista → detalle)."""
 
 from __future__ import annotations
+
+from datetime import date, datetime, timedelta
+from decimal import Decimal, InvalidOperation
 
 import pandas as pd
 import streamlit as st
 
+from . import design
 from .agent_panel import render_document_agent
-from .pilot_format import format_datetime, operational_summary
 from .pilot_pages_common import (
     active_session_or_resume,
-    metric_row,
-    page_header,
     render_document_detail,
     result_by_id,
     safe_document_rows,
 )
 from .trial import intake
-from .trial import session as sess
-
-
-def render_home() -> None:
-    page_header(
-        "Inicio",
-        "Resumen operativo de la sesión y tareas que requieren atención.",
-    )
-    active = sess.get_session()
-    summary = operational_summary(active)
-    last_update = active.audit.events[-1].ts if active.audit.events else active.created_at
-    st.caption(f"Última actualización: {format_datetime(last_update)}")
-
-    metric_row(
-        [
-            ("Documentos recibidos", summary["received"]),
-            ("Procesados correctamente", summary["processed"]),
-            ("Pendientes de revisión", summary["pending_review"]),
-            ("Con advertencias", summary["warnings"]),
-        ]
-    )
-    metric_row(
-        [
-            ("Elegibles para propuesta", summary["eligible"]),
-            ("Aprobados para propuesta", summary["approved"]),
-            ("Retenidos o excluidos", summary["retained_or_excluded"]),
-            ("Errores de procesamiento", summary["errors"]),
-        ]
-    )
-
-    if summary["received"] == 0:
-        with st.container(border=True):
-            st.subheader("No hay documentos en esta sesión")
-            st.write(
-                "Ingresá uno o varios PDF o consultá la bandeja de correo para comenzar."
-            )
-            if st.button(
-                "Ir a Ingreso de documentos",
-                icon=":material/upload_file:",
-                key="home_open_intake",
-            ):
-                st.switch_page("app_pages/ingreso_documentos.py")
-        return
-
-    st.subheader("Atención requerida")
-    task_cards = [
-        (
-            "Revisión humana",
-            summary["pending_review"],
-            "Documentos con campos, clasificación o controles que requieren decisión.",
-            "app_pages/revision_humana.py",
-            ":material/fact_check:",
-        ),
-        (
-            "Propuesta de pago",
-            summary["eligible"],
-            "Documentos elegibles que esperan un aprobador distinto del revisor.",
-            "app_pages/propuesta_pago.py",
-            ":material/payments:",
-        ),
-        (
-            "Errores recuperables",
-            summary["errors"],
-            "Archivos que pueden corregirse y volver a ingresarse.",
-            "app_pages/ingreso_documentos.py",
-            ":material/error:",
-        ),
-    ]
-    columns = st.columns(3, gap="medium")
-    for column, (title, value, description, page, icon) in zip(columns, task_cards):
-        with column.container(border=True, height="stretch"):
-            st.markdown(f"#### {title}")
-            st.metric("Cantidad", value)
-            st.caption(description)
-            if st.button(
-                "Abrir",
-                icon=icon,
-                key=f"home_open_{page}",
-                width="stretch",
-            ):
-                st.switch_page(page)
 
 
 def render_intake() -> None:
@@ -128,18 +48,71 @@ def _filter_rows(rows: list[dict], query: str, states: list[str],
     return filtered
 
 
+#: Vistas rápidas: el 90% de las consultas reales son una de estas cinco.
+QUICK_VIEWS = ["Todos", "Para revisar", "Vence esta semana", "Alto importe",
+               "Con anomalías"]
+
+
+def apply_quick_view(rows: list[dict], view: str) -> list[dict]:
+    """Filtro de la vista rápida. Función pura, verificable sin interfaz."""
+    if view == "Para revisar":
+        return [r for r in rows if r["state_code"] in {"pending_review", "retained"}]
+    if view == "Con anomalías":
+        return [r for r in rows if r["reasons"]]
+    if view == "Vence esta semana":
+        today = date.today()
+        limit = today + timedelta(days=7)
+        out = []
+        for row in rows:
+            due = _row_due_date(row)
+            if due is not None and today <= due <= limit:
+                out.append(row)
+        return out
+    if view == "Alto importe":
+        amounts = [
+            (_row_amount(row), row) for row in rows if _row_amount(row) is not None
+        ]
+        amounts.sort(key=lambda item: item[0], reverse=True)
+        return [row for _, row in amounts[:max(5, len(amounts) // 4)]]
+    return rows
+
+
+def _row_amount(row: dict):
+    try:
+        return Decimal(str(row.get("_importe_raw")))
+    except (InvalidOperation, TypeError, ValueError):
+        return None
+
+
+def _row_due_date(row: dict):
+    text = str(row.get("_vencimiento_raw") or "")[:10]
+    try:
+        return datetime.strptime(text, "%Y-%m-%d").date()
+    except ValueError:
+        return None
+
+
 def render_documents() -> None:
-    page_header(
+    design.page_header(
         "Documentos",
-        "Buscá, filtrá y seleccioná un documento para consultar su detalle.",
+        "Bandeja de trabajo: filtrá, priorizá y abrí el detalle de cada documento.",
     )
     active = active_session_or_resume("documents")
     if active is None:
         return
     rows = safe_document_rows(active)
     if not rows:
-        st.info("No hay documentos procesados; los errores se muestran en Ingreso de documentos.")
+        design.empty_state(
+            "No hay documentos procesados",
+            "Los archivos con error se muestran en la Bandeja de ingreso.",
+        )
         return
+
+    view = st.segmented_control(
+        "Vista", QUICK_VIEWS, default="Todos", key="_docs_quick_view",
+        label_visibility="collapsed",
+    ) or "Todos"
+    base_rows = apply_quick_view(rows, view)
 
     state_options = sorted({row["Estado"] for row in rows})
     supplier_options = sorted({row["Proveedor"] for row in rows})
@@ -147,46 +120,45 @@ def render_documents() -> None:
     type_options = sorted({row["Tipo"] for row in rows})
     month_options = sorted({row["month"] for row in rows if row["month"]})
 
-    with st.form("document_filters", border=False):
-        first = st.columns([2, 1, 1])
-        query = first[0].text_input(
-            "Buscar",
-            placeholder="Proveedor, número o documento",
-            icon=":material/search:",
-        )
-        states = first[1].multiselect(
-            "Estado", state_options, placeholder="Seleccionar estados"
-        )
-        month = first[2].selectbox(
-            "Mes de emisión",
-            ["Todos", *month_options],
-            format_func=lambda value: (
-                value if value == "Todos" else f"{value[5:7]}/{value[:4]}"
-            ),
-        )
-        second = st.columns(4)
-        suppliers = second[0].multiselect(
-            "Proveedor", supplier_options, placeholder="Seleccionar proveedores"
-        )
-        currencies = second[1].multiselect(
-            "Moneda", currency_options, placeholder="Seleccionar monedas"
-        )
-        types = second[2].multiselect(
-            "Tipo documental", type_options, placeholder="Seleccionar tipos"
-        )
-        order = second[3].selectbox(
-            "Ordenar por",
-            ["Fecha de emisión (más reciente)", "Proveedor", "Estado", "Importe"],
-        )
-        st.form_submit_button(
-            "Aplicar filtros",
-            icon=":material/filter_alt:",
-            width="content",
-        )
+    with st.expander("Filtros", icon=":material/filter_alt:"):
+        with st.form("document_filters", border=False):
+            first = st.columns([2, 1, 1])
+            query = first[0].text_input(
+                "Buscar", placeholder="Proveedor, número o documento",
+                icon=":material/search:",
+            )
+            states = first[1].multiselect(
+                "Estado", state_options, placeholder="Todos")
+            month = first[2].selectbox(
+                "Mes de emisión", ["Todos", *month_options],
+                format_func=lambda value: (
+                    value if value == "Todos" else f"{value[5:7]}/{value[:4]}"),
+            )
+            second = st.columns(4)
+            suppliers = second[0].multiselect(
+                "Proveedor", supplier_options, placeholder="Todos")
+            currencies = second[1].multiselect(
+                "Moneda", currency_options, placeholder="Todas")
+            types = second[2].multiselect(
+                "Tipo documental", type_options, placeholder="Todos")
+            order = second[3].selectbox(
+                "Ordenar por",
+                ["Fecha de emisión (más reciente)", "Proveedor", "Estado", "Importe"],
+            )
+            st.form_submit_button(
+                "Aplicar filtros", icon=":material/filter_alt:", width="content")
 
     filtered = _filter_rows(
-        rows, query, states, suppliers, currencies, types, month
+        base_rows, query, states, suppliers, currencies, types, month
     )
+    activos = sum(1 for item in (query, month if month != "Todos" else "",
+                                 states, suppliers, currencies, types) if item)
+    if activos or view != "Todos":
+        st.caption(
+            f"{len(filtered)} de {len(rows)} documento(s)"
+            + (f" · vista «{view}»" if view != "Todos" else "")
+            + (f" · {activos} filtro(s) activo(s)" if activos else "")
+        )
     if order == "Proveedor":
         filtered.sort(key=lambda row: row["Proveedor"].casefold())
     elif order == "Estado":
@@ -197,15 +169,18 @@ def render_documents() -> None:
         filtered.sort(key=lambda row: row["month"], reverse=True)
 
     if not filtered:
-        st.info("No hay documentos que coincidan con los filtros. Ajustá uno o más criterios.")
+        design.empty_state(
+            "Ningún documento coincide",
+            "Ajustá los filtros o volvé a la vista «Todos».",
+        )
         return
 
     visible_columns = [
-        "Documento", "Proveedor", "Número", "Tipo", "Emisión", "Vencimiento",
-        "Moneda", "Importe", "Estado",
+        "Prioridad", "Documento", "Proveedor", "Número", "Tipo", "Emisión",
+        "Vencimiento", "Moneda", "Importe", "Estado",
     ]
     frame = pd.DataFrame(
-        [{key: row[key] for key in visible_columns} for row in filtered]
+        [{key: row.get(key, "") for key in visible_columns} for row in filtered]
     )
     event = st.dataframe(
         frame,

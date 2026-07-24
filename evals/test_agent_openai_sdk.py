@@ -128,7 +128,9 @@ class OpenAISDKContractTests(unittest.TestCase):
         self.assertEqual(len(requests), 2)
         self.assertTrue(all(payload["store"] is False for payload in requests))
         self.assertEqual(requests[0]["tool_choice"], "required")
-        self.assertEqual(requests[1]["tool_choice"], "none")
+        # Tras la primera ronda obligatoria, las siguientes van en "auto" para
+        # que el modelo pueda encadenar otra tool (p. ej. leer el texto).
+        self.assertEqual(requests[1]["tool_choice"], "auto")
         outputs = [
             item
             for item in requests[1]["input"]

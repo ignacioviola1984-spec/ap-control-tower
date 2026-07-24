@@ -28,6 +28,11 @@ class AgentSettings:
     max_output_tokens: int
     #: Cadena vacía omite el parámetro (modelos sin razonamiento lo rechazan).
     reasoning_effort: str = "low"
+    #: Rondas de tools antes de forzar la respuesta. >1 permite que el modelo
+    #: combine, p. ej., las sugerencias de revisión con el texto del documento;
+    #: con una sola ronda no podía leer el PDF y decía "no tengo acceso".
+    #: Va al final para no alterar el orden posicional de los campos previos.
+    max_tool_rounds: int = 4
 
     @classmethod
     def from_env(cls) -> "AgentSettings":
@@ -56,6 +61,7 @@ class AgentSettings:
             max_output_tokens=_bounded_int(
                 "AP_AGENT_MAX_OUTPUT_TOKENS", 2000, 500, 8000
             ),
+            max_tool_rounds=_bounded_int("AP_AGENT_MAX_TOOL_ROUNDS", 4, 1, 8),
             reasoning_effort=_effort(),
         )
 

@@ -164,65 +164,79 @@ def answer_question(
     tool_names: list[str] = []
     options = _request_options(settings)
     try:
-        first = client.responses.create(
-            model=settings.model,
-            instructions=SYSTEM_INSTRUCTIONS,
-            input=input_items,
-            tools=TOOL_SCHEMAS,
-            tool_choice="required",
-            parallel_tool_calls=False,
-            store=False,
-            max_output_tokens=settings.max_output_tokens,
-            **options,
-        )
-        used_in, used_out = _usage(first)
-        input_tokens += used_in
-        output_tokens += used_out
-        # Con store=False la API no conserva los items de razonamiento, así que
-        # reenviarlos por id en la segunda llamada la haría fallar.
-        input_items += [item for item in first.output if item.type != "reasoning"]
-
-        calls = [item for item in first.output if item.type == "function_call"]
-        if not calls:
-            _log_failure("sin_function_call", response=first)
-            raise AgentServiceError(
-                "El asistente no consultó la evidencia obligatoria."
+        # La primera ronda obliga a consultar evidencia; las siguientes dejan que
+        # el modelo decida si necesita otra tool o ya puede responder. Con una
+        # sola ronda el modelo podía llamar, p. ej., a suggest_reviewer_actions y
+        # quedarse sin el texto del documento, respondiendo "no tengo acceso".
+        response = None
+        text = ""
+        for round_index in range(settings.max_tool_rounds):
+            response = client.responses.create(
+                model=settings.model,
+                instructions=SYSTEM_INSTRUCTIONS,
+                input=input_items,
+                tools=TOOL_SCHEMAS,
+                tool_choice="required" if round_index == 0 else "auto",
+                parallel_tool_calls=False,
+                store=False,
+                max_output_tokens=settings.max_output_tokens,
+                **options,
             )
-        for call in calls:
-            try:
-                arguments = json.loads(call.arguments or "{}")
-            except (TypeError, json.JSONDecodeError) as exc:
-                _log_failure("argumentos_invalidos", exc=exc)
-                raise AgentServiceError(
-                    "La solicitud de evidencia no fue válida."
-                ) from exc
-            tool_names.append(call.name)
-            output = tools.dispatch(call.name, arguments)
-            input_items.append(
-                {
-                    "type": "function_call_output",
-                    "call_id": call.call_id,
-                    "output": output,
-                }
-            )
+            used_in, used_out = _usage(response)
+            input_tokens += used_in
+            output_tokens += used_out
+            # Con store=False la API no conserva los items de razonamiento, así
+            # que reenviarlos por id en la ronda siguiente la haría fallar.
+            input_items += [item for item in response.output if item.type != "reasoning"]
 
-        final = client.responses.create(
-            model=settings.model,
-            instructions=SYSTEM_INSTRUCTIONS,
-            input=input_items,
-            tools=TOOL_SCHEMAS,
-            tool_choice="none",
-            parallel_tool_calls=False,
-            store=False,
-            max_output_tokens=settings.max_output_tokens,
-            **options,
-        )
-        used_in, used_out = _usage(final)
-        input_tokens += used_in
-        output_tokens += used_out
-        text = str(getattr(final, "output_text", "") or "").strip()
+            calls = [item for item in response.output if item.type == "function_call"]
+            if not calls:
+                if round_index == 0:
+                    _log_failure("sin_function_call", response=response)
+                    raise AgentServiceError(
+                        "El asistente no consultó la evidencia obligatoria."
+                    )
+                text = str(getattr(response, "output_text", "") or "").strip()
+                break
+
+            for call in calls:
+                try:
+                    arguments = json.loads(call.arguments or "{}")
+                except (TypeError, json.JSONDecodeError) as exc:
+                    _log_failure("argumentos_invalidos", exc=exc)
+                    raise AgentServiceError(
+                        "La solicitud de evidencia no fue válida."
+                    ) from exc
+                tool_names.append(call.name)
+                output = tools.dispatch(call.name, arguments)
+                input_items.append(
+                    {
+                        "type": "function_call_output",
+                        "call_id": call.call_id,
+                        "output": output,
+                    }
+                )
+        else:
+            # Se agotaron las rondas sin respuesta final: se fuerza una, ya con la
+            # evidencia reunida y sin permitir más tools.
+            response = client.responses.create(
+                model=settings.model,
+                instructions=SYSTEM_INSTRUCTIONS,
+                input=input_items,
+                tools=TOOL_SCHEMAS,
+                tool_choice="none",
+                parallel_tool_calls=False,
+                store=False,
+                max_output_tokens=settings.max_output_tokens,
+                **options,
+            )
+            used_in, used_out = _usage(response)
+            input_tokens += used_in
+            output_tokens += used_out
+            text = str(getattr(response, "output_text", "") or "").strip()
+
         if not text:
-            _log_failure("respuesta_vacia", response=final)
+            _log_failure("respuesta_vacia", response=response)
             raise AgentServiceError("OpenAI no devolvió una respuesta utilizable.")
     except (AgentServiceError, AgentUnavailable):
         raise

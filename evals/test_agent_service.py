@@ -92,8 +92,10 @@ class AgentServiceTests(unittest.TestCase):
 
         self.assertEqual(len(client.responses.calls), 2)
         self.assertTrue(all(call["store"] is False for call in client.responses.calls))
+        # La primera ronda obliga a consultar evidencia; a partir de la segunda
+        # el modelo decide si necesita otra tool o ya puede responder ("auto").
         self.assertEqual(client.responses.calls[0]["tool_choice"], "required")
-        self.assertEqual(client.responses.calls[1]["tool_choice"], "none")
+        self.assertEqual(client.responses.calls[1]["tool_choice"], "auto")
         self.assertEqual(answer.tools_used, ("explain_review_reasons",))
         self.assertEqual(answer.input_tokens, 340)
         self.assertEqual(answer.output_tokens, 65)
@@ -106,6 +108,65 @@ class AgentServiceTests(unittest.TestCase):
         self.assertEqual(len(tool_outputs), 1)
         payload = json.loads(tool_outputs[0]["output"])
         self.assertTrue(payload["requiere_revision"])
+
+    def test_model_reads_document_text_after_a_first_non_text_tool(self):
+        """Regresión: al pedir "qué verificar", el modelo elegía primero una
+        tool sin el texto y, sin una segunda ronda, respondía "no tengo acceso
+        al texto". Ahora puede encadenar get_document_text antes de responder."""
+        active, result = _fixture()
+        object.__setattr__(result, "source_text", "FACTURA 144/2026\nTOTAL 4.591,95")
+
+        class _MultiRound:
+            def __init__(self):
+                self.calls = []
+
+            def create(self, **kwargs):
+                self.calls.append(kwargs)
+                step = len(self.calls)
+                if step == 1:
+                    return SimpleNamespace(
+                        output=[SimpleNamespace(type="function_call",
+                                                name="suggest_reviewer_actions",
+                                                arguments="{}", call_id="c1")],
+                        usage=SimpleNamespace(input_tokens=10, output_tokens=5),
+                    )
+                if step == 2:
+                    return SimpleNamespace(
+                        output=[SimpleNamespace(type="function_call",
+                                                name="get_document_text",
+                                                arguments="{}", call_id="c2")],
+                        usage=SimpleNamespace(input_tokens=10, output_tokens=5),
+                    )
+                return SimpleNamespace(
+                    output=[],
+                    output_text="Verificá el total 4.591,95 contra el detalle. "
+                                "La decisión final es humana.",
+                    usage=SimpleNamespace(input_tokens=10, output_tokens=8),
+                )
+
+        client = SimpleNamespace(responses=_MultiRound())
+        answer = answer_question(
+            "Sugerí qué debería verificar el revisor a continuación.",
+            [],
+            ReadOnlyDocumentTools(active, result),
+            client=client,
+            settings=AgentSettings(True, "gpt-5-mini", 6, 900),
+        )
+
+        self.assertEqual(len(client.responses.calls), 3)
+        self.assertEqual(client.responses.calls[0]["tool_choice"], "required")
+        self.assertEqual(client.responses.calls[1]["tool_choice"], "auto")
+        self.assertEqual(client.responses.calls[2]["tool_choice"], "auto")
+        self.assertIn("get_document_text", answer.tools_used)
+        self.assertIn("suggest_reviewer_actions", answer.tools_used)
+        # El texto del documento llegó al modelo antes de la respuesta final.
+        final_input = client.responses.calls[2]["input"]
+        text_payload = [
+            item for item in final_input
+            if isinstance(item, dict) and item.get("type") == "function_call_output"
+            and "4.591,95" in item.get("output", "")
+        ]
+        self.assertTrue(text_payload)
 
     def test_audit_contains_metadata_but_not_prompt_or_response(self):
         active, result = _fixture()

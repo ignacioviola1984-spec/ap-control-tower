@@ -160,8 +160,79 @@ _CSS += f"""
   text-transform: uppercase; margin-bottom: 4px;
 }}
 
+/* ---------------------------------------------------------- skeleton */
+@keyframes ap-shimmer {{
+  0% {{ background-position: -420px 0; }}
+  100% {{ background-position: 420px 0; }}
+}}
+.ap-skel-line {{
+  height: 12px; border-radius: 6px; margin-bottom: 9px;
+  background: linear-gradient(90deg, #EDF1F7 25%, #F7F9FC 50%, #EDF1F7 75%);
+  background-size: 840px 100%;
+  animation: ap-shimmer 1.25s linear infinite;
+}}
+/* Reserva de layout: el bloque ocupa su alto final desde el primer frame,
+   así el contenido que llega después no empuja la página. */
+.ap-skel {{ padding: 2px 0; }}
+@media (prefers-reduced-motion: reduce) {{
+  .ap-skel-line {{ animation: none; }}
+}}
+
+/* ---------------------------------------------------------- confianza */
+.ap-conf {{
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11.5px; font-weight: 650;
+}}
+.ap-conf-bar {{
+  width: 34px; height: 5px; border-radius: 3px; background: {BORDER};
+  overflow: hidden; display: inline-block;
+}}
+.ap-conf-bar > i {{ display: block; height: 100%; border-radius: 3px; }}
+
+/* ------------------------------------------------- encabezado de entidad */
+.ap-entity {{
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 10px;
+  padding-bottom: 8px; margin-bottom: {SPACE["sm"]};
+  border-bottom: 1px solid {BORDER};
+}}
+.ap-entity-name {{
+  font-size: 19px; font-weight: 700; letter-spacing: -.01em; color: {INK};
+}}
+.ap-entity-sub {{ font-size: 13px; color: {INK_SOFT}; }}
+.ap-entity-meta {{ margin-left: auto; font-size: 12.5px; color: {INK_SOFT}; }}
+
+/* --------------------------------------------------------- barra fija */
+/* Se aplica por `key=` (contrato público `.st-key-*`), nunca por estructura
+   interna. El z-index queda por debajo de diálogos y del menú de Streamlit. */
+.ap-actionbar-anchor {{ display: none; }}
+[class*="st-key-ap_actionbar_"] {{
+  position: sticky; bottom: 0; z-index: 20;
+  background: {SURFACE}; border: 1px solid {BORDER};
+  border-radius: {RADIUS}; padding: 10px 14px; margin-top: {SPACE["sm"]};
+  box-shadow: 0 -2px 10px rgba(16,24,40,.07);
+}}
+
+/* ------------------------------------------------------ panel actividad */
+.ap-act {{ margin: 0; padding: 0; list-style: none; }}
+.ap-act li {{
+  display: flex; gap: 8px; align-items: baseline;
+  padding: 6px 0; border-bottom: 1px solid #EEF1F5; font-size: 13px;
+}}
+.ap-act li:last-child {{ border-bottom: none; }}
+.ap-act-when {{ color: {INK_SOFT}; font-size: 11.5px; white-space: nowrap; }}
+.ap-act-what {{ color: {INK}; }}
+.ap-act-who {{ margin-left: auto; color: {INK_SOFT}; font-size: 12px; }}
+
 /* Foco de teclado visible en toda la app (accesibilidad). */
 :focus-visible {{ outline: 2px solid {BRAND}; outline-offset: 2px; }}
+
+/* Responsive: por debajo de tablet las columnas de Streamlit ya se apilan;
+   acá sólo se recupera el espacio horizontal que la barra fija necesita. */
+@media (max-width: 640px) {{
+  [class*="st-key-ap_actionbar_"] {{ padding: 8px 10px; }}
+  .ap-entity-meta {{ margin-left: 0; width: 100%; }}
+  .ap-page-head h1 {{ font-size: 23px; }}
+}}
 </style>
 """
 
@@ -177,6 +248,11 @@ def _esc(value) -> str:
         str(value if value is not None else "")
         .replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
     )
+
+
+#: Alias público: todo texto que provenga de un documento se escapa antes de
+#: entrar en marcado propio. Nunca se interpola sin pasar por acá.
+esc = _esc
 
 
 Tone = Literal["ok", "warn", "risk", "info", "ai", "muted"]
@@ -275,6 +351,92 @@ def ai_block(title: str, body: str) -> None:
         f'<div class="ap-ai-block"><div class="ap-ai-head">{_esc(title)}</div>'
         f'<div style="font-size:13.5px;line-height:1.5;">{_esc(body)}</div></div>'
     )
+
+
+# ------------------------------------------------------- estados uniformes
+def skeleton(lines: int = 3, *, widths: Iterable[int] | None = None) -> None:
+    """Marcador de carga que reserva el alto final del bloque.
+
+    Se dibuja antes de un cálculo caro para que la página no salte cuando el
+    contenido llega: el espacio ya está ocupado.
+    """
+    sizes = list(widths) if widths else [100, 82, 64, 90, 72][:max(1, lines)]
+    while len(sizes) < max(1, lines):
+        sizes.append(78)
+    bars = "".join(
+        f'<div class="ap-skel-line" style="width:{int(width)}%;"></div>'
+        for width in sizes[:max(1, lines)]
+    )
+    st.html(f'<div class="ap-skel">{bars}</div>')
+
+
+def error_state(title: str, detail: str = "", *, retry_label: str = "",
+                key: str = "") -> bool:
+    """Estado de error uniforme. Devuelve True si se pidió reintentar."""
+    alert(detail or "La operación no pudo completarse.", tone="risk", title=title)
+    if retry_label:
+        return st.button(retry_label, icon=":material/refresh:",
+                         key=key or f"_retry_{title}")
+    return False
+
+
+def confidence(value, *, label: str = "confianza") -> str:
+    """Indicador de confianza informada por el extractor.
+
+    Devuelve marcado vacío si el extractor no informó confianza: no se inventa
+    un número ni se asume "alta" por ausencia de dato.
+    """
+    try:
+        ratio = float(value)
+    except (TypeError, ValueError):
+        return ""
+    ratio = max(0.0, min(1.0, ratio))
+    color = RISK if ratio < 0.60 else WARN if ratio < 0.80 else OK
+    return (
+        f'<span class="ap-conf" style="color:{color};" '
+        f'title="{_esc(label)} informada por el extractor">'
+        f'<span class="ap-conf-bar"><i style="width:{ratio * 100:.0f}%;'
+        f'background:{color};"></i></span>{ratio * 100:.0f}%</span>'
+    )
+
+
+def entity_header(name: str, subtitle: str = "", *, chips: Iterable[str] = (),
+                  meta: str = "") -> None:
+    """Encabezado de una entidad (documento, proveedor, lote)."""
+    body = f'<span class="ap-entity-name">{_esc(name)}</span>'
+    if subtitle:
+        body += f'<span class="ap-entity-sub">{_esc(subtitle)}</span>'
+    chips_html = " ".join(chips)
+    if chips_html:
+        body += f'<span style="display:inline-flex;gap:6px;">{chips_html}</span>'
+    if meta:
+        body += f'<span class="ap-entity-meta">{_esc(meta)}</span>'
+    st.html(f'<div class="ap-entity">{body}</div>')
+
+
+def action_bar(key: str):
+    """Contenedor de acciones fijo al pie del área de trabajo.
+
+    Devuelve un contenedor de Streamlit: las acciones se escriben adentro con
+    ``with``. El anclaje es CSS sobre la clave pública ``.st-key-*``.
+    """
+    return st.container(key=f"ap_actionbar_{key}")
+
+
+def activity_panel(events: list[dict], *, empty: str = "Sin actividad registrada.") -> None:
+    """Actividad reciente: [{'when','what','who'}]."""
+    if not events:
+        st.caption(empty)
+        return
+    items = "".join(
+        f'<li><span class="ap-act-when">{_esc(item.get("when"))}</span>'
+        f'<span class="ap-act-what">{_esc(item.get("what"))}</span>'
+        + (f'<span class="ap-act-who">{_esc(item.get("who"))}</span>'
+           if item.get("who") else "")
+        + "</li>"
+        for item in events
+    )
+    st.html(f'<ul class="ap-act">{items}</ul>')
 
 
 # --------------------------------------------------------------- formato

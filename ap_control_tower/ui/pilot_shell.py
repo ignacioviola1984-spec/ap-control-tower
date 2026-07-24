@@ -6,28 +6,32 @@ import os
 
 import streamlit as st
 
-from ..agent.config import admin_dashboard_enabled
-from . import design
+from ..agent.config import AgentSettings, admin_dashboard_enabled
+from . import design, topbar
 from .pilot_format import format_totals, operational_summary, totals_by_currency
 from .trial import session as sess
 
 
 #: Navegación agrupada por intención de uso: primero el trabajo del día, después
 #: los datos que lo sostienen y por último la lectura analítica.
+#:
+#: "Documentos" es la bandeja de trabajo real y por eso vive en Trabajo. Antes
+#: convivía con una pestaña "Bandeja" que llevaba al ingreso: dos nombres para
+#: dos cosas distintas, y el que sonaba a bandeja no lo era. Ingresar documentos
+#: pasó a ser la ACCIÓN primaria de la barra superior, disponible en todas las
+#: pantallas; su ruta histórica se conserva registrada.
 PAGE_GROUPS: list[tuple[str, list[dict]]] = [
     ("Trabajo", [
         {"page": "app_pages/inicio.py", "title": "Inicio",
          "icon": ":material/home:", "default": True},
-        {"page": "app_pages/ingreso_documentos.py", "title": "Bandeja",
-         "icon": ":material/inbox:"},
+        {"page": "app_pages/documentos.py", "title": "Documentos",
+         "icon": ":material/description:"},
         {"page": "app_pages/revision_humana.py", "title": "Revisión",
          "icon": ":material/fact_check:", "counter": "pending_review"},
         {"page": "app_pages/propuesta_pago.py", "title": "Pagos",
          "icon": ":material/payments:", "counter": "eligible"},
     ]),
     ("Datos", [
-        {"page": "app_pages/documentos.py", "title": "Documentos",
-         "icon": ":material/description:"},
         {"page": "app_pages/nuevo_proveedor.py", "title": "Proveedores",
          "icon": ":material/apartment:"},
     ]),
@@ -39,8 +43,15 @@ PAGE_GROUPS: list[tuple[str, list[dict]]] = [
     ]),
 ]
 
-#: Compatibilidad: rutas históricas que deben seguir resolviendo.
-PAGES = [spec for _, group in PAGE_GROUPS for spec in group]
+#: Páginas registradas en la navegación pero fuera de la lista del sidebar.
+#: Siguen resolviendo por ruta (``st.switch_page``) y desde la acción primaria.
+HIDDEN_PAGES: list[dict] = [
+    {"page": "app_pages/ingreso_documentos.py", "title": "Ingreso de documentos",
+     "icon": ":material/upload_file:"},
+]
+
+#: Compatibilidad: todas las rutas históricas que deben seguir resolviendo.
+PAGES = [spec for _, group in PAGE_GROUPS for spec in group] + HIDDEN_PAGES
 
 
 def _page_specs() -> list[dict]:
@@ -134,8 +145,28 @@ _SIDEBAR_CSS = """
   font-size: 10.5px; font-weight: 700; letter-spacing: .09em;
   text-transform: uppercase; color: #7E9AC4; margin: 14px 0 2px 6px;
 }
+[data-testid="stSidebar"] .ap-build {
+  font-size: 10.5px; color: #7E9AC4; letter-spacing: .02em; margin-top: 6px;
+}
 </style>
 """
+
+
+#: Versión funcional del producto. Se mueve con los hitos, no con cada commit.
+APP_VERSION = "2.0"
+
+
+def build_stamp() -> str:
+    """Versión y commit corto para el pie del sidebar.
+
+    El commit llega por la variable de entorno ``GIT_COMMIT`` que inyecta la
+    imagen. Es un identificador público del código desplegado: no revela
+    configuración ni secretos, y es lo único que permite saber con certeza qué
+    build está mirando quien reporta un problema.
+    """
+    commit = (os.environ.get("GIT_COMMIT") or "").strip()
+    short = commit[:7] if commit else "local"
+    return f"Versión {APP_VERSION} · build {short}"
 
 
 def _sidebar(pages_by_title: dict, summary: dict, active) -> None:
@@ -177,6 +208,7 @@ def _sidebar(pages_by_title: dict, summary: dict, active) -> None:
             key="_pilot_close_session",
         ):
             _confirm_close_session()
+        st.html(f'<div class="ap-build">{design.esc(build_stamp())}</div>')
 
 
 def render() -> None:
@@ -192,4 +224,9 @@ def render() -> None:
     page_objects = _streamlit_pages()
     current = st.navigation(page_objects, position="hidden")
     _sidebar({page.title: page for page in page_objects}, summary, active)
+    topbar.render(
+        current.title,
+        active,
+        copilot_available=AgentSettings.from_env().availability_message() is None,
+    )
     current.run()

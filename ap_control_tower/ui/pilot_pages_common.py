@@ -160,6 +160,7 @@ def safe_document_rows(active) -> list[dict]:
                 "month": str(document.get("fecha_emision") or "")[:7],
                 # Valores crudos para ordenar y filtrar sin reparsear el texto
                 # ya formateado (que lleva separadores de miles y moneda).
+                "_emision_raw": document.get("fecha_emision"),
                 "_importe_raw": document.get("importe_total"),
                 "_vencimiento_raw": (
                     document.get("fecha_vencimiento_calculada")
@@ -214,21 +215,106 @@ def render_pdf_viewer(result) -> None:
         )
 
 
-def render_document_detail(active, result) -> None:
+def render_document_detail(active, result, *, agent_page_key: str | None = None) -> None:
+    """Detalle del documento en pestañas.
+
+    Antes era una sola columna con siete bloques apilados: el revisor tenía que
+    recorrer toda la página para llegar a la auditoría. Las pestañas mantienen
+    el mismo contenido pero dejan cada cosa a un clic, sin scroll largo.
+    """
+    from . import design
+
     document = result.document
     duplicates = workflow.duplicate_doc_ids(active.results)
     state, reasons = document_state(
         result, active.review_decisions, active.approval_decisions, duplicates
     )
     resolution = getattr(active, "supplier_resolutions", {}).get(str(result.doc_id))
-    st.subheader(f"Detalle · {result.doc_id}")
-    st.badge(
-        STATE_LABELS[state],
-        color=STATE_COLORS.get(state, "gray"),
-        icon=":material/info:",
+    prioridad, tono = design.priority_tone(reasons)
+    design.entity_header(
+        str(result.doc_id),
+        supplier_name(document),
+        chips=[
+            design.chip(STATE_LABELS[state], design.state_tone(state)),
+            design.chip(prioridad, tono),
+        ],
+        meta=format_amount(document.get("importe_total"), document.get("moneda")),
     )
-    render_pdf_viewer(result)
 
+    nombres = ["Resumen", "PDF", "Datos", "Controles", "Historial", "Auditoría"]
+    if agent_page_key:
+        nombres.append("Copiloto")
+    pestanas = st.tabs(nombres)
+    with pestanas[0]:
+        _detail_summary(result, reasons, resolution)
+    with pestanas[1]:
+        _detail_pdf(result)
+    with pestanas[2]:
+        _detail_fields(document, resolution)
+    with pestanas[3]:
+        _detail_controls(result, document, duplicates, resolution)
+    with pestanas[4]:
+        _detail_history(active, result)
+    with pestanas[5]:
+        _detail_audit(active, result)
+    if agent_page_key:
+        with pestanas[6]:
+            from .agent_panel import render_document_agent
+
+            render_document_agent(active, result, page_key=agent_page_key)
+
+
+def _detail_summary(result, reasons, resolution) -> None:
+    from . import design
+
+    if reasons:
+        for reason in reasons:
+            _label, tone = design.priority_tone([reason])
+            design.alert(str(reason),
+                         tone=tone if tone != "muted" else "info",
+                         title="Motivo de revisión")
+    reason_texts = {str(reason) for reason in reasons}
+    informative = [
+        str(warning) for warning in (result.warnings or [])
+        if str(warning) not in reason_texts
+    ]
+    for warning in informative:
+        st.info(warning, icon=":material/info:")
+    if not reasons and not informative:
+        st.success("No hay motivos de revisión pendientes.",
+                   icon=":material/check_circle:")
+    st.caption(
+        "Vinculación con el maestro de Sage · "
+        + _sage_resolution_label(resolution)
+    )
+
+
+def _detail_pdf(result) -> None:
+    data = _pdf_bytes_for(result.doc_id)
+    if not data:
+        from . import design
+
+        design.empty_state(
+            "El PDF original no está en memoria",
+            "Se conserva sólo durante la sesión en la que se ingresó el documento.",
+        )
+        return
+    _render_pdf_inline(data)
+    st.download_button(
+        "Descargar PDF",
+        data=data,
+        file_name=f"{result.doc_id}.pdf",
+        mime="application/pdf",
+        icon=":material/download:",
+        key=f"_pdf_dl_tab_{result.doc_id}",
+    )
+    st.caption(
+        "El PDF se muestra al revisor y se conserva solo en memoria de esta "
+        "sesión; no se envía a OpenAI ni se almacena."
+    )
+
+
+def _detail_fields(document: dict, resolution) -> None:
     identity, finance = st.columns(2, gap="medium")
     with identity.container(border=True, height="stretch"):
         st.markdown("#### Identificación")
@@ -281,21 +367,13 @@ def render_document_detail(active, result) -> None:
                 or "—"
             )
         )
+    st.caption(
+        "Los identificadores fiscales y bancarios se muestran enmascarados: "
+        "alcanzan para verificar, no para copiar."
+    )
 
-    st.markdown("#### Motivos y advertencias")
-    if reasons:
-        for reason in reasons:
-            st.warning(str(reason), icon=":material/warning:")
-    reason_texts = {str(reason) for reason in reasons}
-    informative = [
-        str(warning) for warning in (result.warnings or [])
-        if str(warning) not in reason_texts
-    ]
-    for warning in informative:
-        st.info(warning, icon=":material/info:")
-    if not reasons and not informative:
-        st.success("No hay motivos de revisión pendientes.", icon=":material/check_circle:")
 
+def _detail_controls(result, document: dict, duplicates, resolution) -> None:
     missing = workflow.missing_critical_fields(document)
     arca_signals = [
         item for item in result.warnings
@@ -333,7 +411,8 @@ def render_document_detail(active, result) -> None:
     )
     st.dataframe(controls, hide_index=True, width="stretch")
 
-    st.markdown("#### Historial de decisiones")
+
+def _detail_history(active, result) -> None:
     history = []
     review = active.review_decisions.get(result.doc_id)
     payment = active.approval_decisions.get(result.doc_id)
@@ -360,8 +439,9 @@ def render_document_detail(active, result) -> None:
     else:
         st.caption("Todavía no hay decisiones humanas registradas para este documento.")
 
+
+def _detail_audit(active, result) -> None:
     events = [event for event in active.audit.events if event.invoice_id == result.doc_id]
-    st.markdown("#### Auditoría del documento")
     if events:
         st.dataframe(
             pd.DataFrame(

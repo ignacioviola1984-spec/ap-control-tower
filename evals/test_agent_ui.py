@@ -10,8 +10,14 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 
-def _subheaders(app) -> list[str]:
-    return [item.value for item in app.subheader]
+def _copilot_present(app) -> bool:
+    """El copiloto se identifica por su leyenda de alcance (índigo/IA).
+
+    Su título pasó a ser un badge estilizado, así que se detecta por la
+    caption de alcance, que es estable y accesible.
+    """
+    marker = "no modifica datos ni toma decisiones"
+    return any(marker in item.value for item in app.caption)
 
 
 def main() -> int:
@@ -39,7 +45,7 @@ def main() -> int:
 
         app.switch_page("app_pages/documentos.py").run()
         assert not app.exception, app.exception
-        assert "Asistente para este documento" in _subheaders(app)
+        assert _copilot_present(app)
         assert any(
             "pendiente de configuración" in item.value
             for item in app.info
@@ -47,11 +53,11 @@ def main() -> int:
 
         app.switch_page("app_pages/revision_humana.py").run()
         assert not app.exception, app.exception
-        assert "Asistente para este documento" in _subheaders(app)
+        assert _copilot_present(app)
 
         app.switch_page("app_pages/auditoria.py").run()
         assert not app.exception, app.exception
-        assert "Asistente para este documento" not in _subheaders(app)
+        assert not _copilot_present(app)
 
         from ap_control_tower.agent.config import admin_dashboard_enabled
 

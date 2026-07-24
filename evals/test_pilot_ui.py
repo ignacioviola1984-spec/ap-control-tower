@@ -86,7 +86,7 @@ def main() -> int:
         # "Brand UP" pasó a un bloque propio con filetes; el título de la
         # tarjeta usa capitalización de oración, como el resto del producto.
         for required in (
-            "Torre de Control para Cuentas a Pagar",
+            "AP Control Tower",
             "**Brand UP**",
             "Acceso al sistema",
             "Contraseña",

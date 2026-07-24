@@ -5,6 +5,7 @@ from __future__ import annotations
 import pandas as pd
 import streamlit as st
 
+from . import design
 from .agent_panel import render_document_agent
 from .pilot_format import (
     STATE_LABELS,
@@ -148,6 +149,17 @@ def _confirm_payment_decision(active, doc_ids: list[str], actor: str,
 
 
 def render_human_review() -> None:
+    """Workspace de tres zonas (cola · documento · copiloto).
+
+    El fallback nativo tabla→detalle queda en ``_render_human_review_legacy``
+    por si el workspace no puede construirse en un entorno dado.
+    """
+    from .review_workspace import render_workspace
+
+    render_workspace()
+
+
+def _render_human_review_legacy() -> None:
     page_header(
         "Revisión humana",
         "Cola priorizada de documentos que necesitan juicio, evidencia o corrección.",
@@ -298,14 +310,28 @@ def render_human_review() -> None:
         _confirm_exception(active, result.doc_id, actor, note)
 
 
+def _payment_risk_flags(row: dict) -> str:
+    """Señales de riesgo del documento en el lote, enunciadas sin datos crudos."""
+    text = " ".join(str(item) for item in row["reasons"]).casefold()
+    flags = []
+    if "cuenta de cobro" in text:
+        flags.append("Cambio bancario")
+    if "duplicad" in text:
+        flags.append("Duplicado")
+    if "no dado de alta" in text:
+        flags.append("Proveedor nuevo")
+    if "ya pagada" in text:
+        flags.append("Ya pagada")
+    if "excep" in text or row["status"] in {"rejected", "excluded"}:
+        flags.append("Excepción")
+    return " · ".join(flags)
+
+
 def render_payment_proposal() -> None:
-    page_header(
-        "Lote de pago",
-        "Gate humano separado de la confirmación documental.",
-    )
-    st.info(
-        "Las decisiones de esta página preparan una propuesta controlada. No contabilizan "
-        "ni liberan dinero."
+    design.page_header(
+        "Pagos",
+        "Gate humano separado de la confirmación documental. Prepara la "
+        "propuesta; no contabiliza ni libera dinero.",
     )
     active = active_session_or_resume("payment")
     if active is None:
@@ -318,15 +344,44 @@ def render_payment_proposal() -> None:
     retained = [
         row for row in rows if row["status"] in {"retained", "rejected", "excluded"}
     ]
-    metric_row(
-        [
-            ("Elegibles", len(eligible)),
-            ("Aprobados para propuesta", len(approved)),
-            ("Retenidos o excluidos", len(retained)),
-        ]
-    )
-    st.caption("Total elegible: " + format_totals(totals_by_currency(eligible)))
-    st.caption("Total aprobado: " + format_totals(totals_by_currency(approved)))
+
+    # Encabezado del lote: totales por moneda, riesgos y estado maker-checker.
+    criticos = sum(1 for row in rows
+                   if design.priority_tone(row["reasons"])[1] == "risk")
+    cols = st.columns(4, gap="small")
+    with cols[0]:
+        design.kpi("Elegibles", len(eligible),
+                   help_text="Esperan aprobación de un segundo responsable")
+    with cols[1]:
+        design.kpi("Aprobados", len(approved), help_text="Pasaron el gate")
+    with cols[2]:
+        design.kpi("Retenidos / excluidos", len(retained))
+    with cols[3]:
+        design.kpi("Riesgos críticos", criticos,
+                   delta="revisar" if criticos else None,
+                   delta_color="inverse" if criticos else "off")
+
+    tot_elegible = format_totals(totals_by_currency(eligible))
+    tot_aprobado = format_totals(totals_by_currency(approved))
+    resumen = st.container(horizontal=True)
+    resumen.html(
+        f'<div style="font-size:13.5px;">Total elegible '
+        f'<b>{tot_elegible}</b></div>')
+    resumen.html(
+        f'<div style="font-size:13.5px;">Total aprobado '
+        f'<b>{tot_aprobado}</b></div>')
+    estado_gate = ("Pendiente de aprobación" if eligible and not approved
+                   else "Aprobado para propuesta" if approved
+                   else "Sin elegibles")
+    resumen.html(design.chip(f"Maker-checker · {estado_gate}",
+                             "warn" if eligible and not approved else "ok"))
+
+    if criticos:
+        design.alert(
+            f"{criticos} documento(s) elegibles o en lote tienen un riesgo de pago "
+            "crítico. Revisá el motivo antes de aprobar.",
+            tone="risk", title="Atención",
+        )
 
     table_rows = []
     for row in rows:
@@ -341,11 +396,12 @@ def render_payment_proposal() -> None:
             or document.get("fecha_vencimiento_texto") or "—",
             "Importe": format_amount(document.get("importe_total"), document.get("moneda")),
             "Estado": STATE_LABELS.get(row["status"], row["status"]),
+            "Riesgos": _payment_risk_flags(row) or "—",
             "Motivo": " · ".join(row["reasons"]) or "—",
             "row": row,
         })
     frame = pd.DataFrame(
-        [{key: item[key] for key in ("Documento", "Proveedor", "Número", "Vencimiento", "Importe", "Estado", "Motivo")}
+        [{key: item[key] for key in ("Documento", "Proveedor", "Número", "Vencimiento", "Importe", "Riesgos", "Estado", "Motivo")}
          for item in table_rows]
     )
     event = st.dataframe(
@@ -438,6 +494,37 @@ def render_payment_proposal() -> None:
                 key=f"payment_export_excel_{active.audit.run_id}",
             )
         _render_pending_vendors(active)
+
+    _render_batch_timeline(active, eligible, approved)
+
+
+def _render_batch_timeline(active, eligible, approved) -> None:
+    """Línea temporal del lote a partir de la auditoría real de la sesión."""
+    marks = {
+        "sesion-iniciada": ("Sesión creada", "muted"),
+        "documento-confirmado": ("Datos confirmados en revisión", "ok"),
+        "propuesta-aprobada": ("Aprobación para propuesta", "ok"),
+        "propuesta-excluida": ("Documento excluido", "warn"),
+        "propuesta-rechazada": ("Documento rechazado", "risk"),
+    }
+    eventos = []
+    for event in active.audit.events:
+        label_tone = marks.get(event.action)
+        if not label_tone:
+            continue
+        eventos.append({
+            "when": format_datetime(event.ts),
+            "what": label_tone[0],
+            "who": event.agent,
+            "tone": label_tone[1],
+        })
+    if eligible and not approved:
+        eventos.append({"when": "Ahora", "what": "Pendiente de aprobación humana",
+                        "who": "", "tone": "warn"})
+    if not eventos:
+        return
+    with st.expander("Línea temporal del lote", icon=":material/timeline:"):
+        design.timeline(eventos[-12:])
 
 
 def _render_pending_vendors(active) -> None:

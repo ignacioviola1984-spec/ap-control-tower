@@ -42,16 +42,50 @@ def _trim(messages: list[dict[str, str]]) -> None:
     del messages[:-12]
 
 
+_COPILOT_CSS = """
+<style>
+/* Identidad de IA: índigo reservado. Ver este acento significa siempre que el
+   contenido lo produjo el copiloto, nunca un control determinista. */
+.ap-copilot-head {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 2px;
+}
+.ap-copilot-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  background: #EFEBFF; color: #6D4AFF; border: 1px solid #D6CCFF;
+  border-radius: 999px; padding: 1px 9px; font-size: 11.5px; font-weight: 700;
+}
+.ap-copilot-title { font-size: 15px; font-weight: 650; color: #0F1B2D; }
+.st-key-ap_copilot [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) {
+  background: #FAF8FF;
+}
+</style>
+"""
+
+
+def _copilot_header(available: bool) -> None:
+    estado = ("disponible", "#127A4B") if available else ("no disponible", "#9A5B00")
+    st.html(
+        _COPILOT_CSS
+        + '<div class="ap-copilot-head">'
+        '<span class="ap-copilot-badge">'
+        '<span class="material-symbols-rounded" style="font-size:14px;">'
+        'auto_awesome</span> IA</span>'
+        '<span class="ap-copilot-title">Copiloto AP</span>'
+        f'<span style="margin-left:auto;font-size:12px;color:{estado[1]};'
+        f'font-weight:600;">● {estado[0]}</span></div>'
+    )
+    st.caption(
+        "Explica motivos y evidencia; sugiere próximos pasos. Es informativo y "
+        "de solo lectura: no modifica datos ni toma decisiones."
+    )
+
+
 @st.fragment
 def render_document_agent(active, result, *, page_key: str) -> None:
     settings = AgentSettings.from_env()
-    st.subheader("Asistente para este documento")
-    st.caption(
-        "Explica motivos y evidencia, y sugiere próximos pasos. "
-        "No modifica datos ni toma decisiones."
-    )
-
     unavailable = settings.availability_message()
+    _copilot_header(available=unavailable is None)
+
     if unavailable:
         st.info(unavailable, icon=":material/smart_toy:")
         return
@@ -60,7 +94,7 @@ def render_document_agent(active, result, *, page_key: str) -> None:
     conversations = _all_conversations()
     messages = conversations.setdefault(key, [])
 
-    with st.container(border=True):
+    with st.container(border=True, key="ap_copilot"):
         if not messages:
             selected = st.pills(
                 "Consultas sugeridas",

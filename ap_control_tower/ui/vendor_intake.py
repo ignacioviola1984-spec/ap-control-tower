@@ -170,30 +170,85 @@ def _formulario() -> dict | None:
     }
 
 
+def _vendor_exposure(session, master):
+    """Exposición pendiente por proveedor vinculado, a partir de la sesión.
+
+    Cruza los documentos ya extraídos con el maestro: da una vista de cuánto se
+    le debe a cada proveedor sin exponer datos sensibles.
+    """
+    from decimal import Decimal, InvalidOperation
+
+    from ..sage.vendor_master import normalize_tax_id
+    from .pilot_format import supplier_name
+
+    exposure: dict[str, dict] = {}
+    for result in session.results:
+        document = result.document
+        nombre = supplier_name(document)
+        clave = normalize_tax_id(document.get("proveedor_tax_id")) or nombre
+        try:
+            importe = Decimal(str(document.get("importe_total")))
+        except (InvalidOperation, TypeError, ValueError):
+            importe = Decimal("0")
+        moneda = str(document.get("moneda") or "EUR").upper()
+        entry = exposure.setdefault(
+            clave, {"nombre": nombre, "docs": 0, "por_moneda": {}})
+        entry["docs"] += 1
+        entry["por_moneda"][moneda] = entry["por_moneda"].get(moneda, Decimal("0")) + importe
+    return exposure
+
+
 def render_new_vendor() -> None:
-    st.title("Nuevo proveedor")
-    st.caption(
-        "Da de alta un proveedor que no está en el maestro. Queda disponible "
-        "para conciliar de inmediato y viaja a Sage con el lote de pago."
+    from . import design
+
+    design.page_header(
+        "Proveedores",
+        "Alta y estado de proveedores frente al maestro de Sage.",
     )
 
     session = sess.get_session()
     master = getattr(session, "supplier_master", None)
-    if master is not None:
-        resumen = session.supplier_master_summary or {}
-        st.caption(
-            f"Maestro activo: {resumen.get('active_vendors', 0)} proveedor(es)."
-        )
+    resumen = session.supplier_master_summary or {}
     pendientes = getattr(session, "pending_vendors", [])
+
+    cols = st.columns(3, gap="small")
+    with cols[0]:
+        design.kpi("En el maestro", resumen.get("active_vendors", 0),
+                   help_text="Proveedores activos cargados desde Sage")
+    with cols[1]:
+        design.kpi("Con exposición en la sesión",
+                   len(_vendor_exposure(session, master)))
+    with cols[2]:
+        design.kpi("Altas pendientes de Sage", len(pendientes),
+                   delta="enviar con el lote" if pendientes else None,
+                   delta_color="inverse" if pendientes else "off")
+
     if pendientes:
-        st.info(
-            f"{len(pendientes)} alta(s) pendiente(s) de enviar a Sage con el "
-            "próximo lote de pago.",
-            icon=":material/pending_actions:",
+        design.alert(
+            f"{len(pendientes)} alta(s) viajan a Sage con el próximo lote de pago.",
+            tone="warn", title="Pendiente de sincronizar",
         )
 
+    exposure = _vendor_exposure(session, master)
+    if exposure:
+        with st.expander("Exposición por proveedor", icon=":material/account_balance:"):
+            filas = []
+            for entry in sorted(exposure.values(),
+                                key=lambda item: -sum(item["por_moneda"].values())):
+                montos = " · ".join(
+                    design.money(value, currency)
+                    for currency, value in entry["por_moneda"].items())
+                filas.append({"Proveedor": entry["nombre"],
+                              "Documentos": entry["docs"], "Exposición": montos})
+            st.dataframe(filas, hide_index=True, width="stretch")
+
+    st.subheader("Dar de alta un proveedor")
+    st.caption(
+        "Queda disponible para conciliar de inmediato y viaja a Sage con el "
+        "lote de pago."
+    )
     with st.expander(
-        "Datos del proveedor", expanded=True, icon=":material/person_add:"
+        "Datos del proveedor", expanded=not exposure, icon=":material/person_add:"
     ):
         datos = _formulario()
 

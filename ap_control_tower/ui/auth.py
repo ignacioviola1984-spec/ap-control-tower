@@ -64,21 +64,15 @@ _LOGIN_STYLE = """
 .st-key-ap_login_brand p {
   color: #1565C0; font-weight: 700; white-space: nowrap; margin: 0;
 }
-.ap-login-pillars {
-  display: flex; gap: 2.25rem; justify-content: center; flex-wrap: wrap;
-  margin: 2.25rem auto 0; max-width: 780px;
+.ap-login-sub {
+  text-align: center; color: #4A5B75; font-size: 14.5px; margin: 2px 0 2px 0;
 }
-.ap-login-pillar { flex: 1 1 200px; max-width: 230px; text-align: center; }
-.ap-login-pillar .ap-ico {
-  color: #1565C0; font-size: 26px; line-height: 1;
-  font-family: 'Material Symbols Rounded','Material Symbols Outlined';
+.ap-login-value {
+  margin: 1.6rem auto 0; max-width: 560px; text-align: center;
+  font-size: 13px; color: #5A6B85; line-height: 1.5;
 }
-.ap-login-pillar h4 {
-  margin: .45rem 0 .3rem; font-size: .95rem; font-weight: 700; color: #0F2547;
-}
-.ap-login-pillar p { margin: 0; font-size: .8rem; line-height: 1.45; color: #4A5B75; }
 .ap-login-foot {
-  margin-top: 2.5rem; text-align: center; font-size: .78rem; color: #6B7A90;
+  margin-top: 1.4rem; text-align: center; font-size: .78rem; color: #8394AB;
 }
 </style>
 """
@@ -105,25 +99,15 @@ _EMBLEM_SVG = (
 # El emblema se dibuja con st.image: st.html sanitiza tanto <svg> como <img>,
 # así que el marcado en línea llegaba vacío al navegador.
 
-_PILLARS = """
-<div class="ap-login-pillars">
-  <div class="ap-login-pillar">
-    <div class="ap-ico">verified_user</div>
-    <h4>Seguridad empresarial</h4>
-    <p>Protegemos la información de tu organización con los más altos estándares.</p>
-  </div>
-  <div class="ap-login-pillar">
-    <div class="ap-ico">insights</div>
-    <h4>Visibilidad total</h4>
-    <p>Control y trazabilidad completa de tus cuentas a pagar en tiempo real.</p>
-  </div>
-  <div class="ap-login-pillar">
-    <div class="ap-ico">schedule</div>
-    <h4>Eficiencia operativa</h4>
-    <p>Automatiza procesos, reduce tiempos y mejora la toma de decisiones.</p>
-  </div>
+# Se reemplazan los tres pilares comerciales (y la afirmación no verificable de
+# "los más altos estándares") por una sola línea de valor concreta. El pie es
+# texto no interactivo: no hay páginas reales de privacidad/términos todavía.
+_VALUE_LINE = """
+<div class="ap-login-value">
+  Extracción, revisión y propuesta de pago en un circuito auditado, con
+  controles deterministas y un copiloto explicable.
 </div>
-<div class="ap-login-foot">Política de privacidad &nbsp;•&nbsp; Términos de uso</div>
+<div class="ap-login-foot">Uso interno · Brand UP</div>
 """
 
 
@@ -148,8 +132,9 @@ def require_password() -> None:
     # El encabezado va a ancho completo para que el título entre en una línea;
     # solo la tarjeta de acceso se angosta.
     with st.container(horizontal=True, horizontal_alignment="center"):
-        st.image(_EMBLEM_SVG, width=86)
-    st.title("Torre de Control para Cuentas a Pagar", text_alignment="center")
+        st.image(_EMBLEM_SVG, width=80)
+    st.title("AP Control Tower", text_alignment="center")
+    st.html('<p class="ap-login-sub">Inteligencia y control para cuentas a pagar</p>')
     with st.container(
         key="ap_login_brand", horizontal=True, horizontal_alignment="center"
     ):
@@ -185,5 +170,5 @@ def require_password() -> None:
                 st.session_state["_auth_ok"] = True
                 st.rerun()
             st.error("La contraseña ingresada es incorrecta.", icon=":material/error:")
-    st.html(_PILLARS)
+    st.html(_VALUE_LINE)
     st.stop()

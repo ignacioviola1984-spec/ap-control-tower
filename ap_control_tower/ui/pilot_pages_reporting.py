@@ -8,6 +8,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
+from . import design
 from .components import extraction_view as extraction
 from .pilot_format import (
     format_date,
@@ -15,31 +16,46 @@ from .pilot_format import (
     label_for_code,
     operational_summary,
 )
-from .pilot_pages_common import metric_row, page_header
+from .pilot_pages_common import page_header
 from .trial import session as sess
 
 
 ROOT = Path(__file__).resolve().parents[2]
 
 
+def _event_origin(event) -> tuple[str, str]:
+    """Clasifica el origen del evento para el timeline: (etiqueta, tono)."""
+    result_text = str(event.result or "").casefold()
+    if "inconsist" in result_text or "error" in result_text or "violation" in result_text:
+        return "Riesgo", "risk"
+    agent = str(event.agent or "").casefold()
+    if event.control_id:
+        return "Control", "info"
+    if "asistente" in agent or "copiloto" in agent:
+        return "IA", "ai"
+    if agent in {"sistema", "system"}:
+        return "Sistema", "muted"
+    return "Humano", "ok"
+
+
 def render_audit() -> None:
-    page_header(
+    design.page_header(
         "Auditoría",
-        "Eventos cronológicos de la sesión y verificación de integridad de la cadena.",
+        "Cadena de eventos de la sesión, por origen, con verificación de integridad.",
     )
     active = sess.get_session()
     events = active.audit.events
     integrity = active.audit.verify_chain()
-    metric_row(
-        [
-            ("Eventos", len(events)),
-            ("Integridad de la cadena", "Íntegra" if integrity else "Inconsistente"),
-            (
-                "Almacenamiento",
-                "Historial disponible" if sess.persistence_available() else "Solo sesión",
-            ),
-        ]
-    )
+    cols = st.columns(3, gap="small")
+    with cols[0]:
+        design.kpi("Eventos", len(events))
+    with cols[1]:
+        design.kpi("Integridad", "Íntegra" if integrity else "Inconsistente",
+                   delta=None if integrity else "revisar",
+                   delta_color="off" if integrity else "inverse")
+    with cols[2]:
+        design.kpi("Almacenamiento",
+                   "Historial" if sess.persistence_available() else "Solo sesión")
     if integrity:
         st.success(
             "La cadena de auditoría conserva su integridad.",
@@ -93,10 +109,31 @@ def render_audit() -> None:
     if not filtered:
         st.info("No hay eventos que coincidan con los filtros seleccionados.")
         return
+
+    vista = st.segmented_control(
+        "Vista", ["Timeline", "Tabla"], default="Timeline",
+        key="_audit_view", label_visibility="collapsed") or "Timeline"
+
+    if vista == "Timeline":
+        eventos = []
+        for event in reversed(filtered[-60:]):
+            origen, tono = _event_origin(event)
+            detalle = label_for_code(event.action)
+            if event.invoice_id:
+                detalle += f" · {event.invoice_id}"
+            eventos.append({
+                "when": f"{format_datetime(event.ts)} · {origen}",
+                "what": detalle,
+                "who": f"{event.agent} → {label_for_code(event.result)}",
+                "tone": tono,
+            })
+        design.timeline(eventos)
+
     frame = pd.DataFrame(
         [
             {
                 "Secuencia": event.seq,
+                "Origen": _event_origin(event)[0],
                 "Fecha y hora": format_datetime(event.ts),
                 "Responsable": event.agent,
                 "Acción": label_for_code(event.action),
@@ -107,16 +144,17 @@ def render_audit() -> None:
             for event in filtered
         ]
     )
-    st.dataframe(
-        frame,
-        hide_index=True,
-        width="stretch",
-        height=440,
-        column_config={
-            "Secuencia": st.column_config.NumberColumn("Secuencia", format="%d", pinned=True),
-            "Fecha y hora": st.column_config.TextColumn("Fecha y hora", pinned=True),
-        },
-    )
+    if vista == "Tabla":
+        st.dataframe(
+            frame,
+            hide_index=True,
+            width="stretch",
+            height=440,
+            column_config={
+                "Secuencia": st.column_config.NumberColumn("Secuencia", format="%d", pinned=True),
+                "Fecha y hora": st.column_config.TextColumn("Fecha y hora", pinned=True),
+            },
+        )
     st.download_button(
         "Exportar auditoría CSV",
         data=frame.to_csv(index=False).encode("utf-8-sig"),
@@ -136,42 +174,48 @@ def _quality_summary() -> dict | None:
         return None
 
 
+def _kpi_grid(items: list[tuple]) -> None:
+    columns = st.columns(len(items), gap="small")
+    for column, item in zip(columns, items):
+        with column:
+            design.kpi(item[0], item[1], help_text=item[2] if len(item) > 2 else "")
+
+
 def render_indicators() -> None:
-    page_header(
+    design.page_header(
         "Indicadores",
-        "Métricas operativas de la sesión y calidad de extracción medida.",
+        "Operación de la sesión y calidad de extracción, con la definición de "
+        "cada métrica.",
     )
     active = sess.get_session()
     operational = operational_summary(active)
     extraction_metrics = extraction.aggregate_metrics(active.results, active.errors)
 
     st.subheader("Operación de la sesión")
-    metric_row(
-        [
-            ("Documentos recibidos", operational["received"]),
-            ("Pendientes de revisión", operational["pending_review"]),
-            ("Elegibles", operational["eligible"]),
-            ("Aprobados para propuesta", operational["approved"]),
-        ]
-    )
-    metric_row(
-        [
-            ("Campos encontrados", extraction_metrics["fields_found"]),
-            (
-                "Cobertura de extracción",
-                f"{extraction_metrics['coverage'] * 100:.1f}%",
-            ),
-            (
-                "Confianza informada",
-                "—" if extraction_metrics["confidence"] is None
-                else f"{extraction_metrics['confidence'] * 100:.1f}%",
-            ),
-            ("Errores", extraction_metrics["errors"]),
-        ]
-    )
-    st.caption(
-        "Cobertura y confianza describen la extracción; no equivalen a exactitud contable validada."
-    )
+    _kpi_grid([
+        ("Documentos recibidos", operational["received"],
+         "Definición: PDF ingresados en esta sesión. Fuente: sesión actual."),
+        ("Pendientes de revisión", operational["pending_review"],
+         "Definición: documentos con una decisión humana pendiente."),
+        ("Elegibles", operational["eligible"],
+         "Definición: pasaron los controles y esperan aprobación separada."),
+        ("Aprobados", operational["approved"],
+         "Definición: superaron el gate maker-checker."),
+    ])
+    _kpi_grid([
+        ("Campos encontrados", extraction_metrics["fields_found"],
+         "Definición: campos del esquema con valor. Unidad: recuento."),
+        ("Cobertura de extracción", f"{extraction_metrics['coverage'] * 100:.1f}%",
+         "Definición: campos con valor sobre el total del esquema. "
+         "ADVERTENCIA: no equivale a exactitud contable."),
+        ("Confianza informada",
+         "—" if extraction_metrics["confidence"] is None
+         else f"{extraction_metrics['confidence'] * 100:.1f}%",
+         "Definición: confianza media que reporta el extractor. "
+         "No es una medida de exactitud verificada."),
+        ("Errores de procesamiento", extraction_metrics["errors"],
+         "Definición: archivos que no pudieron procesarse."),
+    ])
 
     st.subheader("Calidad de extracción")
     summary = _quality_summary()
@@ -183,21 +227,19 @@ def render_indicators() -> None:
     latest = runs[-1] if runs else {}
     replays = summary.get("policy_replays", [])
     replay = replays[-1] if replays else {}
-    metric_row(
-        [
-            ("Documentos de referencia", golden.get("documentos", "—")),
-            (
-                "Exactitud de extracción",
-                f"{latest.get('extraccion_exactitud_pct', 0):.1f}%" if latest else "—",
-            ),
-            (
-                "Exactitud de ruteo",
-                f"{replay.get('ruteo_exactitud_pct', latest.get('ruteo_exactitud_pct', 0)):.1f}%"
-                if latest or replay else "—",
-            ),
-            ("Falsos negativos", replay.get("falsos_negativos", "—")),
-        ]
-    )
+    _kpi_grid([
+        ("Documentos de referencia", golden.get("documentos", "—"),
+         "Definición: facturas con verdad humana verificada. Fuente: golden versionado."),
+        ("Exactitud de extracción",
+         f"{latest.get('extraccion_exactitud_pct', 0):.1f}%" if latest else "—",
+         "Definición: campos correctos sobre el golden. Período: última corrida."),
+        ("Exactitud de ruteo",
+         f"{replay.get('ruteo_exactitud_pct', latest.get('ruteo_exactitud_pct', 0)):.1f}%"
+         if latest or replay else "—",
+         "Definición: documentos ruteados al estado correcto."),
+        ("Falsos negativos", replay.get("falsos_negativos", "—"),
+         "Definición: riesgos que la política no marcó. Objetivo: cero."),
+    ])
     st.caption(
         "Las métricas provienen del conjunto de referencia versionado y no constituyen una "
         "promesa de rendimiento sobre cualquier volumen futuro."

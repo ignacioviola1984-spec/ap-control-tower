@@ -182,8 +182,17 @@ def test_review_workspace() -> None:
     ambas = review_layout.toggle(colapsada, "toggle_copilot")
     check(len(review_layout.column_ratios(ambas)) == 1,
           "con cola y copiloto colapsados queda una sola zona")
-    check(abs(sum(review_layout.column_ratios(layout)) - 100.0) < 0.01,
-          "el reparto de anchos suma el total disponible")
+    # Regresión concreta: con proporciones que suman el ancho completo, el
+    # contenedor de columnas de Streamlit desborda por el gap y envuelve, y la
+    # cola salta a su propia fila rompiendo el layout de tres zonas.
+    for variante in (layout, colapsada, ambas):
+        check(abs(sum(review_layout.column_ratios(variante)) - 1.0) < 1e-9,
+              "el reparto de anchos son fracciones que suman 1, no porcentajes")
+    check(all(0 < value < 1 for value in review_layout.column_ratios(layout)),
+          "ninguna zona pide más ancho del disponible")
+    check("1 0%" in (ROOT / "ap_control_tower" / "ui" / "review_layout.py")
+          .read_text(encoding="utf-8"),
+          "el arrastre reparte por proporción, no por base porcentual")
     check(review_layout.toggle(layout, "next") == layout,
           "una acción de navegación no altera la disposición")
 

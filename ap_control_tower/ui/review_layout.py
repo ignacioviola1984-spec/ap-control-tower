@@ -128,6 +128,11 @@ function columnOf(element) {
   return element ? element.closest('[data-testid="stColumn"]') : null
 }
 
+// Reparto proporcional SIN base porcentual. Con `flex-basis` en porcentajes que
+// suman 100 el contenedor de columnas de Streamlit —que envuelve— desborda por
+// el gap y la primera columna salta a su propia fila: el layout de tres zonas se
+// rompia visualmente. Con `flex: <n> 1 0%` el reparto es proporcional puro y el
+// gap sale del espacio disponible, sin desbordar nunca.
 function applyWidths(doc, docPercent) {
   if (!window.matchMedia(WIDE_QUERY).matches) return false
   const queue = columnOf(zoneElement(doc, "ap_zone_queue"))
@@ -136,8 +141,8 @@ function applyWidths(doc, docPercent) {
   if (!main) return false
   const visible = [queue, copilot].filter(Boolean)
   const rest = visible.length ? (100 - docPercent) / visible.length : 0
-  main.style.flex = `1 1 ${docPercent}%`
-  visible.forEach((element) => { element.style.flex = `1 1 ${rest}%` })
+  main.style.flex = `${docPercent} 1 0%`
+  visible.forEach((element) => { element.style.flex = `${rest} 1 0%` })
   return true
 }
 
@@ -249,7 +254,12 @@ def current_layout() -> dict:
 
 
 def column_ratios(layout: dict) -> list[float]:
-    """Proporciones de las columnas visibles, en el orden cola · doc · copiloto."""
+    """Proporciones de las columnas visibles, en el orden cola · doc · copiloto.
+
+    Se devuelven como fracciones que suman 1, no como porcentajes que suman 100:
+    ``st.columns`` reparte proporcionalmente, y valores que suman exactamente el
+    ancho disponible no dejan lugar para el ``gap`` entre columnas.
+    """
     doc = float(layout["doc_percent"])
     visibles = 2 - int(bool(layout["queue_collapsed"])) - int(bool(layout["copilot_collapsed"]))
     resto = (100.0 - doc) / visibles if visibles else 0.0
@@ -259,7 +269,8 @@ def column_ratios(layout: dict) -> list[float]:
     ratios.append(doc if visibles else 100.0)
     if not layout["copilot_collapsed"]:
         ratios.append(resto)
-    return ratios
+    total = sum(ratios) or 1.0
+    return [value / total for value in ratios]
 
 
 def toggle(layout: dict, action: str) -> dict:

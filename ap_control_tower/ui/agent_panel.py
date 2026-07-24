@@ -67,13 +67,16 @@ _COPILOT_CSS = """
    contenido lo produjo el copiloto, nunca un control determinista. */
 .ap-copilot-head {
   display: flex; align-items: center; gap: 8px; margin-bottom: 2px;
+  flex-wrap: wrap;
 }
 .ap-copilot-badge {
   display: inline-flex; align-items: center; gap: 5px;
   background: #EFEBFF; color: #6D4AFF; border: 1px solid #D6CCFF;
   border-radius: 999px; padding: 1px 9px; font-size: 11.5px; font-weight: 700;
+  white-space: nowrap;
 }
 .ap-copilot-title { font-size: 15px; font-weight: 650; color: #0F1B2D; }
+.ap-copilot-state { font-size: 12px; font-weight: 600; white-space: nowrap; }
 .st-key-ap_copilot [data-testid="stChatMessage"]:has([data-testid="stChatMessageAvatarAssistant"]) {
   background: #FAF8FF;
 }
@@ -90,16 +93,21 @@ _COPILOT_CSS = """
 
 
 def _copilot_header(available: bool) -> None:
+    """Encabezado del copiloto.
+
+    La insignia NO usa la fuente de iconos de Streamlit: esa fuente sólo está
+    garantizada en los elementos que la propia Streamlit dibuja, y dentro de
+    marcado propio la ligadura se veía como el texto crudo «auto_awesome».
+    Un punto tipográfico no depende de ninguna fuente externa.
+    """
     estado = ("disponible", "#127A4B") if available else ("no disponible", "#9A5B00")
     st.html(
         _COPILOT_CSS
         + '<div class="ap-copilot-head">'
-        '<span class="ap-copilot-badge">'
-        '<span class="material-symbols-rounded" style="font-size:14px;">'
-        'auto_awesome</span> IA</span>'
+        '<span class="ap-copilot-badge">✦ IA</span>'
         '<span class="ap-copilot-title">Copiloto AP</span>'
-        f'<span style="margin-left:auto;font-size:12px;color:{estado[1]};'
-        f'font-weight:600;">● {estado[0]}</span></div>'
+        f'<span class="ap-copilot-state" style="margin-left:auto;color:{estado[1]};">'
+        f'● {estado[0]}</span></div>'
     )
     st.caption(
         "Explica motivos y evidencia; sugiere próximos pasos. Es informativo y "
@@ -245,6 +253,12 @@ def render_document_agent(active, result, *, page_key: str) -> None:
             # progresivamente, así que se informa el avance real en vez de
             # animar un texto ya completo con st.write_stream.
             answer = None
+            # Reserva del alto de la respuesta mientras se produce: sin esto la
+            # página salta cuando el texto aparece, y en el workspace de
+            # revisión ese salto mueve la barra de acciones bajo el cursor.
+            hueco = st.empty()
+            with hueco.container():
+                design.skeleton(4)
             with st.status("Consultando evidencia controlada…",
                            expanded=False) as estado:
                 try:
@@ -273,6 +287,7 @@ def render_document_agent(active, result, *, page_key: str) -> None:
                         state="complete",
                     )
                     response = answer.text
+            hueco.empty()
             if answer is None:
                 st.error(response, icon=":material/error:")
             else:

@@ -195,6 +195,18 @@ def test_review_workspace() -> None:
           "el arrastre reparte por proporción, no por base porcentual")
     check(review_layout.toggle(layout, "next") == layout,
           "una acción de navegación no altera la disposición")
+    # Regresión: colapsar escribia el layout dentro de STATE_KEY, que es la
+    # clave del propio componente. Tocar el estado de un widget ya instanciado
+    # levanta excepcion y tumbaba la pagina entera al pulsar Cola o Copiloto;
+    # el deslizador no pasaba por ese camino y por eso nunca fallaba.
+    fuente = (ROOT / "ap_control_tower" / "ui" / "review_workspace.py").read_text(
+        encoding="utf-8")
+    check("STATE_KEY" not in fuente,
+          "el workspace no escribe en la clave del componente")
+    check("apply_action" in fuente,
+          "el colapso pasa por el estado propio de Python")
+    check(review_layout.COLLAPSE_KEY != review_layout.STATE_KEY,
+          "el estado de colapso vive en una clave distinta a la del widget")
 
     source = (ROOT / "ap_control_tower" / "ui" / "review_layout.py").read_text(encoding="utf-8")
     check("st.components.v2" in source or "ccv2.component" in source,
@@ -237,6 +249,22 @@ def test_review_queue_order() -> None:
     valores = [rank.get(row["Prioridad"], 9) for row in ordered]
     check(valores == sorted(valores),
           "la cola se ordena por consecuencia económica")
+    # Regresión: al confirmar o retener, la tarjeta seguía en la cola y el
+    # contador de la barra lateral (que cuenta pendientes) quedaba en desacuerdo
+    # con la lista. Lo resuelto se consulta en Documentos y en Auditoría.
+    active.review_decisions[active.results[0].doc_id] = {
+        "status": "confirmed", "actor": "iv", "timestamp": "2026-07-24T00:00:00Z",
+    }
+    quedan = review_workspace.ordered_queue(active)
+    check(len(quedan) == 1,
+          "un documento confirmado sale de la cola de revisión")
+    check(all(row["item"]["pending"] for row in quedan),
+          "en la cola sólo queda lo que espera decisión")
+    active.review_decisions[active.results[1].doc_id] = {
+        "status": "retained", "actor": "iv", "timestamp": "2026-07-24T00:00:00Z",
+    }
+    check(review_workspace.ordered_queue(active) == [],
+          "retener también saca el documento de la cola")
 
 
 # ------------------------------------------------------------------ pagos

@@ -105,12 +105,24 @@ def _confidence_flag(result, field: str) -> str:
 
 
 def ordered_queue(active) -> list[dict]:
-    """Cola de revisión ordenada por consecuencia económica. Función pura."""
+    """Cola de revisión pendiente, ordenada por consecuencia económica.
+
+    Sólo entra lo que todavía espera una decisión. `review_queue` devuelve
+    también lo ya resuelto —y lo sigue haciendo, porque es la política y no se
+    toca—, pero mostrarlo acá dejaba la tarjeta en pantalla después de confirmar
+    o retener: el revisor no distinguía lo hecho de lo pendiente y el contador
+    de la barra lateral, que sí cuenta pendientes, quedaba en desacuerdo con la
+    lista. Lo resuelto se consulta en Documentos y en Auditoría.
+
+    Función pura.
+    """
     queue = workflow.review_queue(
         active.results, active.review_decisions, active.approval_decisions
     )
     ordered = []
     for entry in queue:
+        if not entry["pending"]:
+            continue
         priority, _tone = design.priority_tone(entry["reasons"])
         result = entry["result"]
         ordered.append({
@@ -258,11 +270,7 @@ def render_workspace() -> None:
     layout = review_layout.current_layout()
     accion = review_layout.render(layout)
     if accion in {"toggle_queue", "toggle_copilot"}:
-        stored = st.session_state.get(review_layout.STATE_KEY)
-        nuevo = review_layout.toggle(layout, accion)
-        if isinstance(stored, dict):
-            stored["layout"] = nuevo
-        layout = nuevo
+        layout = review_layout.apply_action(layout, accion)
         accion = None
     elif accion == "prev" and idx > 0:
         st.session_state[state_key] = idx - 1

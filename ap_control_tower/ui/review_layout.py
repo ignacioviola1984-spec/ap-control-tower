@@ -16,6 +16,8 @@ dibujado: se pierde el arrastre en vivo, nunca la funcionalidad.
 
 from __future__ import annotations
 
+import logging
+
 import streamlit as st
 
 from . import ccv2
@@ -232,11 +234,22 @@ DEFAULT_LAYOUT = {
     "zone": "documento",
 }
 
+#: Clave del componente. Es estado de widget: lo escribe Streamlit, no nosotros.
 STATE_KEY = "_ap_review_layout"
+
+#: Clave propia de Python para los colapsos.
+#:
+#: El componente pide colapsar una zona, pero quien decide es Python, porque es
+#: Python el que dibuja (o no) esa columna. Escribir la decisión de vuelta en
+#: STATE_KEY significaba tocar el estado de un widget ya instanciado en la misma
+#: ejecución, y eso Streamlit no lo permite: tumbaba la página entera al tocar
+#: «Cola» o «Copiloto». El ancho del documento no pasaba por ahí y por eso el
+#: deslizador nunca falló.
+COLLAPSE_KEY = "_ap_review_collapse"
 
 
 def current_layout() -> dict:
-    """Layout vigente: el que dejó el componente, o el reparto inicial."""
+    """Layout vigente: el del componente, con los colapsos que gobierna Python."""
     stored = st.session_state.get(STATE_KEY)
     value = {}
     if isinstance(stored, dict):
@@ -250,7 +263,22 @@ def current_layout() -> dict:
         layout["doc_percent"] = max(30, min(75, int(layout["doc_percent"])))
     except (TypeError, ValueError):
         layout["doc_percent"] = DEFAULT_LAYOUT["doc_percent"]
+    propio = st.session_state.get(COLLAPSE_KEY)
+    if isinstance(propio, dict):
+        for flag in ("queue_collapsed", "copilot_collapsed"):
+            if flag in propio:
+                layout[flag] = bool(propio[flag])
     return layout
+
+
+def apply_action(layout: dict, action: str) -> dict:
+    """Aplica un colapso y lo guarda en estado propio, nunca en el del widget."""
+    updated = toggle(layout, action)
+    st.session_state[COLLAPSE_KEY] = {
+        "queue_collapsed": updated["queue_collapsed"],
+        "copilot_collapsed": updated["copilot_collapsed"],
+    }
+    return updated
 
 
 def column_ratios(layout: dict) -> list[float]:
@@ -299,12 +327,18 @@ def render(layout: dict) -> str | None:
             on_action_change=lambda: None,
         )
     except Exception:  # noqa: BLE001 - la disposición nunca tumba la revisión
+        # Silenciar el fallo evita que la revisión se caiga, pero sin dejar
+        # rastro el modo degradado es indistinguible del normal y un error de
+        # montaje puede pasar semanas sin que nadie lo note.
+        logging.getLogger(__name__).warning(
+            "El componente de disposición no montó; la revisión sigue con los "
+            "controles nativos.", exc_info=True)
         return None
     return getattr(resultado, "action", None)
 
 
 __all__ = [
-    "DEFAULT_LAYOUT", "NAME", "SHORTCUTS", "STATE_KEY", "ZONES_WRAP",
-    "ZONE_COPILOT", "ZONE_DOC", "ZONE_QUEUE", "column_ratios", "current_layout",
-    "render", "toggle",
+    "COLLAPSE_KEY", "DEFAULT_LAYOUT", "NAME", "SHORTCUTS", "STATE_KEY",
+    "ZONES_WRAP", "ZONE_COPILOT", "ZONE_DOC", "ZONE_QUEUE", "apply_action",
+    "column_ratios", "current_layout", "render", "toggle",
 ]

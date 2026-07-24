@@ -57,6 +57,14 @@ _CSS = f"""
   font-variant-numeric: tabular-nums;
 }}
 
+/* El valor de métrica de Streamlit viene en ~36px, más grande que el título de
+   la página (28px). Con cifras cortas no se nota, pero un importe como
+   «EUR 47.412,23» se comía la vista y competía con el encabezado. 24px lo deja
+   por debajo del título y por encima del cuerpo, que es la jerarquía real. */
+[data-testid="stMetricValue"] {{
+  font-size: 24px; font-weight: 650; line-height: 1.3;
+}}
+
 /* ---------------------------------------------------------- encabezado */
 .ap-page-head {{ margin: 0 0 {SPACE["md"]} 0; }}
 .ap-page-head h1 {{

@@ -469,14 +469,25 @@ def _repair_party_roles(doc: dict, text: str, confidences: dict[str, Decimal]) -
         supplier_tax, receiver_tax = receiver_tax, supplier_tax
 
     tax_supplier = _name_near_tax_id(text, supplier_tax)
-    if receiver and not _is_own_party(receiver) and _is_own_party(original_supplier):
+    # El nombre impreso junto al CIF del proveedor es evidencia directa. Cuando
+    # existe, NO se recurre a "intercambiar emisor y receptor": en la factura
+    # 144 de GESMAR el emisor venía como la empresa propia y el receptor traía
+    # el nombre del estudio ("IA EN EL SECTOR AUTOMOVILÍSTICO"), así que el
+    # intercambio dejaba un concepto donde debía ir el proveedor. Ese valor
+    # parece un nombre válido, de modo que ninguna pasada posterior lo corregía.
+    corroborated = bool(tax_supplier) and not _is_own_party(tax_supplier)
+    if receiver and not _is_own_party(receiver) and _is_own_party(original_supplier) \
+            and not corroborated:
         supplier = receiver
     if (_is_bad_party_name(supplier) or _is_own_party(supplier)) and original_receiver \
+            and not corroborated \
             and not _is_bad_party_name(original_receiver) and not _is_own_party(original_receiver):
         supplier = original_receiver
-    if tax_supplier and not _is_own_party(tax_supplier):
+    if corroborated:
         legal = tax_supplier
-        if _is_bad_party_name(supplier) or _is_own_party(supplier):
+        if _is_bad_party_name(supplier) or _is_own_party(supplier) \
+                or (LEGAL_SUFFIX_RE.search(tax_supplier) and not LEGAL_SUFFIX_RE.search(supplier or "")
+                    and _fold(supplier or "") not in _fold(tax_supplier)):
             supplier = tax_supplier
     if (_is_bad_party_name(supplier) or _is_own_party(supplier)) and non_own_names:
         supplier = non_own_names[0]
@@ -1211,11 +1222,15 @@ def refine_mapped_document(
     # "importe adeudado" y "importe a pagar" entran acá y no como total: en
     # ELZABURU el total es 6.467,44 pero, descontada una provisión de fondos ya
     # recibida, sólo quedan 1.022,14 por pagar. Pagar el total sobrepagaría.
+    # "total a percibir" cierra el mismo agujero por otra etiqueta: la factura
+    # 144 de GESMAR suma 4.591,95 pero descuenta un anticipo de 2.040,00 ya
+    # facturado aparte, y el importe real a pagar son 2.551,95. Las dos facturas
+    # venían en el mismo lote: pagar ambas completas sobrepagaba el anticipo.
     saldo = _labelled_amount(
         text,
         ("invoice balance", "saldo pendiente", "balance due", "importe pendiente",
          "saldo a pagar", "outstanding balance", "importe adeudado", "amount due",
-         "importe a pagar", "amount payable"),
+         "importe a pagar", "amount payable", "total a percibir", "liquido a percibir"),
     )
     if saldo is not None:
         doc["saldo_pendiente"] = f"{saldo.quantize(Decimal('0.01'))}"

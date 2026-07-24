@@ -398,6 +398,49 @@ TOTAL EUR 121,00
         self.assertEqual(document["proveedor_tax_id"], "12817931P")
         self.assertEqual(document["tratamiento_iva"], "nacional")
 
+    def test_advance_already_invoiced_leaves_the_payable_amount_as_balance(self):
+        """GESMAR descuenta un anticipo facturado aparte que viaja en el mismo lote."""
+        document = empty_document()
+        document.update({
+            "document_type": "invoice",
+            "importe_neto": "3795.00",
+            "importe_iva": "796.95",
+            "importe_total": "4591.95",
+        })
+
+        refine_mapped_document(
+            document,
+            "I.V.A 21% 796,95 €\nTOTAL FACTURA 4.591,95 €\n"
+            "ANTICIPO P-05/2026 2.040,00 €\nTOTAL A PERCIBIR 2.551,95 €\n",
+            empty_document(),
+        )
+
+        self.assertEqual(document["importe_total"], "4591.95")
+        self.assertEqual(document["saldo_pendiente"], "2551.95")
+
+    def test_name_beside_the_tax_id_beats_swapping_in_the_receiver(self):
+        """La factura traía el estudio como receptor y la empresa propia como emisor."""
+        document = empty_document()
+        document.update({
+            "document_type": "invoice",
+            "proveedor_nombre_comercial": "BRAND UP, SL",
+            "cliente_nombre": "IA EN EL SECTOR AUTOMOVILISTICO",
+            "proveedor_tax_id": "B81380495",
+            "importe_total": "4591.95",
+        })
+
+        refine_mapped_document(
+            document,
+            "GESMAR\nBRAND UP, SL\nCIF: B85902583\n"
+            "NOMBRE ESTUDIO:\nIA EN EL SECTOR AUTOMOVILISTICO\n"
+            "GESMAR GESTION Y MARKETING S.L (Sociedad Unipersonal)\n"
+            "C/ Ramon y Cajal 39\n28016 MADRID\nCIF: B-81380495\n",
+            empty_document(),
+        )
+
+        self.assertEqual(document["proveedor_nombre_comercial"], "GESMAR GESTION Y MARKETING S.L")
+        self.assertNotEqual(document["proveedor_nombre_comercial"], "IA EN EL SECTOR AUTOMOVILISTICO")
+
     def test_document_ai_cache_is_off_unless_a_directory_is_configured(self):
         """En producción nunca se activa: ninguna factura real va a disco."""
         from ap_control_tower.extraction.document_ai import _cache_dir

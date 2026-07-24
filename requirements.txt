@@ -1,7 +1,11 @@
 # El motor y los evals usan solo la libreria estandar (Python 3.11+).
 # La UI usa streamlit + pandas; reportlab genera el PDF de auditoria local.
 # Google Document AI procesa las facturas reales cuando esta configurado.
-streamlit>=1.36
+# st.pdf existe desde 1.57 y necesita el componente streamlit-pdf, que es una
+# dependencia opcional: sin el pin y sin el componente, el visor de PDF del
+# revisor humano rompia la pagina de detalle en produccion.
+streamlit>=1.57
+streamlit-pdf>=2.0,<3
 pandas>=2.0
 openpyxl>=3.1,<4
 reportlab>=4.0

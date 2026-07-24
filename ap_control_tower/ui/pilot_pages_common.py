@@ -164,15 +164,31 @@ def _pdf_bytes_for(doc_id) -> bytes | None:
     return blobs.get(str(doc_id))
 
 
+def _render_pdf_inline(data: bytes) -> None:
+    """Incrusta el PDF, o explica por qué no se puede, sin romper la página.
+
+    st.pdf existe desde Streamlit 1.57 y delega en el componente opcional
+    streamlit-pdf. Si falta cualquiera de los dos, la llamada levanta y se
+    llevaba por delante toda la vista de detalle: el revisor perdía los datos
+    extraídos, los controles y el historial, no sólo el visor.
+    """
+    try:
+        st.pdf(io.BytesIO(data), height=640)
+    except Exception:  # noqa: BLE001 - el visor nunca debe tumbar la revisión
+        st.info(
+            "El visor incrustado no está disponible en este entorno. "
+            "Descargá el PDF para revisarlo.",
+            icon=":material/info:",
+        )
+
+
 def render_pdf_viewer(result) -> None:
     """Muestra el PDF original al revisor humano (bytes solo en memoria de sesión)."""
     data = _pdf_bytes_for(result.doc_id)
     if not data:
         return
     with st.expander("Ver PDF original", icon=":material/picture_as_pdf:"):
-        # st.pdf (Streamlit >=1.57) sirve los bytes con headers correctos; evita
-        # el bloqueo de Chrome a los PDF vía data:URI dentro de un iframe sandbox.
-        st.pdf(io.BytesIO(data), height=640)
+        _render_pdf_inline(data)
         st.download_button(
             "Descargar PDF",
             data=data,

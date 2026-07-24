@@ -4,7 +4,11 @@
 # st.pdf existe desde 1.57 y necesita el componente streamlit-pdf, que es una
 # dependencia opcional: sin el pin y sin el componente, el visor de PDF del
 # revisor humano rompia la pagina de detalle en produccion.
-streamlit>=1.57
+# El techo NO es decorativo: streamlit-pdf se acopla a la API de componentes de
+# Streamlit y una version no verificada deja de dibujar el PDF sin fallar ni
+# avisar. Verificado contra 1.59.1 y 1.60.0. Subir el techo exige volver a
+# comprobar que el visor dibuja (canvas dentro del shadow root del componente).
+streamlit>=1.57,<1.61
 streamlit-pdf>=2.0,<3
 pandas>=2.0
 openpyxl>=3.1,<4
